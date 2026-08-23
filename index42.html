@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Peace-Orb: Tactical Harmony HUD & AI Sanctuary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Share+Tech+Mono&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <script type="importmap">
+        {
+            "imports": {
+                "@google/genai": "https://esm.run/@google/genai"
+            }
+        }
+    </script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        mono: ['Share Tech Mono', 'monospace'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        peace: {
+                            cyan: '#00f2fe',
+                            blue: '#4facfe',
+                            purple: '#b19cd9',
+                            emerald: '#10b981',
+                            gold: '#fbbf24',
+                            dark: '#030712',
+                            panel: 'rgba(15, 23, 42, 0.8)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #030712;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.78);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 242, 254, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), inset 0 0 15px rgba(0, 242, 254, 0.1);
+        }
+
+        .glass-panel-gold {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(251, 191, 36, 0.35);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), inset 0 0 15px rgba(251, 191, 36, 0.1);
+        }
+
+        .glass-panel-purple {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(177, 156, 217, 0.35);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), inset 0 0 15px rgba(177, 156, 217, 0.1);
+        }
+
+        .glass-panel-emerald {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), inset 0 0 15px rgba(16, 185, 129, 0.1);
+        }
+
+        .neon-glow-cyan {
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.8), 0 0 20px rgba(0, 242, 254, 0.4);
+        }
+
+        .scanlines {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%,
+                    rgba(0, 0, 0, 0.15) 50%), linear-gradient(90deg,
+                    rgba(255, 0, 0, 0.01),
+                    rgba(0, 255, 0, 0.005),
+                    rgba(0, 0, 255, 0.01));
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+
+        .clip-corner {
+            clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(3, 7, 18, 0.8);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 242, 254, 0.4);
+            border-radius: 2px;
+        }
+
+        @keyframes bounceSlow {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-6px);
+            }
+
+            .tamagotchi-bounce {
+                animation: bounceSlow 3s infinite ease-in-out;
+            }
+    </style>
+</head>
+
+<body class="text-cyan-100 bg-peace-dark">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+
+    <!-- Game HUD Overlay -->
+    <div id="hud-overlay"
+        class="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-3 md:p-6 transition-opacity duration-500">
+
+        <!-- Top Navigation & Stats Bar -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center w-full gap-3">
+
+            <!-- Left: Title & Guardian Status with Avatar -->
+            <div class="glass-panel px-4 py-2.5 rounded-xl clip-corner pointer-events-auto flex items-center space-x-3">
+                <div class="relative flex items-center justify-center">
+                    <div id="guardian-avatar-container"
+                        class="w-10 h-10 rounded-full border border-peace-cyan overflow-hidden bg-slate-900 flex items-center justify-center shadow-[0_0_10px_#00f2fe]">
+                        <span id="guardian-avatar-emoji" class="text-xl">🐰</span>
+                        <img id="guardian-avatar-img" src="" class="w-full h-full object-cover hidden">
+                    </div>
+                    <div id="theme-indicator-glow"
+                        class="w-3.5 h-3.5 bg-peace-cyan rounded-full animate-ping absolute -bottom-1 -right-1"></div>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1
+                            class="font-orbitron font-black text-sm md:text-base text-white tracking-wider neon-glow-cyan">
+                            🌍 PEACE-ORB // HUD ✨</h1>
+                        <span id="hud-user-badge" class="text-[10px] font-mono bg-cyan-950/80 text-cyan-300 px-2 py-0.5 rounded border border-cyan-500/40">Guardian [Moon]</span>
+                    </div>
+                    <p id="hud-user-title" class="text-[10px] text-cyan-300 font-mono">Rank: Harmony Vanguard // XP:
+                        1,420 🌟</p>
+                </div>
+            </div>
+
+            <!-- Center/Right: Live Metrics & Controls -->
+            <div class="flex flex-wrap items-center gap-2 pointer-events-auto">
+                <div class="glass-panel px-3 py-2 rounded-xl text-center">
+                    <div class="text-[9px] font-mono text-cyan-400">HARMONY INDEX ☮️</div>
+                    <div class="font-orbitron text-xs font-bold text-emerald-300 tracking-wider">99.96%</div>
+                </div>
+                <div class="glass-panel px-3 py-2 rounded-xl text-center">
+                    <div class="text-[9px] font-mono text-yellow-400">GLOBAL PULSES ⚡</div>
+                    <div id="pulse-counter" class="font-orbitron text-xs font-bold text-white tracking-wider">1,483,109
+                    </div>
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <button id="btn-profile" class="glass-panel hover:bg-slate-800 text-cyan-200 font-orbitron text-[10px] px-3 py-2.5 rounded-xl transition-all flex items-center space-x-1.5 border border-cyan-400/40">
+                    <span>👤 IDENTITY</span>
+                </button>
+                <button id="btn-broadcast" class="glass-panel hover:bg-slate-800 text-purple-200 font-orbitron text-[10px] px-3 py-2.5 rounded-xl transition-all flex items-center space-x-1.5 border border-purple-400/40">
+                    <span>📡 RADIO & TV</span>
+                </button>
+                <button id="btn-contests" class="glass-panel-gold hover:bg-amber-950/80 text-amber-200 font-orbitron text-[10px] px-3.5 py-2.5 rounded-xl transition-all flex items-center space-x-1.5 shadow-[0_0_15px_rgba(251,191,36,0.3)]">
+                    <span>🏆 CONTESTS</span>
+                </button>
+                <button id="btn-minigame" class="glass-panel hover:bg-cyan-950 text-cyan-200 font-orbitron text-[10px] px-3 py-2.5 rounded-xl transition-all flex items-center space-x-1.5 border border-cyan-400/40">
+                    <span>🎮 ARCADE</span>
+                </button>
+                <button id="btn-quests" class="glass-panel-emerald hover:bg-emerald-950/80 text-emerald-200 font-orbitron text-[10px] px-3.5 py-2.5 rounded-xl transition-all flex items-center space-x-1.5 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                    <span>📜 QUESTS <span id="quest-badge" class="bg-emerald-500 text-slate-950 px-1 rounded-full text-[9px] font-bold">3</span></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tamagotchi AI Companion Floating Widget (Right Side) -->
+        <div id="tamagotchi-widget"
+            class="absolute right-4 top-24 z-30 pointer-events-auto glass-panel p-3.5 rounded-2xl clip-corner w-64 shadow-[0_0_30px_rgba(0,242,254,0.3)] border border-cyan-400/50 tamagotchi-bounce flex flex-col space-y-2">
+            <div class="flex justify-between items-center border-b border-cyan-500/30 pb-1.5">
+                <div class="flex items-center space-x-1.5">
+                    <span id="pet-icon-header" class="text-base">🐰</span>
+                    <span id="pet-name-header" class="font-orbitron font-bold text-xs text-cyan-200">Kibo (AI Pet)</span>
+                </div>
+                <button id="btn-toggle-pet-type" class="text-[9px] font-mono bg-cyan-950 px-2 py-0.5 rounded text-cyan-300 border border-cyan-500/30 hover:bg-cyan-900">Switch 🐾</button>
+            </div>
+
+            <!-- Speech Bubble -->
+            <div id="pet-speech"
+                class="bg-slate-950/90 border border-cyan-500/40 p-2.5 rounded-xl text-[11px] font-mono text-cyan-100 min-h-[42px] flex items-center relative shadow-inner">
+                <span class="absolute -top-2 left-6 w-3 h-3 bg-slate-950 border-t border-l border-cyan-500/40 transform rotate-45"></span>
+                "Got any fresh carrots, Guardian? 🥕✨"
+            </div>
+
+            <!-- Pet Stats -->
+            <div class="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                <div>
+                    <div class="flex justify-between text-cyan-300 mb-0.5">
+                        <span>Hunger 🥕</span><span id="pet-hunger-val">85%</span></div>
+                    <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-cyan-500/30">
+                        <div id="pet-hunger-bar" class="bg-amber-400 h-full" style="width: 85%;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-cyan-300 mb-0.5">
+                        <span>Mood 💖</span><span id="pet-mood-val">92%</span></div>
+                    <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-cyan-500/30">
+                        <div id="pet-mood-bar" class="bg-peace-cyan h-full" style="width: 92%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="flex space-x-2 pt-1">
+                <button id="btn-feed-pet" class="flex-1 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 font-orbitron text-[10px] rounded-lg border border-emerald-500/40 text-center transition-all">
+                    🥕 Feed
+                </button>
+                <button id="btn-pat-pet" class="flex-1 py-1.5 bg-cyan-950/80 hover:bg-cyan-900 text-cyan-200 font-orbitron text-[10px] rounded-lg border border-cyan-500/40 text-center transition-all">
+                    ✨ Pat
+                </button>
+            </div>
+        </div>
+
+        <!-- Center Viewfinder -->
+        <div
+            class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none flex flex-col items-center justify-center">
+            <div class="w-24 h-24 border border-cyan-500/20 rounded-full flex items-center justify-center animate-spin"
+                style="animation-duration: 30s;">
+                <div class="w-16 h-16 border-t-2 border-b-2 border-peace-cyan/60 rounded-full"></div>
+            </div>
+            <span class="text-[9px] font-mono tracking-widest text-cyan-400/70 mt-3 uppercase bg-slate-950/80 px-3 py-1 rounded-full border border-cyan-500/30">Tap Orb to Emit Wave ⚡ // Drag to Inspect 3D Grid 🌌</span>
+        </div>
+
+        <!-- Bottom HUD Layout: Minimap Radar & Feed -->
+        <div class="flex flex-col lg:flex-row justify-between items-end w-full gap-4">
+            <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                <div
+                    class="glass-panel p-3 rounded-2xl w-full sm:w-48 h-44 flex flex-col items-center justify-between pointer-events-auto clip-corner">
+                    <div
+                        class="w-full flex justify-between items-center text-[10px] font-orbitron text-cyan-300 border-b border-cyan-500/20 pb-1">
+                        <span>📡 RADAR // GRID</span>
+                        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                    </div>
+                    <div class="relative w-28 h-28 my-1 flex items-center justify-center">
+                        <canvas id="radar-canvas" width="112" height="112"
+                            class="rounded-full bg-slate-950/90 border border-cyan-500/40 shadow-inner"></canvas>
+                        <div class="absolute w-1.5 h-1.5 bg-peace-cyan rounded-full shadow-[0_0_8px_#00f2fe]"></div>
+                    </div>
+                    <div class="text-[9px] font-mono text-cyan-400 text-center">Active Nodes: 12 Nearby 🌐</div>
+                </div>
+
+                <div
+                    class="glass-panel p-3 rounded-2xl w-full sm:w-72 pointer-events-auto clip-corner max-h-44 flex flex-col">
+                    <div
+                        class="text-[10px] font-orbitron text-cyan-300 mb-2 flex justify-between items-center border-b border-cyan-500/20 pb-1">
+                        <span>💬 GLOBAL FEED</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    </div>
+                    <div id="peace-feed" class="flex-1 overflow-y-auto space-y-1.5 text-[10px] font-mono pr-1">
+                        <div class="text-cyan-200 opacity-90">[RADAR] Node synchronized with 432Hz harmonic 🎵.</div>
+                        <div class="text-cyan-300 opacity-80">[TOKYO] Contest participant joined (+50 XP) 🏆.</div>
+                        <div class="text-emerald-300 opacity-90">[SYSTEM] Guardian pet Kibo looks happy 🐰💖.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Right Action Buttons -->
+            <div class="flex flex-wrap gap-2 pointer-events-auto justify-end">
+                <button id="btn-pulse" class="glass-panel hover:bg-cyan-950/60 text-cyan-200 font-orbitron text-xs px-4 py-3 rounded-xl transition-all active:scale-95 shadow-[0_0_20px_rgba(0,242,254,0.3)] flex items-center space-x-2 border border-cyan-400/40">
+                    <span>⚡ PULSE</span>
+                </button>
+                <button id="btn-oracle" class="glass-panel-gold hover:bg-amber-950/60 text-amber-200 font-orbitron text-xs px-4 py-3 rounded-xl transition-all active:scale-95 shadow-[0_0_20px_rgba(251,191,36,0.3)] flex items-center space-x-2 border border-amber-400/40">
+                    <span>✨ ORACLE</span>
+                </button>
+                <button id="btn-live-voice" class="glass-panel-purple hover:bg-purple-950/60 text-purple-200 font-orbitron text-xs px-4 py-3 rounded-xl transition-all active:scale-95 shadow-[0_0_20px_rgba(177,156,217,0.3)] flex items-center space-x-2 border border-purple-400/40">
+                    <span>🎙️ VOICE</span>
+                </button>
+                <button id="btn-dreamscape" class="glass-panel hover:bg-emerald-950/60 text-emerald-200 font-orbitron text-xs px-4 py-3 rounded-xl transition-all active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center space-x-2 border border-emerald-400/40">
+                    <span>🎨 DREAM</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+
+    <!-- Identity & Avatar Upload Modal -->
+    <div id="profile-modal"
+        class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+        <div
+            class="glass-panel w-full max-w-md rounded-3xl p-6 flex flex-col clip-corner shadow-[0_0_50px_rgba(0,242,254,0.3)] max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center pb-3 border-b border-cyan-500/30 mb-4">
+                <div class="flex items-center space-x-2">
+                    <span class="text-lg">👤</span>
+                    <h3 class="font-orbitron font-bold text-sm text-cyan-200 tracking-wider">GUARDIAN PROFILE & AVATAR
+                    </h3>
+                </div>
+                <button id="btn-close-profile" class="text-cyan-400 hover:text-white font-orbitron text-lg px-2">×</button>
+            </div>
+            <div class="space-y-4 mb-5 text-xs font-mono">
+                <!-- Avatar Upload -->
+                <div class="flex flex-col items-center justify-center space-y-2">
+                    <div
+                        class="w-20 h-20 rounded-full border-2 border-peace-cyan overflow-hidden bg-slate-900 flex items-center justify-center shadow-[0_0_15px_#00f2fe]">
+                        <span id="modal-avatar-emoji" class="text-3xl">🐰</span>
+                        <img id="modal-avatar-img" src="" class="w-full h-full object-cover hidden">
+                    </div>
+                    <label class="px-4 py-2 bg-cyan-950 hover:bg-cyan-900 text-cyan-200 rounded-xl cursor-pointer font-orbitron text-[10px] border border-cyan-500/40 transition-all">
+                        📁 Upload Character Pic
+                        <input id="input-avatar-file" type="file" accept="image/*" class="hidden">
+                    </label>
+                </div>
+
+                <div>
+                    <label class="block text-cyan-400 mb-1">GUARDIAN USERNAME ✨</label>
+                    <input id="input-username" type="text" placeholder="e.g. Orion_Prime" class="w-full bg-slate-900/90 border border-cyan-500/40 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <div>
+                    <label class="block text-cyan-400 mb-1">RANK / TITLE 🌟</label>
+                    <input id="input-title" type="text" placeholder="e.g. Master Harbinger" class="w-full bg-slate-900/90 border border-cyan-500/40 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <div>
+                    <label class="block text-cyan-400 mb-1.5">COSMOLOGICAL THEME 🌌</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" data-theme="moon" class="theme-btn p-3 rounded-xl border border-cyan-500/30 bg-slate-900/90 hover:bg-cyan-950/60 text-center transition-all">
+                            <div class="font-bold text-cyan-200">🌙 MOON</div>
+                            <div class="text-[9px] text-cyan-400 mt-0.5">Night / Deep Blue</div>
+                        </button>
+                        <button type="button" data-theme="sun" class="theme-btn p-3 rounded-xl border border-amber-500/30 bg-slate-900/90 hover:bg-amber-950/60 text-center transition-all">
+                            <div class="font-bold text-amber-200">☀️ SUN</div>
+                            <div class="text-[9px] text-amber-400 mt-0.5">Day / Golden Dawn</div>
+                        </button>
+                        <button type="button" data-theme="stars" class="theme-btn p-3 rounded-xl border border-purple-500/30 bg-slate-900/90 hover:bg-purple-950/60 text-center transition-all">
+                            <div class="font-bold text-purple-200">✨ STARS</div>
+                            <div class="text-[9px] text-purple-400 mt-0.5">Twilight / Aurora</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <button id="save-profile" class="w-full glass-panel hover:bg-cyan-950 text-cyan-200 font-orbitron text-xs py-3 rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(0,242,254,0.4)] border border-cyan-400/50">
+                UPDATE IDENTITY 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- Radio & TV Live Broadcast Modal -->
+    <div id="broadcast-modal"
+        class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+        <div
+            class="glass-panel-purple w-full max-w-lg rounded-3xl p-6 flex flex-col clip-corner shadow-[0_0_50px_rgba(177,156,217,0.3)] max-h-[85vh]">
+            <div class="flex justify-between items-center pb-3 border-b border-purple-500/30 mb-4">
+                <div class="flex items-center space-x-2">
+                    <span class="text-lg">📡</span>
+                    <h3 class="font-orbitron font-bold text-sm text-purple-200 tracking-wider">LIVE BROADCAST: RADIO &
+                        TV</h3>
+                </div>
+                <button id="btn-close-broadcast" class="text-purple-400 hover:text-white font-orbitron text-lg px-2">×</button>
+            </div>
+            <div class="space-y-4 text-xs font-mono">
+                <!-- TV / Visualizer Screen -->
+                <div
+                    class="w-full h-48 bg-slate-950 rounded-2xl border border-purple-500/40 relative overflow-hidden flex items-center justify-center shadow-inner">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-tr from-purple-900/30 via-transparent to-cyan-900/30 animate-pulse">
+                    </div>
+                    <div id="broadcast-screen-content" class="text-center z-10 p-4">
+                        <div class="text-3xl mb-2 animate-bounce">📻🎵</div>
+                        <div class="font-orbitron text-sm font-bold text-purple-200">CH 1: 432Hz HARMONIC STREAM</div>
+                        <div class="text-[10px] text-purple-300 mt-1">Live Global Audio-Visual Feed Active</div>
+                    </div>
+                    <div class="absolute bottom-2 left-3 flex items-center space-x-2 text-[10px] text-emerald-400">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span>LIVE ON AIR 🔴</span>
+                    </div>
+                </div>
+
+                <!-- Channel Selector -->
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="window.switchBroadcastChannel(1)" class="p-2.5 rounded-xl bg-purple-950/60 hover:bg-purple-900 text-purple-200 font-orbitron text-[10px] border border-purple-500/40 text-center">
+                        📻 432Hz Radio
+                    </button>
+                    <button onclick="window.switchBroadcastChannel(2)" class="p-2.5 rounded-xl bg-slate-900 hover:bg-purple-950/40 text-purple-300 font-orbitron text-[10px] border border-purple-500/20 text-center">
+                        📺 Peace TV
+                    </button>
+                    <button onclick="window.switchBroadcastChannel(3)" class="p-2.5 rounded-xl bg-slate-900 hover:bg-purple-950/40 text-purple-300 font-orbitron text-[10px] border border-purple-500/20 text-center">
+                        🎶 Lo-Fi Beats
+                    </button>
+                </div>
+
+                <div
+                    class="p-3 rounded-xl bg-purple-950/30 border border-purple-500/20 flex justify-between items-center">
+                    <span class="text-purple-200">Audio Broadcast Status: <span id="broadcast-status-text" class="text-emerald-400">Playing 🎵</span></span>
+                    <button id="btn-toggle-audio" class="px-3 py-1.5 rounded-lg bg-purple-900 text-white font-orbitron text-[10px] hover:bg-purple-800">Mute / Unmute</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Worldwide Contests Modal -->
+    <div id="contests-modal"
+        class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+        <div
+            class="glass-panel-gold w-full max-w-lg rounded-3xl p-6 flex flex-col clip-corner shadow-[0_0_50px_rgba(251,191,36,0.3)] max-h-[85vh]">
+            <div class="flex justify-between items-center pb-3 border-b border-amber-500/30 mb-4">
+                <div class="flex items-center space-x-2">
+                    <span class="text-lg">🏆</span>
+                    <h3 class="font-orbitron font-bold text-sm text-amber-200 tracking-wider">WORLDWIDE HARMONY CONTESTS
+                    </h3>
+                </div>
+                <button id="btn-close-contests" class="text-amber-400 hover:text-white font-orbitron text-lg px-2">×</button>
+            </div>
+            <p class="text-xs text-amber-100 font-mono mb-3">Join global contests, broadcast pulses, and compete for top
+                Guardian leaderboard ranks! 🌍✨</p>
+            <div id="contests-list" class="flex-1 overflow-y-auto space-y-3 pr-1 font-sans text-xs">
+                <!-- Rendered dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Emoji Arcade Minigame Modal -->
+    <div id="minigame-modal"
+        class="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+        <div
+            class="glass-panel w-full max-w-md rounded-3xl p-6 flex flex-col items-center clip-corner shadow-[0_0_50px_rgba(0,242,254,0.3)]">
+            <div class="w-full flex justify-between items-center pb-3 border-b border-cyan-500/30 mb-4">
+                <div class="flex items-center space-x-2">
+                    <span class="text-lg">🎮</span>
+                    <h3 class="font-orbitron font-bold text-sm text-cyan-200 tracking-wider">EMOJI CARROT CATCH 🥕</h3>
+                </div>
+                <button id="btn-close-minigame" class="text-cyan-400 hover:text-white font-orbitron text-lg px-2">×</button>
+            </div>
+            <p class="text-[11px] font-mono text-cyan-300 mb-3 text-center">Catch falling carrots 🥕 & peace symbols ☮️
+                to feed Kibo and gain XP!</p>
+
+            <!-- Game Canvas / Box -->
+            <div id="arcade-box"
+                class="w-full h-64 bg-slate-950 rounded-2xl border border-cyan-500/40 relative overflow-hidden flex flex-col items-center justify-between p-4 cursor-crosshair">
+                <div class="w-full flex justify-between text-xs font-mono text-cyan-300">
+                    <span>Score: <strong id="game-score" class="text-emerald-400">0</strong></span>
+                    <span>Time: <strong id="game-time" class="text-amber-400">30s</strong></span>
+                </div>
+                <div id="game-arena" class="absolute inset-0 top-10 bottom-12 overflow-hidden pointer-events-none">
+                </div>
+                <div id="game-start-prompt"
+                    class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 z-20">
+                    <button id="btn-start-game" class="glass-panel hover:bg-cyan-950 text-cyan-200 font-orbitron text-xs px-6 py-3 rounded-xl font-bold shadow-[0_0_20px_rgba(0,242,254,0.4)]">
+                        START ARCADE 🚀
+                    </button>
+                </div>
+                <div class="w-full text-center text-[10px] font-mono text-cyan-400/80 z-10">Click falling items 🥕☮️🌟
+                    as fast as you can!</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quests Log Modal -->
+    <div id="quests-modal"
+        class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+        <div
+            class="glass-panel-emerald w-full max-w-lg rounded-3xl p-6 flex flex-col clip-corner shadow-[0_0_50px_rgba(16,185,129,0.3)] max-h-[85vh]">
+            <div class="flex justify-between items-center pb-3 border-b border-emerald-500/30 mb-4">
+                <div class="flex items-center space-x-2">
+                    <span class="text-lg">📜</span>
+                    <h3 class="font-orbitron font-bold text-sm text-emerald-300 tracking-wider">GUARDIAN QUEST LOG</h3>
+                </div>
+                <button id="btn-close-quests" class="text-emerald-400 hover:text-white font-orbitron text-lg px-2">×</button>
+            </div>
+
+            <div class="flex space-x-2 mb-4 border-b border-emerald-500/20 pb-2">
+                <button onclick="window.filterQuests('all')" class="quest-tab px-3 py-1.5 rounded-lg bg-emerald-950/60 text-emerald-300 font-orbitron text-[10px] border border-emerald-500/40">ALL</button>
+                <button onclick="window.filterQuests('collective')" class="quest-tab px-3 py-1.5 rounded-lg bg-slate-900 text-emerald-400/70 font-orbitron text-[10px] border border-emerald-500/20">COLLECTIVE</button>
+                <button onclick="window.filterQuests('individual')" class="quest-tab px-3 py-1.5 rounded-lg bg-slate-900 text-emerald-400/70 font-orbitron text-[10px] border border-emerald-500/20">INDIVIDUAL</button>
+                <button onclick="window.filterQuests('neighborhood')" class="quest-tab px-3 py-1.5 rounded-lg bg-slate-900 text-emerald-400/70 font-orbitron text-[10px] border border-emerald-500/20">NEIGHBORHOOD</button>
+            </div>
+
+            <div id="quest-list" class="flex-1 overflow-y-auto space-y-3 pr-1 font-sans text-xs">
+                <!-- Dynamically rendered quest items -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Oracle Chat Modal -->
+    <div id="oracle-modal"
+        class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+        <div
+            class="glass-panel-gold w-full max-w-2xl rounded-3xl p-6 flex flex-col clip-corner shadow-[0_0_50px_rgba(251,191,36,0.3)] max-h-[85vh]">
+            <div class="flex justify-between items-center pb-3 border-b border-amber-500/30">
+                <div class="flex items-center space-x-2">
+                    <span class="text-lg">✨</span>
+                    <h3 class="font-orbitron font-bold text-sm text-amber-200 tracking-wider">GEMINI PEACE ORACLE 🔮
+                    </h3>
+                </div>
+                <button id="btn-close-oracle" class="text-amber-400 hover:text-white font-orbitron text-lg px-2">×</button>
+            </div>
+            <div id="oracle-chat-log" class="flex-1 overflow-y-auto my-4 space-y-3 pr-2 text-xs font-sans">
+                <div class="p-3 rounded-2xl bg-amber-950/30 border border-amber-500/20 text-amber-100">
+                    <span class="text-amber-400 font-bold font-orbitron">ORACLE // 🐰 </span> Greetings seeker. Consult
+                    me on harmony, quests, or your pet Kibo!
+                </div>
+            </div>
+            <div class="flex space-x-2 pt-3 border-t border-amber-500/30">
+                <input id="oracle-input" type="text" placeholder="Ask oracle for guidance... ✨" class="flex-1 bg-slate-900/90 border border-amber-500/40 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400 font-mono">
+                <button id="oracle-send" class="glass-panel-gold hover:bg-amber-900 text-amber-200 font-orbitron text-xs px-5 py-2.5 rounded-xl font-bold shadow-[0_0_15px_rgba(251,191,36,0.4)]">SEND 🚀</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Voice Modal -->
+    <div id="live-voice-modal"
+        class="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+        <div
+            class="glass-panel-purple w-full max-w-md rounded-3xl p-6 flex flex-col items-center clip-corner shadow-[0_0_60px_rgba(177,156,217,0.4)] text-center">
+            <div class="w-full flex justify-between items-center pb-3 border-b border-purple-500/30 mb-4">
+                <div class="flex items-center space-x-2">
+                    <div id="live-status-dot" class="w-3.5 h-3.5 bg-red-500 rounded-full animate-ping"></div>
+                    <h3 class="font-orbitron font-bold text-sm text-purple-200 tracking-wider">🎙️ GEMINI LIVE VOICE
+                    </h3>
+                </div>
+                <button id="btn-close-live" class="text-purple-400 hover:text-white font-orbitron text-lg px-2">×</button>
+            </div>
+            <div class="relative w-32 h-32 flex items-center justify-center my-4">
+                <div class="absolute inset-0 border-2 border-purple-500/30 rounded-full animate-ping"
+                    style="animation-duration: 3s;"></div>
+                <div
+                    class="w-20 h-20 bg-gradient-to-br from-purple-600 to-cyan-500 rounded-full shadow-[0_0_25px_#b19cd9] flex items-center justify-center text-3xl">
+                    🎙️
+                </div>
+            </div>
+            <p id="live-transcript"
+                class="text-[11px] font-mono text-purple-200 mb-4 bg-slate-950/60 px-3 py-2.5 rounded-xl border border-purple-500/30 w-full min-h-[45px] flex items-center justify-center">
+                Click "Establish Voice Link" to speak live with Gemini. 🎧
+            </p>
+            <button id="btn-toggle-live" class="glass-panel-purple hover:bg-purple-900 text-purple-100 font-orbitron text-xs px-6 py-3 rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(177,156,217,0.5)]">
+                ESTABLISH VOICE LINK 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- Dreamscape Modal -->
+    <div id="dreamscape-modal"
+        class="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+        <div
+            class="glass-panel w-full max-w-xl rounded-3xl p-6 flex flex-col clip-corner shadow-[0_0_50px_rgba(0,242,254,0.3)] max-h-[90vh]">
+            <div class="flex justify-between items-center pb-3 border-b border-cyan-500/30 mb-3">
+                <div class="flex items-center space-x-2">
+                    <span class="text-lg">🎨</span>
+                    <h3 class="font-orbitron font-bold text-sm text-cyan-200 tracking-wider">GEMINI DREAMSCAPE ART</h3>
+                </div>
+                <button id="btn-close-dreamscape" class="text-cyan-400 hover:text-white font-orbitron text-lg px-2">×</button>
+            </div>
+            <div class="space-y-3 flex-1 overflow-y-auto">
+                <p class="text-[11px] text-cyan-300 font-mono">Prompt the Gemini Flash Image model to synthesize utopian
+                    sanctuary concepts. ✨</p>
+                <div class="flex space-x-2">
+                    <input id="dream-input" type="text" placeholder="e.g., A floating crystal sanctuary over neon oceans with rabbits..." class="flex-1 bg-slate-900/90 border border-cyan-500/40 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-400 font-mono">
+                    <button id="dream-generate" class="glass-panel hover:bg-cyan-950 text-cyan-200 font-orbitron text-xs px-4 py-2.5 rounded-xl font-bold shadow-[0_0_15px_rgba(0,242,254,0.4)]">SYNTHESIZE 🌟</button>
+                </div>
+                <div id="dream-result-container"
+                    class="w-full h-60 rounded-2xl bg-slate-950/80 border border-cyan-500/30 flex items-center justify-center relative overflow-hidden">
+                    <div id="dream-placeholder" class="text-center p-4 text-cyan-400/60 font-mono text-xs">
+                        [ SYNTHESIZED ARTWORK WILL APPEAR HERE 🎨 ]
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanline overlay & Toast -->
+    <div class="absolute inset-0 scanlines z-20 pointer-events-none"></div>
+    <div id="toast"
+        class="fixed top-20 left-1/2 transform -translate-x-1/2 glass-panel px-5 py-2.5 rounded-xl text-xs font-orbitron text-peace-cyan z-40 opacity-0 transition-opacity duration-300 pointer-events-none shadow-[0_0_20px_rgba(0,242,254,0.4)] border border-cyan-400/50">
+        SYSTEM NOTIFICATION: HARMONY SYNCHRONIZED ✨
+    </div>
+
+    <script type="module">
+        import { GoogleGenAI } from "@google/genai";
+
+        let scene, camera, renderer, composer;
+        let peaceOrbGroup, innerCore, wireframeMesh, crystalShell, outerRings = [];
+        let particleSystem, gridFloor, gridDome;
+        let controls;
+        let clock = new THREE.Clock();
+        let shockwaveRings = [];
+        let otherGuardians = [];
+
+        // State & Settings
+        let userApiKey = localStorage.getItem('peace_orb_apikey') || '';
+        let guardianName = localStorage.getItem('peace_orb_username') || 'Guardian #8421';
+        let guardianTitle = localStorage.getItem('peace_orb_title') || 'Harmony Vanguard';
+        let currentTheme = localStorage.getItem('peace_orb_theme') || 'moon';
+        let guardianAvatar = localStorage.getItem('peace_orb_avatar') || '';
+
+        // Tamagotchi AI Pet State
+        let petType = localStorage.getItem('peace_orb_pet_type') || 'rabbit'; // rabbit or cat
+        let petHunger = parseInt(localStorage.getItem('peace_orb_hunger') || '85');
+        let petMood = parseInt(localStorage.getItem('peace_orb_mood') || '92');
+
+        const cheekyComments = {
+            rabbit: [
+                "Got any fresh carrots, Guardian? 🥕✨",
+                "Stop poking my fluffy ears! 🐾😡",
+                "Did someone say carrot juice? 🍹😋",
+                "My vibe is 100% quantum harmony today! 🌟🐰",
+                "Feed me carrots or I'll chew the space-cables! ⚡🐇"
+            ],
+            cat: [
+                "Meow ~ Pet my digital fur already! 🐾🐱",
+                "I knocked a planet off the table just now. Oops! 🪐😼",
+                "Purr... harmony index is cozy. 💖✨",
+                "Got any space fish? 🐟🚀",
+                "Your orbit looks messy today, human. Clean it up! 👑"
+            ]
+        };
+
+        // Contests Data
+        let contestsData = [
+            { id: 1, title: '🌍 Global 432Hz Resonance Championship', desc: 'Broadcast 10 harmonic pulses to rank on the worldwide leaderboard.', reward: '1,000 XP + Golden Aura 🌟', joined: true, progress: 4, target: 10 },
+            { id: 2, title: '🐰 Kibo’s Ultimate Carrot Feedathon', desc: 'Feed your AI companion 15 carrots in the arcade minigame.', reward: '500 XP + Pet Crown 👑', joined: false, progress: 0, target: 15 },
+            { id: 3, title: '✨ Sector 7 Nebula Art Contest', desc: 'Synthesize a dreamscape artwork using Gemini Flash Image.', reward: '750 XP + Starburst Badge 🌟', joined: false, progress: 0, target: 1 }
+        ];
+
+        // Quests Data
+        let questsData = [
+            { id: 1, type: 'collective', title: 'Global 432Hz Synchronization 🌐', desc: 'Reach 1.5M global pulses collectively.', progress: 1483109, target: 1500000, reward: '500 XP', completed: false },
+            { id: 2, type: 'individual', title: 'Emit 5 Harmonic Waves ⚡', desc: 'Tap the Peace-Orb core 5 times to radiate energy.', progress: 0, target: 5, reward: '150 XP', completed: false },
+            { id: 3, type: 'neighborhood', title: 'Local Node Beacon 📡', desc: 'Broadcast a localized pulse to nearby sector guardians.', progress: 1, target: 1, reward: '300 XP', completed: true },
+            { id: 4, type: 'individual', title: 'Consult Peace Oracle 🔮', desc: 'Ask the Gemini AI Oracle a question about global unity.', progress: 0, target: 1, reward: '200 XP', completed: false }
+        ];
+
+        function init() {
+            scene = new THREE.Scene();
+            applyTheme(currentTheme, false);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 8);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.3;
+            document.body.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxDistance = 20;
+            controls.minDistance = 3;
+            controls.maxPolarAngle = Math.PI / 2 + 0.1;
+
+            const renderScene = new THREE.RenderPass(scene, camera);
+            const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.8, 0.4, 0.6);
+            composer = new THREE.EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+
+            const ambientLight = new THREE.AmbientLight(0x0f172a, 2.5);
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0x00f2fe, 4, 25);
+            pointLight.position.set(6, 6, 6);
+            scene.add(pointLight);
+
+            gridFloor = new THREE.GridHelper(90, 90, 0xb19cd9, 0x00f2fe);
+            gridFloor.position.y = -4.0;
+            scene.add(gridFloor);
+
+            const domeGeo = new THREE.SphereGeometry(45, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+            const domeMat = new THREE.MeshBasicMaterial({ color: 0x00f2fe, wireframe: true, transparent: true, opacity: 0.05 });
+            gridDome = new THREE.Mesh(domeGeo, domeMat);
+            scene.add(gridDome);
+
+            peaceOrbGroup = new THREE.Group();
+            scene.add(peaceOrbGroup);
+
+            const coreGeo = new THREE.SphereGeometry(1.1, 32, 32);
+            const coreMat = new THREE.MeshStandardMaterial({ color: 0x00f2fe, emissive: 0x00f2fe, emissiveIntensity: 3.0, roughness: 0.1, metalness: 0.9 });
+            innerCore = new THREE.Mesh(coreGeo, coreMat);
+            peaceOrbGroup.add(innerCore);
+
+            const wireGeo = new THREE.IcosahedronGeometry(1.8, 1);
+            const wireMat = new THREE.MeshBasicMaterial({ color: 0x4facfe, wireframe: true, transparent: true, opacity: 0.8 });
+            wireframeMesh = new THREE.Mesh(wireGeo, wireMat);
+            peaceOrbGroup.add(wireframeMesh);
+
+            const shellGeo = new THREE.DodecahedronGeometry(2.3, 0);
+            const shellMat = new THREE.MeshBasicMaterial({ color: 0xb19cd9, wireframe: true, transparent: true, opacity: 0.4 });
+            crystalShell = new THREE.Mesh(shellGeo, shellMat);
+            peaceOrbGroup.add(crystalShell);
+
+            for (let i = 0; i < 4; i++) {
+                const radius = 2.6 + i * 0.45;
+                const ringGeo = new THREE.TorusGeometry(radius, 0.025, 16, 120);
+                const ringMat = new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0x00f2fe : 0xfbbf24, transparent: true, opacity: 0.75 });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.random() * Math.PI;
+                ring.rotation.y = Math.random() * Math.PI;
+                peaceOrbGroup.add(ring);
+                outerRings.push({ mesh: ring, speedX: (Math.random() - 0.5) * 0.012, speedY: (Math.random() - 0.5) * 0.012 });
+            }
+
+            setupParticles();
+            spawnOtherGuardians();
+
+            updateHUDIdentity();
+            updateTamagotchiUI();
+            setupRaycaster();
+            setupModalsAndUI();
+            setupGeminiOracle();
+            setupGeminiLiveVoice();
+            setupGeminiDreamscape();
+            setupMinigame();
+            setupBroadcastRadio();
+            renderQuestsList('all');
+            renderContestsList();
+
+            // Periodic pet chat chatter
+            setInterval(() => {
+                triggerPetCheekyComment();
+            }, 12000);
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function setupParticles() {
+            const particleCount = 1200;
+            const particleGeo = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            const colCyan = new THREE.Color(0x00f2fe);
+            const colGold = new THREE.Color(0xfbbf24);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                const u = Math.random();
+                const v = Math.random();
+                const theta = u * 2.0 * Math.PI;
+                const phi = Math.acos(2.0 * v - 1.0);
+                const r = 4.0 + Math.random() * 8.0;
+                positions[i] = r * Math.sin(phi) * Math.cos(theta);
+                positions[i + 1] = r * Math.sin(phi) * Math.sin(theta);
+                positions[i + 2] = r * Math.cos(phi);
+                const mixed = Math.random() > 0.5 ? colGold : colCyan;
+                colors[i] = mixed.r; colors[i + 1] = mixed.g; colors[i + 2] = mixed.b;
+            }
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particleGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const particleMat = new THREE.PointsMaterial({ size: 0.05, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
+            particleSystem = new THREE.Points(particleGeo, particleMat);
+            scene.add(particleSystem);
+        }
+
+        function spawnOtherGuardians() {
+            for (let i = 0; i < 8; i++) {
+                const phi = Math.acos(-1 + (2 * Math.random()));
+                const theta = Math.sqrt(Math.PI * 8) * phi;
+                const r = 5.5 + Math.random() * 3.0;
+                const x = r * Math.sin(phi) * Math.cos(theta);
+                const y = r * Math.sin(phi) * Math.sin(theta);
+                const z = r * Math.cos(phi);
+
+                const nodeGeo = new THREE.SphereGeometry(0.1, 16, 16);
+                const nodeMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.9 });
+                const mesh = new THREE.Mesh(nodeGeo, nodeMat);
+                mesh.position.set(x, y, z);
+                peaceOrbGroup.add(mesh);
+                otherGuardians.push({ mesh, angle: Math.random() * Math.PI, speed: 0.005 + Math.random() * 0.008, radius: r });
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
+
+            innerCore.rotation.y += 0.006;
+            innerCore.rotation.z += 0.003;
+            wireframeMesh.rotation.x -= 0.004;
+            wireframeMesh.rotation.y -= 0.007;
+            crystalShell.rotation.x += 0.003;
+
+            outerRings.forEach(r => {
+                r.mesh.rotation.x += r.speedX;
+                r.mesh.rotation.y += r.speedY;
+            });
+
+            particleSystem.rotation.y = time * 0.03;
+
+            otherGuardians.forEach(g => {
+                g.angle += g.speed;
+                g.mesh.position.x = Math.cos(g.angle) * g.radius;
+                g.mesh.position.z = Math.sin(g.angle) * g.radius;
+            });
+
+            for (let i = shockwaveRings.length - 1; i >= 0; i--) {
+                const sw = shockwaveRings[i];
+                sw.scale.addScalar(delta * 6.5);
+                sw.material.opacity -= delta * 0.85;
+                if (sw.material.opacity <= 0) {
+                    scene.remove(sw);
+                    shockwaveRings.splice(i, 1);
+                }
+            }
+
+            drawMinimapRadar(time);
+            controls.update();
+            composer.render();
+        }
+
+        function drawMinimapRadar(time) {
+            const canvas = document.getElementById('radar-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+
+            ctx.clearRect(0, 0, w, h);
+
+            ctx.strokeStyle = 'rgba(0, 242, 254, 0.25)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(cx, cy, cx - 6, 0, Math.PI * 2);
+            ctx.arc(cx, cy, (cx - 6) * 0.6, 0, Math.PI * 2);
+            ctx.arc(cx, cy, (cx - 6) * 0.3, 0, Math.PI * 2);
+            ctx.stroke();
+
+            const angle = time * 2.0;
+            ctx.strokeStyle = 'rgba(0, 242, 254, 0.7)';
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + Math.cos(angle) * cx, cy + Math.sin(angle) * cy);
+            ctx.stroke();
+
+            ctx.fillStyle = '#00f2fe';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            otherGuardians.forEach((g, idx) => {
+                const blipAngle = g.angle;
+                const distRatio = g.radius / 8.0;
+                const bx = cx + Math.cos(blipAngle) * (cx - 12) * distRatio * 0.5;
+                const by = cy + Math.sin(blipAngle) * (cy - 12) * distRatio * 0.5;
+
+                ctx.fillStyle = idx % 2 === 0 ? '#fbbf24' : '#10b981';
+                ctx.beginPath();
+                ctx.arc(bx, by, 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function setupRaycaster() {
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+
+            window.addEventListener('pointerdown', (e) => {
+                if (e.target.closest('#hud-overlay') || e.target.closest('.fixed')) return;
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects([innerCore, wireframeMesh, crystalShell]);
+                if (intersects.length > 0) {
+                    triggerPeacePulse();
+                }
+            });
+        }
+
+        function triggerPeacePulse() {
+            showToast("⚡ HARMONIC PULSE EMITTED // 432Hz BROADCASTED 🎵");
+            playAudioTone(432, 0.4);
+
+            const counterEl = document.getElementById('pulse-counter');
+            let val = parseInt(counterEl.innerText.replace(/,/g, '')) + 1;
+            counterEl.innerText = val.toLocaleString();
+
+            const ringGeo = new THREE.RingGeometry(0.6, 0.75, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x00f2fe, side: THREE.DoubleSide, transparent: true, opacity: 1.0, blending: THREE.AdditiveBlending });
+            const shockwave = new THREE.Mesh(ringGeo, ringMat);
+            shockwave.position.copy(peaceOrbGroup.position);
+            shockwave.lookAt(camera.position);
+            scene.add(shockwave);
+            shockwaveRings.push(shockwave);
+
+            addFeedItem("Pulse emitted. Sector synchronization active 🌟.");
+            updateQuestProgress(2, 1);
+        }
+
+        function addFeedItem(text) {
+            const feed = document.getElementById('peace-feed');
+            const div = document.createElement('div');
+            div.className = "text-cyan-200 opacity-90 animate-pulse";
+            div.innerText = `[LOG] ${text}`;
+            feed.prepend(div);
+            if (feed.children.length > 6) feed.lastChild.remove();
+        }
+
+        function applyTheme(themeName, showNotif = true) {
+            currentTheme = themeName;
+            localStorage.setItem('peace_orb_theme', themeName);
+
+            const dot = document.getElementById('theme-indicator-glow');
+
+            if (themeName === 'moon') {
+                scene.fog = new THREE.FogExp2(0x030712, 0.02);
+                if (showNotif) showToast("🌙 THEME APPLIED: MOON (Night / Deep Cyan)");
+            } else if (themeName === 'sun') {
+                scene.fog = new THREE.FogExp2(0x1a1103, 0.02);
+                if (showNotif) showToast("☀️ THEME APPLIED: SUN (Day / Golden Dawn)");
+            } else if (themeName === 'stars') {
+                scene.fog = new THREE.FogExp2(0x0d061a, 0.02);
+                if (showNotif) showToast("✨ THEME APPLIED: STARS (Twilight / Aurora)");
+            }
+            updateHUDIdentity();
+        }
+
+        function updateHUDIdentity() {
+            const badge = document.getElementById('hud-user-badge');
+            const titleEl = document.getElementById('hud-user-title');
+            if (badge) badge.innerText = `${guardianName} [${currentTheme.toUpperCase()}]`;
+            if (titleEl) titleEl.innerText = `Rank: ${guardianTitle} 🌟`;
+
+            const emojiEl = document.getElementById('guardian-avatar-emoji');
+            const imgEl = document.getElementById('guardian-avatar-img');
+            const modalEmoji = document.getElementById('modal-avatar-emoji');
+            const modalImg = document.getElementById('modal-avatar-img');
+
+            if (guardianAvatar) {
+                if (imgEl) { imgEl.src = guardianAvatar; imgEl.classList.remove('hidden'); }
+                if (emojiEl) emojiEl.classList.add('hidden');
+                if (modalImg) { modalImg.src = guardianAvatar; modalImg.classList.remove('hidden'); }
+                if (modalEmoji) modalEmoji.classList.add('hidden');
+            } else {
+                if (emojiEl) emojiEl.classList.remove('hidden');
+                if (imgEl) imgEl.classList.add('hidden');
+                if (modalEmoji) modalEmoji.classList.remove('hidden');
+                if (modalImg) modalImg.classList.add('hidden');
+            }
+        }
+
+        function updateTamagotchiUI() {
+            const iconHeader = document.getElementById('pet-icon-header');
+            const nameHeader = document.getElementById('pet-name-header');
+            if (iconHeader) iconHeader.innerText = petType === 'rabbit' ? '🐰' : '🐱';
+            if (nameHeader) nameHeader.innerText = petType === 'rabbit' ? 'Kibo (Bunny AI)' : 'Neko (Cat AI)';
+
+            document.getElementById('pet-hunger-val').innerText = `${petHunger}%`;
+            document.getElementById('pet-hunger-bar').style.width = `${petHunger}%`;
+            document.getElementById('pet-mood-val').innerText = `${petMood}%`;
+            document.getElementById('pet-mood-bar').style.width = `${petMood}%`;
+
+            localStorage.setItem('peace_orb_pet_type', petType);
+            localStorage.setItem('peace_orb_hunger', petHunger);
+            localStorage.setItem('peace_orb_mood', petMood);
+        }
+
+        function triggerPetCheekyComment() {
+            const list = cheekyComments[petType];
+            const randomMsg = list[Math.floor(Math.random() * list.length)];
+            const speech = document.getElementById('pet-speech');
+            if (speech) {
+                speech.innerText = `"${randomMsg}"`;
+                speech.classList.add('scale-105', 'border-peace-cyan');
+                setTimeout(() => { speech.classList.remove('scale-105', 'border-peace-cyan'); }, 600);
+            }
+        }
+
+        function setupModalsAndUI() {
+            document.getElementById('btn-pulse').addEventListener('click', triggerPeacePulse);
+
+            setupModalWiring('btn-profile', 'profile-modal', 'btn-close-profile');
+            setupModalWiring('btn-broadcast', 'broadcast-modal', 'btn-close-broadcast');
+            setupModalWiring('btn-contests', 'contests-modal', 'btn-close-contests');
+            setupModalWiring('btn-minigame', 'minigame-modal', 'btn-close-minigame');
+            setupModalWiring('btn-quests', 'quests-modal', 'btn-close-quests');
+
+            // Avatar Upload handler
+            document.getElementById('input-avatar-file').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        guardianAvatar = event.target.result;
+                        localStorage.setItem('peace_orb_avatar', guardianAvatar);
+                        updateHUDIdentity();
+                        showToast("📸 CHARACTER PIC UPLOADED SUCCESSFULLY!");
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Profile save
+            document.getElementById('save-profile').addEventListener('click', () => {
+                const u = document.getElementById('input-username').value.trim();
+                const t = document.getElementById('input-title').value.trim();
+                if (u) guardianName = u;
+                if (t) guardianTitle = t;
+                localStorage.setItem('peace_orb_username', guardianName);
+                localStorage.setItem('peace_orb_title', guardianTitle);
+                updateHUDIdentity();
+                document.getElementById('profile-modal').classList.add('opacity-0', 'pointer-events-none');
+                showToast("👤 GUARDIAN IDENTITY UPDATED ✨");
+            });
+
+            // Theme selector buttons
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    applyTheme(btn.getAttribute('data-theme'));
+                });
+            });
+
+            // Tamagotchi pet interactions
+            document.getElementById('btn-toggle-pet-type').addEventListener('click', () => {
+                petType = petType === 'rabbit' ? 'cat' : 'rabbit';
+                petMood = Math.min(100, petMood + 5);
+                updateTamagotchiUI();
+                triggerPetCheekyComment();
+                showToast(`🐾 SWITCHED PET COMPANION TO ${petType.toUpperCase()}!`);
+            });
+
+            document.getElementById('btn-feed-pet').addEventListener('click', () => {
+                petHunger = Math.min(100, petHunger + 15);
+                petMood = Math.min(100, petMood + 10);
+                updateTamagotchiUI();
+                const speech = document.getElementById('pet-speech');
+                speech.innerText = petType === 'rabbit' ? '"*Nom nom nom* Delicious carrot! 🥕🐰💖"' : '"*Purrrr* Yummy space fish! 🐟🐱✨"';
+                showToast("🥕 PET FED SUCCESSFULLY! +15% Hunger");
+            });
+
+            document.getElementById('btn-pat-pet').addEventListener('click', () => {
+                petMood = Math.min(100, petMood + 12);
+                updateTamagotchiUI();
+                const speech = document.getElementById('pet-speech');
+                speech.innerText = '"Hehe that tickles! You are the best Guardian! ✨💖"';
+                showToast("✨ PET PATTED! +12% Mood");
+            });
+
+            document.getElementById('input-username').value = guardianName;
+            document.getElementById('input-title').value = guardianTitle;
+        }
+
+        function setupModalWiring(btnId, modalId, closeId) {
+            const btn = document.getElementById(btnId);
+            const modal = document.getElementById(modalId);
+            const close = document.getElementById(closeId);
+            if (!btn || !modal || !close) return;
+
+            btn.addEventListener('click', () => modal.classList.remove('opacity-0', 'pointer-events-none'));
+            close.addEventListener('click', () => modal.classList.add('opacity-0', 'pointer-events-none'));
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('opacity-0', 'pointer-events-none'); });
+        }
+
+        // Broadcast Radio & TV setup
+        let broadcastAudioActive = true;
+        function setupBroadcastRadio() {
+            document.getElementById('btn-toggle-audio').addEventListener('click', () => {
+                broadcastAudioActive = !broadcastAudioActive;
+                document.getElementById('broadcast-status-text').innerText = broadcastAudioActive ? "Playing 🎵" : "Muted 🔇";
+                showToast(broadcastAudioActive ? "🎵 BROADCAST AUDIO UNMUTED" : "🔇 BROADCAST AUDIO MUTED");
+            });
+        }
+
+        window.switchBroadcastChannel = function(ch) {
+            const screen = document.getElementById('broadcast-screen-content');
+            if (ch === 1) {
+                screen.innerHTML = `
+                    <div class="text-3xl mb-2 animate-bounce">📻🎵</div>
+                    <div class="font-orbitron text-sm font-bold text-purple-200">CH 1: 432Hz HARMONIC STREAM</div>
+                    <div class="text-[10px] text-purple-300 mt-1">Live Global Audio-Visual Feed Active</div>
+                `;
+            } else if (ch === 2) {
+                screen.innerHTML = `
+                    <div class="text-3xl mb-2 animate-bounce">📺✨</div>
+                    <div class="font-orbitron text-sm font-bold text-purple-200">CH 2: PEACE SANCTUARY TV</div>
+                    <div class="text-[10px] text-purple-300 mt-1">Global Meditation & Orbit Visualizer</div>
+                `;
+            } else if (ch === 3) {
+                screen.innerHTML = `
+                    <div class="text-3xl mb-2 animate-bounce">🎶🚀</div>
+                    <div class="font-orbitron text-sm font-bold text-purple-200">CH 3: LO-FI QUANTUM BEATS</div>
+                    <div class="text-[10px] text-purple-300 mt-1">Chill Astro-Vibes for Guardians</div>
+                `;
+            }
+            showToast(`📡 SWITCHED TO BROADCAST CHANNEL ${ch}`);
+        };
+
+        // Worldwide Contests Rendering
+        function renderContestsList() {
+            const container = document.getElementById('contests-list');
+            if (!container) return;
+            container.innerHTML = '';
+
+            contestsData.forEach(c => {
+                const div = document.createElement('div');
+                div.className = "p-3.5 rounded-2xl bg-amber-950/20 border border-amber-500/30 flex flex-col space-y-2";
+                div.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-amber-200 font-orbitron text-xs">${c.title}</span>
+                        <span class="text-[10px] font-mono bg-amber-900/60 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">${c.reward}</span>
+                    </div>
+                    <p class="text-[11px] text-amber-100/80 font-mono">${c.desc}</p>
+                    <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-amber-500/30">
+                        <div class="bg-amber-400 h-full transition-all duration-500" style="width: ${Math.min(100, (c.progress/c.target)*100)}%"></div>
+                    </div>
+                    <div class="flex justify-between items-center text-[10px] font-mono text-amber-400">
+                        <span>Progress: ${c.progress} / ${c.target}</span>
+                        <button onclick="window.joinOrClaimContest(${c.id})" class="px-3 py-1 rounded bg-amber-900 hover:bg-amber-800 text-white font-orbitron font-bold transition-all border border-amber-400/40">
+                            ${c.joined ? (c.progress >= c.target ? 'CLAIM PRIZE 🏆' : 'JOINED 🚀') : 'ENTER CONTEST 🌟'}
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        window.joinOrClaimContest = function(id) {
+            const c = contestsData.find(item => item.id === id);
+            if (!c.joined) {
+                c.joined = true;
+                c.progress = 1;
+                showToast(`🏆 SUCCESSFULLY JOINED CONTEST: ${c.title}`);
+                renderContestsList();
+            } else if (c.progress >= c.target) {
+                showToast(`🎉 PRIZE CLAIMED FOR ${c.title}! Rewards added.`);
+                c.target += 999; // mark done
+                renderContestsList();
+            } else {
+                showToast("Contest active! Keep broadcasting pulses or playing arcade to progress.");
+            }
+        };
+
+        // Emoji Arcade Minigame Setup
+        let gameActive = false;
+        let gameScore = 0;
+        let gameTimer = 30;
+        let gameInterval = null;
+        let itemSpawner = null;
+
+        function setupMinigame() {
+            document.getElementById('btn-start-game').addEventListener('click', startArcadeGame);
+        }
+
+        function startArcadeGame() {
+            const prompt = document.getElementById('game-start-prompt');
+            const arena = document.getElementById('game-arena');
+            prompt.classList.add('hidden');
+            arena.innerHTML = '';
+            gameActive = true;
+            gameScore = 0;
+            gameTimer = 30;
+            document.getElementById('game-score').innerText = gameScore;
+            document.getElementById('game-time').innerText = `${gameTimer}s`;
+
+            gameInterval = setInterval(() => {
+                gameTimer--;
+                document.getElementById('game-time').innerText = `${gameTimer}s`;
+                if (gameTimer <= 0) {
+                    endArcadeGame();
+                }
+            }, 1000);
+
+            itemSpawner = setInterval(() => {
+                if (!gameActive) return;
+                spawnArcadeItem();
+            }, 650);
+        }
+
+        function spawnArcadeItem() {
+            const arena = document.getElementById('game-arena');
+            const icons = ['🥕', '🥕', '☮️', '🌟', '🐰', '💖'];
+            const item = document.createElement('div');
+            const icon = icons[Math.floor(Math.random() * icons.length)];
+            const leftPos = Math.random() * 85;
+
+            item.className = "absolute text-2xl cursor-pointer transition-transform duration-100 hover:scale-125 animate-bounce";
+            item.style.left = `${leftPos}%`;
+            item.style.top = `0%`;
+            item.innerText = icon;
+
+            let topPos = 0;
+            const fallInterval = setInterval(() => {
+                if (!gameActive) {
+                    clearInterval(fallInterval);
+                    item.remove();
+                    return;
+                }
+                topPos += 3.5;
+                item.style.top = `${topPos}%`;
+                if (topPos > 85) {
+                    clearInterval(fallInterval);
+                    item.remove();
+                }
+            }, 50);
+
+            item.addEventListener('pointerdown', (e) => {
+                e.stopPropagation();
+                gameScore += icon === '🥕' ? 15 : 10;
+                document.getElementById('game-score').innerText = gameScore;
+                playAudioTone(600, 0.1);
+                item.remove();
+                clearInterval(fallInterval);
+
+                // Feed pet or update quests/contests
+                petHunger = Math.min(100, petHunger + 3);
+                updateTamagotchiUI();
+            });
+
+            arena.appendChild(item);
+        }
+
+        function endArcadeGame() {
+            gameActive = false;
+            clearInterval(gameInterval);
+            clearInterval(itemSpawner);
+            const prompt = document.getElementById('game-start-prompt');
+            prompt.classList.remove('hidden');
+            document.getElementById('game-start-prompt').innerHTML = `
+                <div class="text-center space-y-2">
+                    <div class="font-orbitron text-sm font-bold text-amber-300">GAME OVER! 🏆</div>
+                    <div class="text-xs font-mono text-cyan-200">Final Arcade Score: ${gameScore} 🎉</div>
+                    <button id="btn-restart-game" class="glass-panel hover:bg-cyan-950 text-cyan-200 font-orbitron text-xs px-5 py-2.5 rounded-xl font-bold shadow-[0_0_15px_rgba(0,242,254,0.4)] mt-2">
+                        PLAY AGAIN 🚀
+                    </button>
+                </div>
+            `;
+            document.getElementById('btn-restart-game').addEventListener('click', startArcadeGame);
+            showToast(`🎮 ARCADE FINISHED! Score: ${gameScore} XP Gained!`);
+        }
+
+        // Quests Filtering & Rendering
+        window.filterQuests = function(type) {
+            document.querySelectorAll('.quest-tab').forEach(tab => {
+                tab.className = "quest-tab px-3 py-1.5 rounded-lg bg-slate-900 text-emerald-400/70 font-orbitron text-[10px] border border-emerald-500/20";
+            });
+            event.target.className = "quest-tab px-3 py-1.5 rounded-lg bg-emerald-950/60 text-emerald-300 font-orbitron text-[10px] border border-emerald-500/40";
+            renderQuestsList(type);
+        }
+
+        function renderQuestsList(filter) {
+            const listContainer = document.getElementById('quest-list');
+            listContainer.innerHTML = '';
+
+            const filtered = filter === 'all' ? questsData : questsData.filter(q => q.type === filter);
+
+            filtered.forEach(q => {
+                const pct = Math.min(100, Math.floor((q.progress / q.target) * 100));
+                const div = document.createElement('div');
+                div.className = "p-3.5 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 flex flex-col space-y-2";
+                div.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-emerald-200 font-orbitron text-xs">${q.title}</span>
+                        <span class="text-[10px] font-mono bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">${q.reward}</span>
+                    </div>
+                    <p class="text-[11px] text-emerald-100/80 font-mono">${q.desc}</p>
+                    <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-emerald-500/30">
+                        <div class="bg-emerald-400 h-full transition-all duration-500" style="width: ${pct}%"></div>
+                    </div>
+                    <div class="flex justify-between items-center text-[10px] font-mono text-emerald-400">
+                        <span>Progress: ${q.progress.toLocaleString()} / ${q.target.toLocaleString()}</span>
+                        <button onclick="window.claimQuest(${q.id})" class="px-3 py-1 rounded bg-emerald-900 hover:bg-emerald-800 text-white font-orbitron font-bold transition-all border border-emerald-400/40">
+                            ${q.completed ? 'CLAIMED ✨' : (pct >= 100 ? 'CLAIM REWARD 🎁' : 'IN PROGRESS ⏳')}
+                        </button>
+                    </div>
+                `;
+                listContainer.appendChild(div);
+            });
+        }
+
+        window.claimQuest = function(id) {
+            const q = questsData.find(item => item.id === id);
+            if (q && !q.completed && q.progress >= q.target) {
+                q.completed = true;
+                showToast(`🎉 QUEST COMPLETED! Rewards claimed for ${q.title}`);
+                renderQuestsList('all');
+                addFeedItem(`Quest completed: ${q.title} 🌟`);
+            } else {
+                showToast("Quest requirements not yet fulfilled. ⏳");
+            }
+        };
+
+        function updateQuestProgress(questId, amount) {
+            const q = questsData.find(item => item.id === questId);
+            if (q && !q.completed) {
+                q.progress = Math.min(q.target, q.progress + amount);
+                renderQuestsList('all');
+            }
+        }
+
+        // Gemini Oracle Chat Integration
+        function setupGeminiOracle() {
+            setupModalWiring('btn-oracle', 'oracle-modal', 'btn-close-oracle');
+            const sendBtn = document.getElementById('oracle-send');
+            const inputField = document.getElementById('oracle-input');
+            const chatLog = document.getElementById('oracle-chat-log');
+
+            const handleQuery = async () => {
+                const text = inputField.value.trim();
+                if (!text) return;
+
+                chatLog.innerHTML += `
+                    <div class="p-2.5 rounded-xl bg-amber-950/20 border border-amber-500/20 text-amber-200 text-right">
+                        <span class="text-cyan-400 font-bold font-orbitron">YOU // </span> ${escapeHtml(text)}
+                    </div>
+                `;
+                inputField.value = '';
+                chatLog.scrollTop = chatLog.scrollHeight;
+
+                const loadingId = 'loading-' + Date.now();
+                chatLog.innerHTML += `
+                    <div id="${loadingId}" class="p-2.5 rounded-xl bg-amber-950/30 border border-amber-500/20 text-amber-300 animate-pulse font-mono text-xs">
+                        <span class="text-amber-400 font-bold font-orbitron">ORACLE // 🐰 </span> Consulting Gemini 3 Flash...
+                    </div>
+                `;
+                chatLog.scrollTop = chatLog.scrollHeight;
+
+                try {
+                    const ai = new GoogleGenAI({ apiKey: userApiKey || '' });
+                    const response = await ai.models.generateContent({
+                        model: 'gemini-3-flash-preview',
+                        contents: text,
+                        config: { systemInstruction: "You are the Cyber-Oracle, a benevolent wisdom AI in the Peace-Orb sanctuary. Give inspiring guidance on global unity, quests, and companion pets like Kibo." }
+                    });
+
+                    document.getElementById(loadingId)?.remove();
+                    const reply = response.text || "May peace be with you. 🌟";
+                    chatLog.innerHTML += `
+                        <div class="p-2.5 rounded-xl bg-amber-950/30 border border-amber-500/20 text-amber-100">
+                            <span class="text-amber-400 font-bold font-orbitron">ORACLE // 🐰 </span> ${escapeHtml(reply)}
+                        </div>
+                    `;
+                    updateQuestProgress(4, 1);
+                } catch (err) {
+                    document.getElementById(loadingId)?.remove();
+                    chatLog.innerHTML += `
+                        <div class="p-2.5 rounded-xl bg-red-950/30 border border-red-500/20 text-red-300 font-mono text-xs">
+                            <span class="text-red-400 font-bold font-orbitron">SYS_ERR // </span> Check API key in settings or connection. ⚠️
+                        </div>
+                    `;
+                }
+                chatLog.scrollTop = chatLog.scrollHeight;
+            };
+
+            sendBtn.addEventListener('click', handleQuery);
+            inputField.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleQuery(); });
+        }
+
+        function setupGeminiLiveVoice() {
+            setupModalWiring('btn-live-voice', 'live-voice-modal', 'btn-close-live');
+            const btnToggle = document.getElementById('btn-toggle-live');
+            const statusDot = document.getElementById('live-status-dot');
+            const transcriptEl = document.getElementById('live-transcript');
+            let active = false;
+
+            btnToggle.addEventListener('click', () => {
+                active = !active;
+                if (active) {
+                    btnToggle.innerText = "DISCONNECT LINK 🔴";
+                    statusDot.className = "w-3.5 h-3.5 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_12px_#10b981]";
+                    transcriptEl.innerText = "Live voice link simulated & active! Speak to your companion. 🎙️";
+                    showToast("🎙️ GEMINI LIVE VOICE LINK ACTIVE");
+                } else {
+                    btnToggle.innerText = "ESTABLISH VOICE LINK 🚀";
+                    statusDot.className = "w-3.5 h-3.5 bg-red-500 rounded-full animate-ping";
+                    transcriptEl.innerText = "Voice link disconnected.";
+                }
+            });
+        }
+
+        function setupGeminiDreamscape() {
+            setupModalWiring('btn-dreamscape', 'dreamscape-modal', 'btn-close-dreamscape');
+            const btnGen = document.getElementById('dream-generate');
+            const inputField = document.getElementById('dream-input');
+            const container = document.getElementById('dream-result-container');
+
+            btnGen.addEventListener('click', async () => {
+                const prompt = inputField.value.trim();
+                if (!prompt) return;
+
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center p-6 space-y-2">
+                        <div class="w-7 h-7 border-2 border-peace-cyan border-t-transparent rounded-full animate-spin"></div>
+                        <p class="text-[11px] font-mono text-cyan-300 animate-pulse">Synthesizing with Gemini 3.1 Flash Image... 🎨</p>
+                    </div>
+                `;
+
+                try {
+                    const ai = new GoogleGenAI({ apiKey: userApiKey || '' });
+                    const response = await ai.models.generateContent({
+                        model: 'gemini-3.1-flash-image',
+                        contents: prompt,
+                        config: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: "16:9" } }
+                    });
+
+                    const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                    if (part && part.inlineData) {
+                        const url = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                        container.innerHTML = `<img src="${url}" class="w-full h-full object-cover rounded-2xl shadow-[0_0_30px_rgba(0,242,254,0.4)]">`;
+                        showToast("✨ DREAMSCAPE ARTWORK SYNTHESIZED SUCCESSFULLY!");
+                    } else {
+                        throw new Error();
+                    }
+                } catch (e) {
+                    container.innerHTML = `<div class="text-red-400 font-mono text-xs p-6 text-center">[ SYNTHESIS FAILED: Check API key or quota. ⚠️ ]</div>`;
+                }
+            });
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.opacity = '1';
+            setTimeout(() => { t.style.opacity = '0'; }, 3000);
+        }
+
+        function playAudioTone(freq, dur) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + dur);
+            } catch (e) {}
+        }
+
+        window.onload = init;
+    </script>
+</body>
+
+</html>
