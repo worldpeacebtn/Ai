@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peace-Orb: Cyberpunk HUD 360 Experience with Gemini Oracle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        mono: ['Share Tech Mono', 'monospace'],
+                    },
+                    colors: {
+                        cyber: {
+                            cyan: '#00ffff',
+                            pink: '#ff007f',
+                            yellow: '#f3e600',
+                            dark: '#050510',
+                            panel: 'rgba(5, 5, 20, 0.85)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050510;
+            font-family: 'Share Tech Mono', monospace;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        .neon-glow-cyan {
+            text-shadow: 0 0 8px rgba(0, 255, 255, 0.8), 0 0 20px rgba(0, 255, 255, 0.4);
+        }
+        .neon-glow-pink {
+            text-shadow: 0 0 8px rgba(255, 0, 127, 0.8), 0 0 20px rgba(255, 0, 127, 0.4);
+        }
+        .cyber-border {
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.2), 0 0 15px rgba(0, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+        }
+        .cyber-border-pink {
+            border: 1px solid rgba(255, 0, 127, 0.5);
+            box-shadow: inset 0 0 10px rgba(255, 0, 127, 0.25), 0 0 15px rgba(255, 0, 127, 0.2);
+            backdrop-filter: blur(8px);
+        }
+        .scanlines {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            ), linear-gradient(
+                90deg,
+                rgba(255, 0, 0, 0.03),
+                rgba(0, 255, 0, 0.01),
+                rgba(0, 0, 255, 0.03)
+            );
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+        .clip-corner {
+            clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+        }
+        /* Custom sci-fi scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(5, 5, 20, 0.9);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 255, 0.5);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 0, 127, 0.8);
+        }
+    </style>
+</head>
+<body class="text-cyber-cyan bg-cyber-dark">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+
+    <!-- HUD Overlay Layer -->
+    <div id="cyber-hud" class="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-6">
+        <!-- Top HUD Bar -->
+        <div class="flex justify-between items-start w-full">
+            <div class="cyber-border bg-cyber-panel px-5 py-3 clip-corner pointer-events-auto">
+                <div class="flex items-center space-x-3">
+                    <div class="w-3 h-3 bg-cyber-cyan rounded-full animate-ping"></div>
+                    <h1 class="font-orbitron font-extrabold text-lg text-cyber-cyan tracking-wider neon-glow-cyan">PEACE-ORB // GEMINI AI v2.8</h1>
+                </div>
+                <div class="text-xs text-cyan-300 mt-1 flex space-x-4">
+                    <span>SYS: <strong class="text-white">ONLINE</strong></span>
+                    <span>HARMONY INDEX: <strong id="harmony-stat" class="text-cyber-pink">99.9%</strong></span>
+                    <span>FPS: <strong id="fps-stat" class="text-white">60</strong></span>
+                </div>
+            </div>
+
+            <div class="cyber-border bg-cyber-panel px-5 py-3 clip-corner pointer-events-auto text-right">
+                <div class="text-xs text-cyan-400">COORDINATES [AZ/EL]</div>
+                <div id="coords-display" class="font-orbitron text-sm font-bold text-white tracking-widest mt-0.5">000.00° / 00.00°</div>
+                <div class="text-[10px] text-pink-400 mt-1">DRAG TO ROTATE 360° VIEW</div>
+            </div>
+        </div>
+
+        <!-- Center Reticle -->
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center">
+            <div class="w-16 h-16 border border-cyan-500/30 rounded-full flex items-center justify-center animate-spin" style="animation-duration: 20s;">
+                <div class="w-12 h-12 border-t border-b border-pink-500/60 rounded-full"></div>
+            </div>
+            <div class="absolute w-2 h-2 bg-cyber-cyan rounded-full shadow-[0_0_8px_#00ffff]"></div>
+        </div>
+
+        <!-- Bottom HUD Bar & Controls -->
+        <div class="flex flex-col md:flex-row justify-between items-end w-full gap-4">
+            <!-- Left Panel: Core Metrics -->
+            <div class="cyber-border bg-cyber-panel p-4 rounded-xl w-full md:w-80 pointer-events-auto clip-corner">
+                <div class="text-xs font-orbitron text-cyan-300 mb-2 flex justify-between">
+                    <span>CORE RESONANCE</span>
+                    <span id="resonance-val">432.0 Hz</span>
+                </div>
+                <div class="w-full bg-slate-900/80 h-2 rounded-full overflow-hidden border border-cyan-500/30">
+                    <div id="resonance-bar" class="bg-gradient-to-r from-cyan-500 to-pink-500 h-full w-3/4 transition-all duration-300 shadow-[0_0_10px_#ff007f]"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-slate-400 mt-2">
+                    <span>STATUS: STABLE</span>
+                    <span>GEMINI LINK: ACTIVE</span>
+                </div>
+            </div>
+
+            <!-- Right Panel: Interactive Actions -->
+            <div class="flex flex-wrap gap-3 pointer-events-auto">
+                <button id="btn-oracle" class="cyber-border bg-cyan-900/50 hover:bg-cyan-800/70 text-cyan-200 font-orbitron text-xs px-5 py-3 rounded-xl transition-all duration-200 active:scale-95 shadow-[0_0_15px_rgba(0,255,255,0.4)] flex items-center space-x-2">
+                    <svg class="w-4 h-4 text-cyan-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                    <span>CONSULT ORACLE</span>
+                </button>
+                <button id="btn-pulse" class="cyber-border-pink bg-pink-950/40 hover:bg-pink-900/60 text-pink-300 font-orbitron text-xs px-5 py-3 rounded-xl transition-all duration-200 active:scale-95 shadow-[0_0_15px_rgba(255,0,127,0.3)] flex items-center space-x-2">
+                    <svg class="w-4 h-4 text-pink-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <span>PULSE HARMONY</span>
+                </button>
+                <button id="btn-grid" class="cyber-border bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 font-orbitron text-xs px-5 py-3 rounded-xl transition-all duration-200 active:scale-95 shadow-[0_0_15px_rgba(0,255,255,0.3)] flex items-center space-x-2">
+                    <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    <span>TOGGLE GRID</span>
+                </button>
+                <button id="btn-audio" class="cyber-border bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 font-orbitron text-xs px-5 py-3 rounded-xl transition-all duration-200 active:scale-95 shadow-[0_0_15px_rgba(0,255,255,0.3)] flex items-center space-x-2">
+                    <svg id="audio-icon" class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                    <span id="audio-text">AUDIO: OFF</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gemini Cyber-Oracle Terminal Modal -->
+    <div id="oracle-modal" class="fixed inset-0 z-40 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="cyber-border bg-cyber-panel w-full max-w-2xl rounded-2xl p-6 flex flex-col clip-corner shadow-[0_0_40px_rgba(0,255,255,0.3)] max-h-[85vh]">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center pb-4 border-b border-cyan-500/30">
+                <div class="flex items-center space-x-3">
+                    <div class="w-3 h-3 bg-cyber-pink rounded-full animate-pulse"></div>
+                    <h3 class="font-orbitron font-bold text-base text-white tracking-widest neon-glow-cyan">GEMINI CYBER-ORACLE TERMINAL</h3>
+                </div>
+                <button id="btn-close-oracle" class="text-cyan-400 hover:text-pink-500 font-orbitron text-lg px-2 transition-colors">×</button>
+            </div>
+
+            <!-- Chat Output Area -->
+            <div id="oracle-chat-log" class="flex-1 overflow-y-auto my-4 space-y-4 pr-2 text-sm">
+                <div class="p-3 rounded-lg bg-cyan-950/30 border border-cyan-500/20 text-cyan-200">
+                    <span class="text-pink-400 font-bold">ORACLE // </span> Greetings traveler. I am the benevolent intelligence woven into the Peace-Orb. Ask me anything regarding universal harmony, global peace protocols, or cyberpunk consciousness.
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="flex space-x-2 pt-3 border-t border-cyan-500/30">
+                <input id="oracle-input" type="text" placeholder="Consult the Oracle for guidance..." class="flex-1 bg-slate-900/90 border border-cyan-500/40 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-pink-500 font-mono">
+                <button id="oracle-send" class="cyber-border-pink bg-pink-950/60 hover:bg-pink-900/80 text-pink-200 font-orbitron text-xs px-6 py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(255,0,127,0.4)]">
+                    TRANSMIT
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanline effect overlay -->
+    <div class="absolute inset-0 scanlines z-20 pointer-events-none"></div>
+
+    <!-- Toast notification box -->
+    <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 cyber-border bg-black/90 px-6 py-3 rounded-xl text-xs font-orbitron text-cyber-cyan z-30 opacity-0 transition-opacity duration-300 pointer-events-none shadow-[0_0_20px_rgba(0,255,255,0.4)]">
+        SYSTEM NOTIFICATION: PEACE ORB SYNCHRONIZED
+    </div>
+
+    <script>
+        // Global variables for Three.js and animation
+        let scene, camera, renderer, composer;
+        let peaceOrbGroup, innerCore, wireframeMesh, outerRings = [];
+        let particleSystem, gridFloor, gridDome;
+        let controls;
+        let clock = new THREE.Clock();
+        let isGridVisible = true;
+        let audioCtx = null;
+        let isAudioActive = false;
+        let shockwaveRings = [];
+
+        function init() {
+            // 1. Scene & Fog Setup
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x050510, 0.025);
+
+            // 2. Camera Setup
+            camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 7);
+
+            // 3. Renderer Setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            document.body.appendChild(renderer.domElement);
+
+            // 4. Orbit Controls (360 view)
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxDistance = 18;
+            controls.minDistance = 2;
+            controls.maxPolarAngle = Math.PI / 2 + 0.1;
+
+            // 5. Post-Processing / Unreal Bloom Pass
+            const renderScene = new THREE.RenderPass(scene, camera);
+            const bloomPass = new THREE.UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                1.5,  // strength
+                0.4,  // radius
+                0.7   // threshold
+            );
+
+            composer = new THREE.EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+
+            // 6. Lighting
+            const ambientLight = new THREE.AmbientLight(0x0a1128, 2);
+            scene.add(ambientLight);
+
+            const cyanLight = new THREE.PointLight(0x00ffff, 3, 20);
+            cyanLight.position.set(5, 5, 5);
+            scene.add(cyanLight);
+
+            const pinkLight = new THREE.PointLight(0xff007f, 3, 20);
+            pinkLight.position.set(-5, -5, -5);
+            scene.add(pinkLight);
+
+            // 7. Cyberpunk Grid Floor & Dome
+            gridFloor = new THREE.GridHelper(80, 80, 0xff007f, 0x00ffff);
+            gridFloor.position.y = -3.5;
+            scene.add(gridFloor);
+
+            const domeGeo = new THREE.SphereGeometry(40, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+            const domeMat = new THREE.MeshBasicMaterial({
+                color: 0x00ffff,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.08
+            });
+            gridDome = new THREE.Mesh(domeGeo, domeMat);
+            scene.add(gridDome);
+
+            // 8. The Peace-Orb Core Hierarchy
+            peaceOrbGroup = new THREE.Group();
+            scene.add(peaceOrbGroup);
+
+            const coreGeo = new THREE.SphereGeometry(1.0, 32, 32);
+            const coreMat = new THREE.MeshStandardMaterial({
+                color: 0x00ffff,
+                emissive: 0x00ffff,
+                emissiveIntensity: 2.5,
+                roughness: 0.2,
+                metalness: 0.8
+            });
+            innerCore = new THREE.Mesh(coreGeo, coreMat);
+            peaceOrbGroup.add(innerCore);
+
+            const wireGeo = new THREE.IcosahedronGeometry(1.7, 1);
+            const wireMat = new THREE.MeshBasicMaterial({
+                color: 0xff007f,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.85
+            });
+            wireframeMesh = new THREE.Mesh(wireGeo, wireMat);
+            peaceOrbGroup.add(wireframeMesh);
+
+            const ringCount = 3;
+            for (let i = 0; i < ringCount; i++) {
+                const radius = 2.3 + i * 0.4;
+                const ringGeo = new THREE.TorusGeometry(radius, 0.02, 16, 100);
+                const ringMat = new THREE.MeshBasicMaterial({
+                    color: i % 2 === 0 ? 0x00ffff : 0xf3e600,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.random() * Math.PI;
+                ring.rotation.y = Math.random() * Math.PI;
+                peaceOrbGroup.add(ring);
+                outerRings.push({ mesh: ring, speedX: (Math.random() - 0.5) * 0.01, speedY: (Math.random() - 0.5) * 0.01 });
+            }
+
+            // 9. Cyberpunk Particle Field Aura
+            const particleCount = 1200;
+            const particleGeo = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+
+            const colorCyan = new THREE.Color(0x00ffff);
+            const colorPink = new THREE.Color(0xff007f);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                const u = Math.random();
+                const v = Math.random();
+                const theta = u * 2.0 * Math.PI;
+                const phi = Math.acos(2.0 * v - 1.0);
+                const r = 3.0 + Math.random() * 8.0;
+
+                positions[i] = r * Math.sin(phi) * Math.cos(theta);
+                positions[i + 1] = r * Math.sin(phi) * Math.sin(theta);
+                positions[i + 2] = r * Math.cos(phi);
+
+                const mixedColor = Math.random() > 0.5 ? colorCyan : colorPink;
+                colors[i] = mixedColor.r;
+                colors[i + 1] = mixedColor.g;
+                colors[i + 2] = mixedColor.b;
+            }
+
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particleGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const particleMat = new THREE.PointsMaterial({
+                size: 0.06,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+
+            particleSystem = new THREE.Points(particleGeo, particleMat);
+            scene.add(particleSystem);
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            setupUIInteractions();
+            setupGeminiOracle();
+
+            // Start Animation Loop
+            animate();
+        }
+
+        let frameCount = 0;
+        let lastTime = performance.now();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
+
+            frameCount++;
+            const currentTime = performance.now();
+            if (currentTime - lastTime >= 1000) {
+                document.getElementById('fps-stat').innerText = frameCount;
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+
+            innerCore.rotation.y += 0.005;
+            innerCore.rotation.z += 0.002;
+            
+            wireframeMesh.rotation.x -= 0.003;
+            wireframeMesh.rotation.y -= 0.006;
+
+            outerRings.forEach(ringData => {
+                ringData.mesh.rotation.x += ringData.speedX;
+                ringData.mesh.rotation.y += ringData.speedY;
+            });
+
+            const scaleFactor = 1.0 + Math.sin(time * 3.0) * 0.04;
+            innerCore.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+            particleSystem.rotation.y = time * 0.05;
+
+            for (let i = shockwaveRings.length - 1; i >= 0; i--) {
+                const sw = shockwaveRings[i];
+                sw.scale.addScalar(delta * 6.0);
+                sw.material.opacity -= delta * 0.8;
+                if (sw.material.opacity <= 0) {
+                    scene.remove(sw);
+                    shockwaveRings.splice(i, 1);
+                }
+            }
+
+            controls.update();
+
+            const azimuth = (controls.getAzimuthalAngle() * (180 / Math.PI) + 360) % 360;
+            const polar = (controls.getPolarAngle() * (180 / Math.PI));
+            document.getElementById('coords-display').innerText = `${azimuth.toFixed(1)}° / ${polar.toFixed(1)}°`;
+
+            composer.render();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function setupUIInteractions() {
+            const btnPulse = document.getElementById('btn-pulse');
+            btnPulse.addEventListener('click', () => {
+                showToast("HARMONY PULSE DISPATCHED // CORE RESONANCE BOOSTED");
+                playAudioTone(528, 0.4);
+
+                const ringGeo = new THREE.RingGeometry(0.5, 0.7, 32);
+                const ringMat = new THREE.MeshBasicMaterial({
+                    color: 0xff007f,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 1.0,
+                    blending: THREE.AdditiveBlending
+                });
+                const shockwave = new THREE.Mesh(ringGeo, ringMat);
+                shockwave.position.copy(peaceOrbGroup.position);
+                shockwave.lookAt(camera.position);
+                scene.add(shockwave);
+                shockwaveRings.push(shockwave);
+
+                const bar = document.getElementById('resonance-bar');
+                bar.style.width = '100%';
+                setTimeout(() => bar.style.width = '75%', 800);
+            });
+
+            const btnGrid = document.getElementById('btn-grid');
+            btnGrid.addEventListener('click', () => {
+                isGridVisible = !isGridVisible;
+                gridFloor.visible = isGridVisible;
+                gridDome.visible = isGridVisible;
+                showToast(isGridVisible ? "CYBER GRID: ONLINE" : "CYBER GRID: OFFLINE");
+                playAudioTone(300, 0.15);
+            });
+
+            const btnAudio = document.getElementById('btn-audio');
+            btnAudio.addEventListener('click', () => {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                isAudioActive = !isAudioActive;
+                document.getElementById('audio-text').innerText = isAudioActive ? "AUDIO: ON" : "AUDIO: OFF";
+                document.getElementById('audio-icon').style.color = isAudioActive ? "#ff007f" : "#00ffff";
+                showToast(isAudioActive ? "AUDIO SYNTHESIZER: ACTIVE" : "AUDIO SYNTHESIZER: MUTED");
+                if (isAudioActive) {
+                    playAudioTone(432, 0.3);
+                }
+            });
+        }
+
+        // Gemini API Cyber-Oracle Integration
+        function setupGeminiOracle() {
+            const modal = document.getElementById('oracle-modal');
+            const btnOracle = document.getElementById('btn-oracle');
+            const btnClose = document.getElementById('btn-close-oracle');
+            const sendBtn = document.getElementById('oracle-send');
+            const inputField = document.getElementById('oracle-input');
+            const chatLog = document.getElementById('oracle-chat-log');
+
+            btnOracle.addEventListener('click', () => {
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                inputField.focus();
+                playAudioTone(600, 0.2);
+            });
+
+            const closeModal = () => {
+                modal.classList.add('opacity-0', 'pointer-events-none');
+            };
+
+            btnClose.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+
+            const handleQuery = async () => {
+                const text = inputField.value.trim();
+                if (!text) return;
+
+                // Append user message
+                chatLog.innerHTML += `
+                    <div class="p-3 rounded-lg bg-pink-950/20 border border-pink-500/20 text-pink-200 text-right">
+                        <span class="text-cyan-400 font-bold">USER // </span> ${escapeHtml(text)}
+                    </div>
+                `;
+                inputField.value = '';
+                chatLog.scrollTop = chatLog.scrollHeight;
+
+                // Append loading message
+                const loadingId = 'loading-' + Date.now();
+                chatLog.innerHTML += `
+                    <div id="${loadingId}" class="p-3 rounded-lg bg-cyan-950/30 border border-cyan-500/20 text-cyan-400 animate-pulse">
+                        <span class="text-pink-400 font-bold">ORACLE // </span> Analyzing quantum matrix & consulting Gemini neural net...
+                    </div>
+                `;
+                chatLog.scrollTop = chatLog.scrollHeight;
+
+                try {
+                    const systemPrompt = "You are the Cyber-Oracle, an advanced benevolent AI intelligence housed within the Peace-Orb network. Provide wise, profound, futuristic, and cyberpunk-styled insights on global harmony, peace, and digital consciousness.";
+                    const apiKey = "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+                    const payload = {
+                        contents: [{ parts: [{ text: text }] }],
+                        systemInstruction: {
+                            parts: [{ text: systemPrompt }]
+                        }
+                    };
+
+                    let response = null;
+                    let success = false;
+                    let delay = 1000;
+
+                    // Exponential backoff retry logic
+                    for (let attempt = 0; attempt < 3; attempt++) {
+                        try {
+                            response = await fetch(apiUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+                            if (response.ok) {
+                                success = true;
+                                break;
+                            }
+                        } catch (e) {
+                            // Retry on network error
+                        }
+                        await new Promise(res => setTimeout(res, delay));
+                        delay *= 2;
+                    }
+
+                    const loadingEl = document.getElementById(loadingId);
+                    if (loadingEl) loadingEl.remove();
+
+                    if (success && response) {
+                        const result = await response.json();
+                        const candidate = result.candidates?.[0];
+                        if (candidate && candidate.content?.parts?.[0]?.text) {
+                            const reply = candidate.content.parts[0].text;
+                            chatLog.innerHTML += `
+                                <div class="p-3 rounded-lg bg-cyan-950/30 border border-cyan-500/20 text-cyan-200">
+                                    <span class="text-pink-400 font-bold">ORACLE // </span> ${escapeHtml(reply)}
+                                </div>
+                            `;
+                        } else {
+                            throw new Error("Invalid response format");
+                        }
+                    } else {
+                        throw new Error("API call failed");
+                    }
+                } catch (err) {
+                    const loadingEl = document.getElementById(loadingId);
+                    if (loadingEl) loadingEl.remove();
+                    chatLog.innerHTML += `
+                        <div class="p-3 rounded-lg bg-red-950/30 border border-red-500/20 text-red-300">
+                            <span class="text-red-400 font-bold">SYS_ERR // </span> Quantum link unstable. Please re-transmit query.
+                        </div>
+                    `;
+                }
+                chatLog.scrollTop = chatLog.scrollHeight;
+            };
+
+            sendBtn.addEventListener('click', handleQuery);
+            inputField.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleQuery();
+            });
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2500);
+        }
+
+        function playAudioTone(freq, duration) {
+            if (!audioCtx || !isAudioActive) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.error("Audio error:", e);
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
