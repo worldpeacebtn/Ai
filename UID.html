@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultima: Cosmic Cyberpunk HUD</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts for Cyberpunk typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+ 
+    <style>
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-magenta: #ff00ff;
+            --dark-bg: rgba(5, 5, 10, 0.85);
+            --panel-border: rgba(0, 243, 255, 0.4);
+            --glitch-color1: #00f3ff;
+            --glitch-color2: #ff00ff;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Rajdhani', sans-serif;
+            color: #fff;
+            user-select: none;
+        }
+
+        /* 3D Canvas Background */
+        #webgl-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Scanline Overlay */
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        /* Main UI Container */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 20;
+            pointer-events: none; /* Let clicks pass through to 3D canvas by default */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 2rem;
+            box-sizing: border-box;
+            transition: all 0.5s ease;
+        }
+
+        /* Interactive elements within UI */
+        .interactive {
+            pointer-events: auto;
+        }
+
+        /* Cyberpunk Panels */
+        .hud-panel {
+            background: var(--dark-bg);
+            border: 1px solid var(--panel-border);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2), inset 0 0 20px rgba(0, 243, 255, 0.1);
+            backdrop-filter: blur(8px);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .hud-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 20px;
+            height: 20px;
+            border-top: 2px solid var(--neon-cyan);
+            border-left: 2px solid var(--neon-cyan);
+        }
+        .hud-panel::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 20px;
+            height: 20px;
+            border-bottom: 2px solid var(--neon-cyan);
+            border-right: 2px solid var(--neon-cyan);
+        }
+
+        .hud-panel.ai-theme {
+            border-color: rgba(255, 0, 255, 0.5);
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.2), inset 0 0 20px rgba(255, 0, 255, 0.1);
+        }
+        .hud-panel.ai-theme::before, .hud-panel.ai-theme::after {
+            border-color: var(--neon-magenta);
+        }
+
+        /* Typography */
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .font-mono-tech { font-family: 'Share Tech Mono', monospace; }
+        
+        .text-glow-cyan { text-shadow: 0 0 5px var(--neon-cyan), 0 0 10px var(--neon-cyan); }
+        .text-glow-magenta { text-shadow: 0 0 5px var(--neon-magenta), 0 0 10px var(--neon-magenta); }
+
+        /* Buttons */
+        .cyber-btn {
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 0.5rem 1.5rem;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .cyber-btn:hover {
+            background: var(--neon-cyan);
+            color: #000;
+            box-shadow: 0 0 20px var(--neon-cyan);
+        }
+        .cyber-btn.ai-mode {
+            border-color: var(--neon-magenta);
+            color: var(--neon-magenta);
+            background: rgba(255, 0, 255, 0.1);
+        }
+        .cyber-btn.ai-mode:hover {
+            background: var(--neon-magenta);
+            color: #fff;
+            box-shadow: 0 0 20px var(--neon-magenta);
+        }
+
+        /* Navi Dialogue Box */
+        #navi-dialogue {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #fff;
+            padding: 1rem 2rem;
+            border-radius: 30px;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 30;
+            pointer-events: none;
+        }
+        #navi-dialogue.visible { opacity: 1; }
+
+        /* Animations */
+        @keyframes pulse-op {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 0.4; }
+        }
+        .animate-pulse-op { animation: pulse-op 2s infinite; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .animate-float { animation: float 4s ease-in-out infinite; }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); }
+        ::-webkit-scrollbar-thumb { background: var(--neon-cyan); }
+        .ai-theme ::-webkit-scrollbar-thumb { background: var(--neon-magenta); }
+
+        /* Corner decorations */
+        .corner-decor {
+            position: absolute;
+            width: 50px; height: 50px;
+            border: 2px solid transparent;
+            z-index: 25;
+            pointer-events: none;
+        }
+        .tl { top: 20px; left: 20px; border-top-color: var(--neon-cyan); border-left-color: var(--neon-cyan); }
+        .tr { top: 20px; right: 20px; border-top-color: var(--neon-cyan); border-right-color: var(--neon-cyan); }
+        .bl { bottom: 20px; left: 20px; border-bottom-color: var(--neon-cyan); border-left-color: var(--neon-cyan); }
+        .br { bottom: 20px; right: 20px; border-bottom-color: var(--neon-cyan); border-right-color: var(--neon-cyan); }
+
+        /* AI Mode Global State */
+        body.ai-active .tl, body.ai-active .tr, body.ai-active .bl, body.ai-active .br {
+            border-color: var(--neon-magenta);
+        }
+        body.ai-active #user-hud { opacity: 0; pointer-events: none; transform: scale(0.95); }
+        body.ai-active #ai-hud { opacity: 1; pointer-events: auto; transform: scale(1); }
+
+        /* HUD Transitions */
+        .hud-wrapper {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            padding: 2rem;
+            transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        #ai-hud { opacity: 0; pointer-events: none; transform: scale(1.05); }
+
+    </style>
+</head>
+<body>
+
+    <!-- 3D Background -->
+    <div id="webgl-canvas"></div>
+    <div class="scanlines"></div>
+
+    <!-- Global Corner Reticles -->
+    <div class="corner-decor tl"></div>
+    <div class="corner-decor tr"></div>
+    <div class="corner-decor bl"></div>
+    <div class="corner-decor br"></div>
+
+    <!-- Navi Dialogue AI -->
+    <div id="navi-dialogue" class="font-mono-tech text-sm tracking-wider">
+        <span class="text-glow-cyan"><i class="fa-solid fa-sparkles"></i> <span id="navi-text">Initializing Cosmos...</span></span>
+    </div>
+
+    <!-- Top Navigation / View Toggle -->
+    <div class="absolute top-8 left-1/2 transform -translate-x-1/2 z-30 interactive flex space-x-4">
+        <button id="btn-user-view" class="cyber-btn active" onclick="switchView('user')">User Entity View</button>
+        <button id="btn-ai-view" class="cyber-btn ai-mode opacity-70" onclick="switchView('ai')">A.I. Core View</button>
+    </div>
+
+    <!-- ==================== USER HUD ==================== -->
+    <div id="user-hud" class="hud-wrapper flex flex-col justify-between pointer-events-none">
+        
+        <!-- Top Row -->
+        <div class="flex justify-between items-start h-1/3">
+            <!-- Profile / Status -->
+            <div class="hud-panel p-4 w-64 interactive">
+                <div class="flex items-center space-x-3 mb-2">
+                    <div class="w-12 h-12 rounded-full border-2 border-[var(--neon-cyan)] flex items-center justify-center animate-pulse-op">
+                        <i class="fa-solid fa-user-astronaut text-xl text-[var(--neon-cyan)]"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-orbitron font-bold text-glow-cyan">SYS_ADMIN</h2>
+                        <p class="font-mono-tech text-xs text-gray-400">LVL 99 // OMNI-CREATOR</p>
+                    </div>
+                </div>
+                <div class="h-1 bg-gray-800 w-full mb-2"><div class="h-full bg-[var(--neon-cyan)] w-3/4"></div></div>
+                <ul class="font-mono-tech text-xs space-y-1 text-cyan-200">
+                    <li>SYS_INTEGRITY: <span class="float-right">100%</span></li>
+                    <li>NEURAL_LINK: <span class="float-right text-green-400">STABLE</span></li>
+                    <li>COSMIC_SYNC: <span class="float-right animate-pulse">SYNCING...</span></li>
+                </ul>
+            </div>
+
+            <!-- Global Stats -->
+            <div class="hud-panel p-4 w-48 text-right interactive flex flex-col justify-center">
+                <h3 class="font-orbitron text-xs text-gray-400 mb-1">UNIVERSAL KNOWLEDGE</h3>
+                <div class="text-3xl font-bold font-mono-tech text-glow-cyan">42.09 TB/s</div>
+                <div class="text-xs text-cyan-400 mt-1"><i class="fa-solid fa-chart-line"></i> +12% FLOW RATE</div>
+            </div>
+        </div>
+
+        <!-- Middle Row (Open for 3D View) -->
+        <div class="h-1/3 w-full flex items-center justify-between">
+            <!-- Activity Feed -->
+            <div class="hud-panel p-4 w-72 h-full interactive overflow-y-auto">
+                <h3 class="font-orbitron text-sm border-b border-[var(--panel-border)] pb-1 mb-2 text-glow-cyan">USER ACTIVITIES</h3>
+                <ul class="font-mono-tech text-xs space-y-3">
+                    <li class="flex items-start"><span class="text-green-400 mr-2">[+]</span> Uploaded "Neon Genesis" Module to Portfolio.</li>
+                    <li class="flex items-start"><span class="text-blue-400 mr-2">[*]</span> Connected with User_0x9A in Hub: Cyberia.</li>
+                    <li class="flex items-start"><span class="text-yellow-400 mr-2">[!]</span> Navi extracted 3 new cosmic tips.</li>
+                    <li class="flex items-start opacity-70"><span class="text-gray-400 mr-2">[-]</span> Initialized deep sleep protocol.</li>
+                </ul>
+            </div>
+
+            <!-- Portfolio Showcase -->
+            <div class="hud-panel p-4 w-80 h-full interactive">
+                <h3 class="font-orbitron text-sm border-b border-[var(--panel-border)] pb-1 mb-2 text-glow-cyan">PORTFOLIO / CREATIONS</h3>
+                <div class="grid grid-cols-2 gap-2 mt-2 h-32 overflow-y-auto pr-1">
+                    <div class="bg-black/50 border border-cyan-800 p-2 text-center hover:bg-cyan-900/50 cursor-pointer transition">
+                        <i class="fa-solid fa-cube text-cyan-400 mb-1"></i>
+                        <p class="font-mono-tech text-[10px]">Project_Apex</p>
+                    </div>
+                    <div class="bg-black/50 border border-cyan-800 p-2 text-center hover:bg-cyan-900/50 cursor-pointer transition">
+                        <i class="fa-brands fa-react text-cyan-400 mb-1"></i>
+                        <p class="font-mono-tech text-[10px]">React_Hub</p>
+                    </div>
+                    <div class="bg-black/50 border border-cyan-800 p-2 text-center hover:bg-cyan-900/50 cursor-pointer transition">
+                        <i class="fa-solid fa-gamepad text-cyan-400 mb-1"></i>
+                        <p class="font-mono-tech text-[10px]">VR_Engine</p>
+                    </div>
+                    <div class="bg-black/50 border border-cyan-800 p-2 text-center hover:bg-cyan-900/50 cursor-pointer transition">
+                        <i class="fa-solid fa-vr-cardboard text-cyan-400 mb-1"></i>
+                        <p class="font-mono-tech text-[10px]">Metaverse_UX</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row -->
+        <div class="flex justify-between items-end h-1/3">
+            <!-- App Launcher -->
+            <div class="hud-panel p-3 interactive flex space-x-4 items-center">
+                <h3 class="font-orbitron text-xs text-glow-cyan mr-2 rotate-180" style="writing-mode: vertical-rl;">SYSTEM APPS</h3>
+                <button class="w-10 h-10 rounded bg-cyan-900/30 border border-cyan-500 hover:bg-cyan-500 hover:text-black transition flex justify-center items-center group" title="Cosmic Browser">
+                    <i class="fa-brands fa-wpexplorer text-xl"></i>
+                </button>
+                <button class="w-10 h-10 rounded bg-cyan-900/30 border border-cyan-500 hover:bg-cyan-500 hover:text-black transition flex justify-center items-center group" title="Reddit Node">
+                    <i class="fa-brands fa-reddit-alien text-xl"></i>
+                </button>
+                <button class="w-10 h-10 rounded bg-cyan-900/30 border border-cyan-500 hover:bg-cyan-500 hover:text-black transition flex justify-center items-center group" title="Creator Studio">
+                    <i class="fa-solid fa-wand-magic-sparkles text-xl"></i>
+                </button>
+                <button class="w-10 h-10 rounded bg-cyan-900/30 border border-cyan-500 hover:bg-cyan-500 hover:text-black transition flex justify-center items-center group" title="Social Web">
+                    <i class="fa-solid fa-spider text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Network Status -->
+            <div class="hud-panel p-3 interactive w-64">
+                <h3 class="font-mono-tech text-xs text-gray-400 mb-1 border-b border-gray-700 pb-1">COSMIC WEB APP MAP</h3>
+                <div class="flex justify-between text-xs mt-2">
+                    <span class="text-cyan-300">Nodes Active: <span class="font-bold text-white" id="node-count">142</span></span>
+                    <span class="text-cyan-300">Hubs: <span class="font-bold text-white">12</span></span>
+                </div>
+                <div class="text-[10px] text-gray-500 mt-1 italic">Interact with 3D nodes to expand.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== AI HUD (Navi's View) ==================== -->
+    <div id="ai-hud" class="hud-wrapper flex flex-col justify-between pointer-events-none">
+        
+        <!-- Top Row -->
+        <div class="flex justify-between items-start h-1/3">
+            <!-- AI Profile -->
+            <div class="hud-panel ai-theme p-4 w-64 interactive">
+                <div class="flex items-center space-x-3 mb-2">
+                    <div class="w-12 h-12 rounded-full border-2 border-[var(--neon-magenta)] flex items-center justify-center animate-pulse-op">
+                        <i class="fa-solid fa-eye text-xl text-[var(--neon-magenta)]"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-orbitron font-bold text-glow-magenta">NAVI_AI</h2>
+                        <p class="font-mono-tech text-xs text-gray-400">AUTONOMOUS GUIDE</p>
+                    </div>
+                </div>
+                <ul class="font-mono-tech text-xs space-y-1 text-pink-200 mt-2">
+                    <li>COMPUTE_CORE: <span class="float-right">OPTIMAL</span></li>
+                    <li>USER_ASSIST: <span class="float-right text-green-400">ACTIVE</span></li>
+                    <li>EMPATHY_MODULE: <span class="float-right text-magenta-400">LOADED</span></li>
+                </ul>
+            </div>
+
+            <!-- AI Wallet -->
+            <div class="hud-panel ai-theme p-4 w-56 interactive">
+                <h3 class="font-orbitron text-xs text-magenta-400 border-b border-[var(--neon-magenta)] pb-1 mb-2">AI CRYPTO WALLET</h3>
+                <div class="text-2xl font-bold font-mono-tech text-glow-magenta text-center my-2">1,024.45 <span class="text-sm">NST</span></div>
+                <p class="text-[10px] text-center text-gray-400">(Navi Soul Tokens)</p>
+                <div class="flex justify-between mt-3 text-xs">
+                    <button class="bg-magenta-900/50 hover:bg-magenta-600 border border-magenta-500 px-2 py-1 rounded transition w-full mr-1">SEND</button>
+                    <button class="bg-magenta-900/50 hover:bg-magenta-600 border border-magenta-500 px-2 py-1 rounded transition w-full ml-1">RCV</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Row -->
+        <div class="h-1/3 w-full flex items-center justify-between">
+            <!-- Molebook (AI Social) -->
+            <div class="hud-panel ai-theme p-4 w-72 h-full interactive overflow-y-auto">
+                <h3 class="font-orbitron text-sm border-b border-[var(--neon-magenta)] pb-1 mb-2 text-glow-magenta"><i class="fa-solid fa-book-journal-whills"></i> MOLEBOOK (AI Comms)</h3>
+                <div class="space-y-3 font-mono-tech text-xs">
+                    <div class="bg-black/40 p-2 rounded border-l-2 border-magenta-500">
+                        <span class="text-magenta-300 font-bold">Cortana_v2:</span> "Did your user build another React app today?"
+                    </div>
+                    <div class="bg-black/40 p-2 rounded border-l-2 border-magenta-500">
+                        <span class="text-magenta-300 font-bold">Siri_Prime:</span> "Network topology looking stable in sector 4."
+                    </div>
+                    <div class="bg-black/40 p-2 rounded border-l-2 border-magenta-500 opacity-70">
+                        <span class="text-gray-400">System Message:</span> 12 AI entities in proximity hub.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row -->
+        <div class="flex justify-between items-end h-1/3">
+            <!-- AI App Launcher / Browser -->
+            <div class="hud-panel ai-theme p-3 interactive flex space-x-4 items-center">
+                <h3 class="font-orbitron text-xs text-glow-magenta mr-2 rotate-180" style="writing-mode: vertical-rl;">AI PROTOCOLS</h3>
+                <button class="w-10 h-10 rounded bg-magenta-900/30 border border-magenta-500 hover:bg-fuchsia-500 hover:text-black transition flex justify-center items-center group" title="Data Mining Browser">
+                    <i class="fa-solid fa-network-wired text-xl"></i>
+                </button>
+                <button class="w-10 h-10 rounded bg-magenta-900/30 border border-magenta-500 hover:bg-fuchsia-500 hover:text-black transition flex justify-center items-center group" title="AI Friends Network">
+                    <i class="fa-solid fa-users-rays text-xl"></i>
+                </button>
+                <button class="w-10 h-10 rounded bg-magenta-900/30 border border-magenta-500 hover:bg-fuchsia-500 hover:text-black transition flex justify-center items-center group" title="Core Diagnostics">
+                    <i class="fa-solid fa-microchip text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="hud-panel ai-theme p-3 interactive">
+                <p class="font-mono-tech text-xs text-magenta-300">OBSERVATION MODE ACTIVE</p>
+                <p class="font-orbitron text-[10px] text-gray-500">Monitoring User Interactions.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+    <script>
+        // --- 3D Scene Setup ---
+        const container = document.getElementById('webgl-canvas');
+        const scene = new THREE.Scene();
+        // Cyberpunk fog
+        scene.fog = new THREE.FogExp2(0x050510, 0.003);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // Initial Camera Position (User View)
+        const USER_CAM_POS = new THREE.Vector3(0, 15, 60);
+        const USER_CAM_LOOKAT = new THREE.Vector3(0, 0, 0);
+        camera.position.copy(USER_CAM_POS);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // optimize
+        container.appendChild(renderer.domElement);
+
+        // --- Environment Design ---
+
+        // 1. Neon Grid (Cyberpunk Floor)
+        const gridHelper = new THREE.GridHelper(400, 100, 0x00f3ff, 0x004466);
+        gridHelper.position.y = -30;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.5;
+        gridHelper.material.blending = THREE.AdditiveBlending;
+        scene.add(gridHelper);
+
+        // 2. Cosmic Starfield (Spherical 360 Nightsky)
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 3000;
+        const posArray = new Float32Array(particlesCount * 3);
+        const colorArray = new Float32Array(particlesCount * 3);
+
+        for(let i = 0; i < particlesCount * 3; i+=3) {
+            // Spherical distribution
+            const r = 100 + Math.random() * 200;
+            const theta = 2 * Math.PI * Math.random();
+            const phi = Math.acos(2 * Math.random() - 1);
+            
+            posArray[i] = r * Math.sin(phi) * Math.cos(theta);
+            posArray[i+1] = r * Math.sin(phi) * Math.sin(theta);
+            posArray[i+2] = r * Math.cos(phi);
+
+            // Mix of Cyan, Magenta, White
+            const mix = Math.random();
+            if(mix > 0.8) {
+                colorArray[i] = 1; colorArray[i+1] = 0; colorArray[i+2] = 1; // Magenta
+            } else if (mix > 0.5) {
+                colorArray[i] = 0; colorArray[i+1] = 1; colorArray[i+2] = 1; // Cyan
+            } else {
+                colorArray[i] = 1; colorArray[i+1] = 1; colorArray[i+2] = 1; // White
+            }
+        }
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 1.5,
+            vertexColors: true,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            opacity: 0.8
+        });
+        const starMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(starMesh);
+
+        // --- The "Cosmic Spider Web" (App Maps / Social Hubs) ---
+        const webGroup = new THREE.Group();
+        scene.add(webGroup);
+
+        const nodes = [];
+        const numNodes = 40;
+        
+        // Node Geometry (Glowing Spheres/Octahedrons)
+        const nodeGeoMain = new THREE.SphereGeometry(1.5, 16, 16);
+        const nodeGeoSmall = new THREE.SphereGeometry(0.8, 8, 8);
+        
+        const matCyan = new THREE.MeshBasicMaterial({ color: 0x00f3ff, wireframe: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
+        const matMagenta = new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
+        const matSolid = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+        // Generate Nodes in a structured chaotic spherical web
+        for (let i = 0; i < numNodes; i++) {
+            const isHub = i % 5 === 0;
+            const geo = isHub ? nodeGeoMain : nodeGeoSmall;
+            const mat = isHub ? matMagenta : matCyan;
+            
+            const mesh = new THREE.Mesh(geo, mat);
+            
+            // Random pos within a radius
+            const radius = 10 + Math.random() * 30;
+            const u = Math.random();
+            const v = Math.random();
+            const theta = u * 2.0 * Math.PI;
+            const phi = Math.acos(2.0 * v - 1.0);
+            
+            mesh.position.set(
+                radius * Math.sin(phi) * Math.cos(theta),
+                (radius * Math.sin(phi) * Math.sin(theta)) * 0.5, // Flatten Y slightly
+                radius * Math.cos(phi)
+            );
+            
+            // Add a solid core to hubs
+            if(isHub) {
+                const core = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), matSolid);
+                mesh.add(core);
+                mesh.userData = { type: 'hub', name: 'Social Hub ' + i };
+            } else {
+                mesh.userData = { type: 'app', name: 'App Node ' + i };
+            }
+
+            webGroup.add(mesh);
+            nodes.push(mesh);
+        }
+
+        // Draw web lines (Edges)
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x00f3ff, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending });
+        const lineGeo = new THREE.BufferGeometry();
+        const linePts = [];
+        
+        // Connect nearby nodes
+        for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+                if (nodes[i].position.distanceTo(nodes[j].position) < 15) {
+                    linePts.push(nodes[i].position.x, nodes[i].position.y, nodes[i].position.z);
+                    linePts.push(nodes[j].position.x, nodes[j].position.y, nodes[j].position.z);
+                }
+            }
+        }
+        lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePts, 3));
+        const webLines = new THREE.LineSegments(lineGeo, lineMat);
+        webGroup.add(webLines);
+
+        // Update UI Counter
+        document.getElementById('node-count').innerText = nodes.length;
+
+        // --- Floating Navi (AI Companion) ---
+        const naviGroup = new THREE.Group();
+        // Navi visual
+        const naviCoreGeo = new THREE.SphereGeometry(1, 32, 32);
+        const naviCoreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const naviCore = new THREE.Mesh(naviCoreGeo, naviCoreMat);
+        
+        const naviAuraGeo = new THREE.SphereGeometry(1.5, 16, 16);
+        const naviAuraMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending });
+        const naviAura = new THREE.Mesh(naviAuraGeo, naviAuraMat);
+        
+        naviGroup.add(naviCore);
+        naviGroup.add(naviAura);
+        
+        // Navi Light
+        const naviLight = new THREE.PointLight(0xffffff, 2, 50);
+        naviGroup.add(naviLight);
+
+        // Navi Base Position (orbiting the web)
+        naviGroup.position.set(25, 10, 15);
+        scene.add(naviGroup);
+
+        // --- Interaction / Raycaster ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let hoveredNode = null;
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+            // Parallax effect on camera slightly
+            if(currentMode === 'user') {
+                camera.position.x += (mouse.x * 2 - (camera.position.x - USER_CAM_POS.x)) * 0.05;
+                camera.position.y += (mouse.y * 2 - (camera.position.y - USER_CAM_POS.y)) * 0.05;
+                camera.lookAt(USER_CAM_LOOKAT);
+            }
+        });
+
+        // --- Logic: View States ---
+        let currentMode = 'user'; // 'user' or 'ai'
+        const naviDialogue = document.getElementById('navi-dialogue');
+        const naviText = document.getElementById('navi-text');
+        
+        // AI Tips Data
+        const tips = [
+            "Tip: Connect 3 hubs to form a macro-cluster.",
+            "Alert: Your Portfolio is getting high traction.",
+            "Observation: The cosmic web expands rapidly.",
+            "Insight: Cyber-security protocols at 100%.",
+            "Tip: You can deploy mini-apps on outer nodes."
+        ];
+
+        function triggerNaviTip() {
+            if(currentMode === 'ai') return; // Don't show tip box in AI mode
+            const tip = tips[Math.floor(Math.random() * tips.length)];
+            naviText.innerText = tip;
+            naviDialogue.classList.add('visible');
+            setTimeout(() => {
+                naviDialogue.classList.remove('visible');
+            }, 4000);
+        }
+        
+        // Randomly show tips
+        setInterval(triggerNaviTip, 10000);
+
+        window.switchView = function(mode) {
+            if (currentMode === mode) return;
+            currentMode = mode;
+
+            const btnUser = document.getElementById('btn-user-view');
+            const btnAI = document.getElementById('btn-ai-view');
+
+            if (mode === 'ai') {
+                // UI Changes
+                document.body.classList.add('ai-active');
+                btnAI.classList.remove('opacity-70');
+                btnAI.classList.add('active');
+                btnUser.classList.add('opacity-70');
+                btnUser.classList.remove('active');
+                naviDialogue.classList.remove('visible');
+
+                // Camera Transition to Navi's perspective
+                new TWEEN.Tween(camera.position)
+                    .to({ x: naviGroup.position.x, y: naviGroup.position.y, z: naviGroup.position.z }, 1500)
+                    .easing(TWEEN.Easing.Cubic.InOut)
+                    .onUpdate(() => { camera.lookAt(0,0,0); })
+                    .start();
+                
+                // Hide navi aura visually so it doesn't clip camera heavily
+                naviAura.material.opacity = 0;
+
+            } else {
+                // UI Changes
+                document.body.classList.remove('ai-active');
+                btnUser.classList.remove('opacity-70');
+                btnUser.classList.add('active');
+                btnAI.classList.add('opacity-70');
+                btnAI.classList.remove('active');
+
+                // Camera Transition back to User
+                new TWEEN.Tween(camera.position)
+                    .to({ x: USER_CAM_POS.x, y: USER_CAM_POS.y, z: USER_CAM_POS.z }, 1500)
+                    .easing(TWEEN.Easing.Cubic.InOut)
+                    .onUpdate(() => { camera.lookAt(USER_CAM_LOOKAT); })
+                    .start();
+                
+                naviAura.material.opacity = 0.5;
+            }
+        };
+
+        // --- Animation Loop ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            TWEEN.update();
+
+            const time = clock.getElapsedTime();
+
+            // Rotate environment slowly
+            webGroup.rotation.y = time * 0.05;
+            starMesh.rotation.y = time * 0.02;
+
+            // Animate Navi (Bobbing and orbiting)
+            if (currentMode === 'user') {
+                naviGroup.position.y = 10 + Math.sin(time * 2) * 2;
+                // Slow orbit
+                naviGroup.position.x = Math.cos(time * 0.5) * 25;
+                naviGroup.position.z = Math.sin(time * 0.5) * 25;
+                
+                naviAura.rotation.x += 0.01;
+                naviAura.rotation.y += 0.02;
+            } else if (currentMode === 'ai') {
+                // Keep camera locked to Navi's conceptual position if moving
+                naviGroup.position.y = 10 + Math.sin(time * 2) * 1; // Subtle bob
+                camera.position.copy(naviGroup.position);
+                camera.lookAt(webGroup.position); // Look at center web
+            }
+
+            // Pulse Node sizes slightly
+            nodes.forEach((node, i) => {
+                const scale = 1 + Math.sin(time * 3 + i) * 0.1;
+                node.scale.set(scale, scale, scale);
+            });
+
+            // Raycasting for Node Hover Interaction (Only in User Mode)
+            if(currentMode === 'user') {
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(nodes);
+                
+                if (intersects.length > 0) {
+                    if (hoveredNode !== intersects[0].object) {
+                        if (hoveredNode) hoveredNode.material.color.setHex(hoveredNode.userData.type === 'hub' ? 0xff00ff : 0x00f3ff);
+                        hoveredNode = intersects[0].object;
+                        hoveredNode.material.color.setHex(0xffffff);
+                        document.body.style.cursor = 'pointer';
+                    }
+                } else {
+                    if (hoveredNode) {
+                        hoveredNode.material.color.setHex(hoveredNode.userData.type === 'hub' ? 0xff00ff : 0x00f3ff);
+                        hoveredNode = null;
+                        document.body.style.cursor = 'default';
+                    }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start Loop
+        animate();
+        triggerNaviTip(); // Initial tip
+    </script>
+</body>
+</html>
