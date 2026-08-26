@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JRPG Infinity Pixel Worldmap Nexus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Poppins:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', 'Inter', sans-serif; user-select: none; overflow: hidden; background: #05020a; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.03); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(217, 70, 239, 0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(217, 70, 239, 0.9); }
+        
+        .glass-panel {
+            background: rgba(15, 8, 30, 0.88);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(217, 70, 239, 0.3);
+            box-shadow: 0 0 30px rgba(168, 85, 247, 0.25), inset 0 0 15px rgba(59, 130, 246, 0.15);
+        }
+        .glow-infinite {
+            animation: infiniteGlow 4s ease-in-out infinite alternate;
+        }
+        @keyframes infiniteGlow {
+            0% { box-shadow: 0 0 20px rgba(217, 70, 239, 0.4), inset 0 0 10px rgba(59, 130, 246, 0.3); border-color: rgba(217, 70, 239, 0.4); }
+            50% { box-shadow: 0 0 45px rgba(59, 130, 246, 0.7), inset 0 0 20px rgba(217, 70, 239, 0.5); border-color: rgba(59, 130, 246, 0.7); }
+            100% { box-shadow: 0 0 20px rgba(236, 72, 153, 0.4), inset 0 0 10px rgba(168, 85, 247, 0.3); border-color: rgba(236, 72, 153, 0.4); }
+        }
+        .glitch-text {
+            text-shadow: 2px 0 #3b82f6, -2px 0 #ec4899;
+        }
+        .emoji-btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .emoji-btn:hover { transform: scale(1.05); filter: drop-shadow(0 0 10px rgba(217, 70, 239, 0.8)); }
+        .emoji-btn:active { transform: scale(0.95); }
+        
+        /* CRT scanlines effect */
+        .scanlines {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+
+        /* JRPG Retro Dialogue Box styling */
+        .jrpg-dialogue-box {
+            background: rgba(10, 5, 20, 0.95);
+            border: 3px solid #d946ef;
+            box-shadow: 0 0 30px rgba(217, 70, 239, 0.6), inset 0 0 20px rgba(59, 130, 246, 0.4);
+            border-radius: 16px;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen relative flex flex-col overflow-hidden text-white">
+
+    <div id="canvas-container" class="absolute inset-0 w-full h-full z-0 touch-none"></div>
+    <div class="absolute inset-0 z-10 scanlines pointer-events-none"></div>
+
+    <!-- Top Master HUD & Navigation -->
+    <header class="absolute top-0 left-0 right-0 z-30 p-3 flex flex-wrap items-center justify-between pointer-events-none">
+        <div class="glass-panel glow-infinite px-4 py-2.5 rounded-2xl flex items-center space-x-3 pointer-events-auto">
+            <span class="text-2xl animate-pulse">💠</span>
+            <div>
+                <h1 class="font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-300 to-blue-400 text-sm sm:text-lg tracking-wider glitch-text">INFINITY PIXEL NEXUS</h1>
+                <p class="text-[10px] text-pink-200/80 font-medium">JRPG Worldmap, Custom Skins & Dialogue Studio</p>
+            </div>
+        </div>
+
+        <!-- Mode Selector Toolbar -->
+        <div class="glass-panel px-3 py-1.5 rounded-2xl flex items-center space-x-2 pointer-events-auto shadow-2xl mt-2 sm:mt-0 overflow-x-auto max-w-[calc(100vw-2rem)]">
+            <button onclick="setBuilderMode('worldmap')" id="mode-worldmap-btn" class="emoji-btn px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs flex items-center space-x-1 shadow-md">
+                <span>🗺️</span> <span>Worldmap</span>
+            </button>
+            <button onclick="setBuilderMode('architecture')" id="mode-architecture-btn" class="emoji-btn px-3 py-1.5 rounded-xl bg-slate-900/80 text-slate-300 font-bold text-xs flex items-center space-x-1 hover:bg-slate-800">
+                <span>🏰</span> <span>Architecture</span>
+            </button>
+            <button onclick="setBuilderMode('skins')" id="mode-skins-btn" class="emoji-btn px-3 py-1.5 rounded-xl bg-slate-900/80 text-slate-300 font-bold text-xs flex items-center space-x-1 hover:bg-slate-800">
+                <span>🎨</span> <span>Skin & Texture</span>
+            </button>
+            <button onclick="setBuilderMode('characters')" id="mode-characters-btn" class="emoji-btn px-3 py-1.5 rounded-xl bg-slate-900/80 text-slate-300 font-bold text-xs flex items-center space-x-1 hover:bg-slate-800">
+                <span>👘</span> <span>Import Hero</span>
+            </button>
+            <button onclick="setBuilderMode('media')" id="mode-media-btn" class="emoji-btn px-3 py-1.5 rounded-xl bg-slate-900/80 text-slate-300 font-bold text-xs flex items-center space-x-1 hover:bg-slate-800">
+                <span>📦</span> <span>Media & Artifacts</span>
+            </button>
+            <button onclick="toggleMobileTouchMode()" id="touch-mode-btn" class="emoji-btn px-3 py-1.5 rounded-xl bg-blue-600/60 text-white font-bold text-xs flex items-center space-x-1" title="Toggle Touch Navigation">
+                <span>👆</span> <span id="touch-mode-txt">Orbit</span>
+            </button>
+        </div>
+
+        <!-- Utility Actions -->
+        <div class="glass-panel px-3 py-2 rounded-2xl flex items-center space-x-2 pointer-events-auto shadow-2xl mt-2 sm:mt-0">
+            <button onclick="saveWorldProject()" class="emoji-btn p-2 rounded-xl bg-purple-600/60 hover:bg-purple-600 text-white text-sm" title="Save World Project">💾</button>
+            <label class="emoji-btn p-2 rounded-xl bg-blue-600/60 hover:bg-blue-600 text-white text-sm cursor-pointer" title="Load World Project">
+                📂 <input type="file" id="load-world-file" accept=".json" class="hidden" onchange="loadWorldProject(event)">
+            </label>
+        </div>
+    </header>
+
+    <!-- Architecture & JRPG Objects Panel -->
+    <aside id="panel-architecture" class="absolute left-4 top-24 bottom-28 w-80 max-w-[calc(100vw-2rem)] glass-panel rounded-3xl z-20 p-4 hidden flex-col space-y-4 shadow-2xl overflow-y-auto transition-all duration-300">
+        <div class="flex items-center justify-between border-b border-pink-500/30 pb-3">
+            <h2 class="font-bold text-pink-300 text-sm flex items-center space-x-2">
+                <span>🏰</span> <span>JRPG Architecture Objects</span>
+            </h2>
+            <span class="text-[10px] bg-pink-500/20 text-pink-300 px-2 py-0.5 rounded-full">World Grid</span>
+        </div>
+        <p class="text-[11px] text-slate-300">Tap anywhere on the glowing infinity grid to place legendary JRPG structures with interactive triggered scenes.</p>
+
+        <div class="grid grid-cols-2 gap-2">
+            <button onclick="setArchBrush('castle')" id="arch-castle-btn" class="emoji-btn p-2.5 rounded-xl bg-pink-600/40 border border-pink-400 text-xs font-bold text-pink-100 flex flex-col items-center">
+                <span class="text-lg">🏰</span><span>Citadel Castle</span>
+            </button>
+            <button onclick="setArchBrush('shrine')" id="arch-shrine-btn" class="emoji-btn p-2.5 rounded-xl bg-slate-900/80 border border-purple-500/30 text-xs font-bold text-slate-300 flex flex-col items-center">
+                <span class="text-lg">⛩️</span><span>Mystic Shrine</span>
+            </button>
+            <button onclick="setArchBrush('tower')" id="arch-tower-btn" class="emoji-btn p-2.5 rounded-xl bg-slate-900/80 border border-purple-500/30 text-xs font-bold text-slate-300 flex flex-col items-center">
+                <span class="text-lg">🗼</span><span>Crystal Tower</span>
+            </button>
+            <button onclick="setArchBrush('portal')" id="arch-portal-btn" class="emoji-btn p-2.5 rounded-xl bg-slate-900/80 border border-purple-500/30 text-xs font-bold text-slate-300 flex flex-col items-center">
+                <span class="text-lg">🌀</span><span>Dungeon Portal</span>
+            </button>
+            <button onclick="setArchBrush('bridge')" id="arch-bridge-btn" class="emoji-btn p-2.5 rounded-xl bg-slate-900/80 border border-purple-500/30 text-xs font-bold text-slate-300 flex flex-col items-center">
+                <span class="text-lg">🌉</span><span>Magic Bridge</span>
+            </button>
+            <button onclick="setArchBrush('village')" id="arch-village-btn" class="emoji-btn p-2.5 rounded-xl bg-slate-900/80 border border-purple-500/30 text-xs font-bold text-slate-300 flex flex-col items-center">
+                <span class="text-lg">🏡</span><span>Elf Village</span>
+            </button>
+        </div>
+
+        <div class="space-y-2 border-t border-pink-500/20 pt-3">
+            <button onclick="clearAllArchitecture()" class="emoji-btn w-full py-2.5 rounded-xl bg-red-600/60 hover:bg-red-600 text-xs font-bold shadow-md">⚠️ Clear World Architecture</button>
+        </div>
+    </aside>
+
+    <!-- Skin & Texture Customizer Panel -->
+    <aside id="panel-skins" class="absolute left-4 top-24 bottom-28 w-80 max-w-[calc(100vw-2rem)] glass-panel rounded-3xl z-20 p-4 hidden flex-col space-y-4 shadow-2xl overflow-y-auto transition-all duration-300">
+        <div class="flex items-center justify-between border-b border-pink-500/30 pb-3">
+            <h2 class="font-bold text-pink-300 text-sm flex items-center space-x-2">
+                <span>🎨</span> <span>Custom Skin & Texture Studio</span>
+            </h2>
+            <span class="text-[10px] bg-pink-500/20 text-pink-300 px-2 py-0.5 rounded-full">Visual Skins</span>
+        </div>
+        <p class="text-[11px] text-slate-300">Upload visual texture files (`.png`, `.jpg`) to skin any object in your JRPG world! Select an object in world or apply globally.</p>
+
+        <label class="emoji-btn flex flex-col items-center justify-center p-5 rounded-2xl bg-gradient-to-r from-pink-600/30 to-purple-600/30 border border-pink-500/40 cursor-pointer hover:border-pink-400 shadow-lg">
+            <span class="text-3xl mb-1">🖼️✨</span>
+            <span class="text-xs font-bold text-pink-200">Upload Object Skin / Texture</span>
+            <span class="text-[10px] text-slate-400 mt-1">Applies to selected or last placed object</span>
+            <input type="file" id="skin-file-input" accept="image/*" onchange="uploadObjectSkin(event)" class="hidden">
+        </label>
+
+        <div class="space-y-2 border-t border-pink-500/20 pt-3">
+            <span class="text-xs font-semibold text-pink-200 block">Preset Procedural Skins</span>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="applyPresetSkin('gold')" class="emoji-btn p-2 rounded-xl bg-amber-600/40 border border-amber-400 text-xs font-bold text-amber-200">✨ Gold Filigree</button>
+                <button onclick="applyPresetSkin('neon')" class="emoji-btn p-2 rounded-xl bg-blue-600/40 border border-blue-400 text-xs font-bold text-blue-200">⚡ Cyber Neon</button>
+                <button onclick="applyPresetSkin('moss')" class="emoji-btn p-2 rounded-xl bg-emerald-600/40 border border-emerald-400 text-xs font-bold text-emerald-200">🌿 Mystic Moss</button>
+                <button onclick="applyPresetSkin('obsidian')" class="emoji-btn p-2 rounded-xl bg-purple-600/40 border border-purple-400 text-xs font-bold text-purple-200">🌌 Obsidian Void</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Character Importer Panel -->
+    <aside id="panel-characters" class="absolute left-4 top-24 bottom-28 w-80 max-w-[calc(100vw-2rem)] glass-panel rounded-3xl z-20 p-4 hidden flex-col space-y-4 shadow-2xl overflow-y-auto transition-all duration-300">
+        <div class="flex items-center justify-between border-b border-purple-500/30 pb-3">
+            <h2 class="font-bold text-purple-300 text-sm flex items-center space-x-2">
+                <span>👘</span> <span>Import Hero (GLTF / JSON)</span>
+            </h2>
+            <span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">Hero Unit</span>
+        </div>
+        <p class="text-[11px] text-slate-300">Upload your exported `.gltf` or `.json` character files to populate your worldmap party with interactive dialogues!</p>
+
+        <label class="emoji-btn flex flex-col items-center justify-center p-5 rounded-2xl bg-gradient-to-r from-purple-600/30 to-blue-600/30 border border-purple-500/40 cursor-pointer hover:border-purple-400 shadow-lg">
+            <span class="text-3xl mb-1">📤</span>
+            <span class="text-xs font-bold text-purple-200">Upload Character (.gltf / .json)</span>
+            <span class="text-[10px] text-slate-400 mt-1">Spawns interactive hero unit</span>
+            <input type="file" id="hero-file-input" accept=".gltf,.json" onchange="importHeroModel(event)" class="hidden">
+        </label>
+
+        <div class="space-y-2 border-t border-purple-500/20 pt-3">
+            <span class="text-xs font-semibold text-purple-200 block">Spawned Party Heroes</span>
+            <div id="hero-list" class="space-y-2 max-h-40 overflow-y-auto">
+                <p class="text-[11px] text-slate-500 italic text-center py-2">No heroes imported yet.</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Universal Media & Audio Hub Panel -->
+    <aside id="panel-media" class="absolute left-4 top-24 bottom-28 w-80 max-w-[calc(100vw-2rem)] glass-panel rounded-3xl z-20 p-4 hidden flex-col space-y-4 shadow-2xl overflow-y-auto transition-all duration-300">
+        <div class="flex items-center justify-between border-b border-blue-500/30 pb-3">
+            <h2 class="font-bold text-blue-300 text-sm flex items-center space-x-2">
+                <span>📦</span> <span>Media & Artifacts Studio</span>
+            </h2>
+            <span class="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full">Distinct Visuals</span>
+        </div>
+        <p class="text-[11px] text-slate-300">Upload images (rendered as 3D holographic frames), videos (interactive video planes), audio (sound crystals), or texts with triggered scenes!</p>
+
+        <label class="emoji-btn flex flex-col items-center justify-center p-5 rounded-2xl bg-gradient-to-r from-blue-600/30 to-pink-600/30 border border-blue-500/40 cursor-pointer hover:border-blue-400 shadow-lg">
+            <span class="text-3xl mb-1">🎵🖼️🎬📄</span>
+            <span class="text-xs font-bold text-blue-200">Upload Distinct Media Artifact</span>
+            <span class="text-[10px] text-slate-400 mt-1">(.mp3, .png, .jpg, .mp4, .txt, .pdf)</span>
+            <input type="file" id="media-file-input" accept="image/*,video/*,audio/*,.pdf,.txt,.html" onchange="uploadWorldMedia(event)" class="hidden">
+        </label>
+
+        <div class="space-y-2 border-t border-blue-500/20 pt-3">
+            <span class="text-xs font-semibold text-blue-200 block">World Artifact Inventory</span>
+            <div id="media-inventory-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                <p class="text-[11px] text-slate-500 italic text-center py-2">No media artifacts in the world yet.</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- JRPG Interactive Dialogue & Triggered Scene Modal Overlay -->
+    <div id="jrpg-dialogue-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-end justify-center pb-8 px-4 pointer-events-auto">
+        <div class="jrpg-dialogue-box w-full max-w-3xl p-6 flex flex-col space-y-4 relative animate-bounce-short">
+            <!-- Speaker Header -->
+            <div class="flex items-center justify-between border-b border-pink-500/30 pb-2">
+                <div class="flex items-center space-x-3">
+                    <span id="dialogue-avatar" class="text-3xl">🧙‍♂️</span>
+                    <div>
+                        <h3 id="dialogue-speaker" class="font-black text-pink-300 text-sm tracking-wider">Mystic Sage of Nexus</h3>
+                        <p id="dialogue-subtitle" class="text-[10px] text-slate-400">JRPG Triggered Scene Event</p>
+                    </div>
+                </div>
+                <button onclick="closeDialogueModal()" class="emoji-btn text-sm text-slate-400 hover:text-white px-2 py-1 bg-slate-900 rounded-xl">✕ Close</button>
+            </div>
+
+            <!-- Dialogue Text with Typewriter effect container -->
+            <div class="min-h-[80px] max-h-[160px] overflow-y-auto py-1">
+                <p id="dialogue-text" class="text-sm text-slate-100 font-medium leading-relaxed font-mono">Greetings, traveler! You have interacted with this world artifact. What is your command?</p>
+            </div>
+
+            <!-- Interactive Trigger Choices & Action Buttons -->
+            <div id="dialogue-actions" class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-purple-500/30">
+                <button onclick="triggerDialogueAction('inspect')" class="emoji-btn px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 font-bold text-xs text-white shadow-md flex items-center justify-center space-x-2">
+                    <span>🔍</span> <span>Inspect Artifact</span>
+                </button>
+                <button onclick="triggerDialogueAction('skin')" class="emoji-btn px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 font-bold text-xs text-pink-300 border border-pink-500/40 flex items-center justify-center space-x-2">
+                    <span>🎨</span> <span>Customize Skin</span>
+                </button>
+                <button onclick="triggerDialogueAction('quest')" class="emoji-btn px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 font-bold text-xs text-white flex items-center justify-center space-x-2">
+                    <span>⚔️</span> <span>Trigger Quest Scene</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Audio Player Dock -->
+    <div id="audio-dock" class="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 hidden glass-panel glow-infinite px-5 py-3 rounded-2xl flex items-center space-x-4 shadow-2xl max-w-md w-[calc(100vw-2rem)] pointer-events-auto">
+        <span class="text-2xl animate-spin" style="animation-duration: 3s;">🎵</span>
+        <div class="flex-1 truncate">
+            <h4 id="audio-title" class="text-xs font-extrabold text-pink-300 truncate">Soundtrack: JRPG Mystic Theme</h4>
+            <p id="audio-status" class="text-[10px] text-slate-300">Playing in 3D Infinity Space...</p>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button onclick="toggleAudioPlayback()" id="audio-play-btn" class="emoji-btn p-2 bg-pink-600 rounded-xl text-xs font-bold text-white">⏸️</button>
+            <button onclick="closeAudioDock()" class="emoji-btn p-2 bg-slate-800 rounded-xl text-xs font-bold text-slate-300">✕</button>
+        </div>
+    </div>
+    <audio id="global-audio-element" class="hidden" onended="onAudioEnded()"></audio>
+
+    <!-- Media Viewer / Reader Modal -->
+    <div id="media-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel glow-infinite p-6 rounded-3xl max-w-lg w-full shadow-2xl flex flex-col space-y-4 border border-pink-500/40 relative">
+            <div class="flex items-center justify-between border-b border-pink-500/20 pb-3">
+                <h3 id="modal-title" class="font-extrabold text-base text-pink-300 truncate">Artifact Viewer</h3>
+                <button onclick="closeMediaModal()" class="emoji-btn text-lg text-slate-400 hover:text-white">✕</button>
+            </div>
+            <div id="modal-content-container" class="w-full max-h-[60vh] overflow-y-auto flex items-center justify-center">
+                <!-- Dynamically injected media preview -->
+            </div>
+            <div class="flex justify-end pt-2">
+                <button onclick="closeMediaModal()" class="emoji-btn px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-xl text-xs font-bold">Close Viewer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="absolute bottom-6 right-6 z-50 glass-panel glow-infinite px-4 py-3 rounded-2xl border border-pink-500/50 shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center space-x-3 pointer-events-none">
+        <span class="text-xl">💠</span>
+        <span id="toast-msg" class="text-xs font-bold text-pink-200">Notification</span>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let clock = new THREE.Clock();
+
+        let appState = {
+            mode: 'worldmap', // worldmap, architecture, skins, characters, media
+            archBrush: 'castle',
+            touchMode: 'orbit', // 'orbit' or 'place'
+            selectedObject: null
+        };
+
+        let worldObjects = []; // Stores all interactable objects (architecture, heroes, media) with metadata & meshes
+        let activeAudioArtifact = null;
+        let currentDialogueTarget = null;
+
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let gridPlaneMesh;
+        let textureLoader = new THREE.TextureLoader();
+
+        window.onload = function() {
+            init3DWorld();
+            showToast('JRPG Infinity Pixel Nexus ready with Custom Skins & Dialogues! 💠✨');
+        };
+
+        function init3DWorld() {
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x05020a);
+            scene.fog = new THREE.FogExp2(0x05020a, 0.012);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 12, 18);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            if (typeof THREE.OrbitControls !== 'undefined') {
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.maxPolarAngle = Math.PI / 2 - 0.05;
+                controls.minDistance = 3;
+                controls.maxDistance = 50;
+                controls.target.set(0, 0, 0);
+            }
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+            const dirLight = new THREE.DirectionalLight(0xd946ef, 1.2);
+            dirLight.position.set(10, 20, 10);
+            dirLight.castShadow = true;
+            
+            const bluePoint = new THREE.PointLight(0x3b82f6, 3, 30);
+            bluePoint.position.set(-10, 5, -10);
+
+            const pinkPoint = new THREE.PointLight(0xec4899, 3, 30);
+            pinkPoint.position.set(10, 5, 10);
+
+            scene.add(ambient, dirLight, bluePoint, pinkPoint);
+
+            buildInfinityWorldGrid();
+
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('click', onCanvasClick);
+            renderer.domElement.addEventListener('touchstart', onCanvasTouch, { passive: false });
+
+            animate();
+        }
+
+        function buildInfinityWorldGrid() {
+            const planeGeo = new THREE.PlaneGeometry(100, 100, 50, 50);
+            const planeMat = new THREE.MeshStandardMaterial({
+                color: 0x0a0414,
+                roughness: 0.4,
+                metalness: 0.8
+            });
+            gridPlaneMesh = new THREE.Mesh(planeGeo, planeMat);
+            gridPlaneMesh.rotation.x = -Math.PI / 2;
+            gridPlaneMesh.receiveShadow = true;
+            scene.add(gridPlaneMesh);
+
+            const grid = new THREE.GridHelper(100, 50, 0xd946ef, 0x3b82f6);
+            grid.position.y = 0.02;
+            scene.add(grid);
+        }
+
+        function setBuilderMode(mode) {
+            appState.mode = mode;
+            ['worldmap', 'architecture', 'skins', 'characters', 'media'].forEach(m => {
+                const btn = document.getElementById(`mode-${m}-btn`);
+                if (btn) {
+                    if (m === mode) {
+                        btn.className = "emoji-btn px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs flex items-center space-x-1 shadow-md";
+                    } else {
+                        btn.className = "emoji-btn px-3 py-1.5 rounded-xl bg-slate-900/80 text-slate-300 font-bold text-xs flex items-center space-x-1 hover:bg-slate-800";
+                    }
+                }
+            });
+
+            document.getElementById('panel-architecture').style.display = (mode === 'architecture') ? 'flex' : 'none';
+            document.getElementById('panel-skins').style.display = (mode === 'skins') ? 'flex' : 'none';
+            document.getElementById('panel-characters').style.display = (mode === 'characters') ? 'flex' : 'none';
+            document.getElementById('panel-media').style.display = (mode === 'media') ? 'flex' : 'none';
+
+            showToast(`Switched mode: ${mode.toUpperCase()} ✨`);
+        }
+
+        function setArchBrush(type) {
+            appState.archBrush = type;
+            ['castle', 'shrine', 'tower', 'portal', 'bridge', 'village'].forEach(t => {
+                const btn = document.getElementById(`arch-${t}-btn`);
+                if (btn) {
+                    if (t === type) {
+                        btn.className = "emoji-btn p-2.5 rounded-xl bg-pink-600/40 border border-pink-400 text-xs font-bold text-pink-100 flex flex-col items-center";
+                    } else {
+                        btn.className = "emoji-btn p-2.5 rounded-xl bg-slate-900/80 border border-purple-500/30 text-xs font-bold text-slate-300 flex flex-col items-center";
+                    }
+                }
+            });
+            showToast(`Selected Architecture Brush: ${type} 🏰`);
+        }
+
+        function toggleMobileTouchMode() {
+            if (appState.touchMode === 'orbit') {
+                appState.touchMode = 'place';
+                document.getElementById('touch-mode-btn').className = "emoji-btn px-3 py-1.5 rounded-xl bg-pink-600 text-white font-bold text-xs flex items-center space-x-1";
+                document.getElementById('touch-mode-txt').innerText = 'Place / Tap';
+                if (controls) controls.enabled = false;
+                showToast('Touch Mode: Tap to place objects or interact! 👆');
+            } else {
+                appState.touchMode = 'orbit';
+                document.getElementById('touch-mode-btn').className = "emoji-btn px-3 py-1.5 rounded-xl bg-blue-600/60 text-white font-bold text-xs flex items-center space-x-1";
+                document.getElementById('touch-mode-txt').innerText = 'Orbit';
+                if (controls) controls.enabled = true;
+                showToast('Touch Mode: Camera Orbit enabled 🌐');
+            }
+        }
+
+        function onCanvasClick(event) {
+            handleRaycast(event.clientX, event.clientY);
+        }
+
+        function onCanvasTouch(event) {
+            if (event.touches.length === 1) {
+                const touch = event.touches[0];
+                handleRaycast(touch.clientX, touch.clientY);
+            }
+        }
+
+        function handleRaycast(clientX, clientY) {
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            // First check intersection with world objects (for interactions / dialogues)
+            const interactableMeshes = worldObjects.map(o => o.mesh);
+            const objectIntersects = raycaster.intersectObjects(interactableMeshes, true);
+
+            if (objectIntersects.length > 0) {
+                let hitMesh = objectIntersects[0].object;
+                // Find parent world object wrapper
+                let foundObj = worldObjects.find(o => o.mesh === hitMesh || o.mesh.children.includes(hitMesh) || isChildOf(hitMesh, o.mesh));
+                if (foundObj) {
+                    appState.selectedObject = foundObj;
+                    openJRPGDialogue(foundObj);
+                    return;
+                }
+            }
+
+            // Otherwise check grid plane for placement if in building modes
+            if (appState.touchMode === 'place' || appState.mode === 'architecture') {
+                const intersects = raycaster.intersectObject(gridPlaneMesh);
+                if (intersects.length > 0) {
+                    const pt = intersects[0].point;
+                    if (appState.mode === 'architecture') {
+                        spawnArchitecture(pt.x, pt.z, appState.archBrush);
+                    }
+                }
+            }
+        }
+
+        function isChildOf(child, parent) {
+            let node = child.parent;
+            while (node != null) {
+                if (node === parent) return true;
+                node = node.parent;
+            }
+            return false;
+        }
+
+        function spawnArchitecture(x, z, type) {
+            const group = createArchitectureMesh(type);
+            group.position.set(x, 0, z);
+            scene.add(group);
+
+            const worldObj = {
+                id: Date.now() + Math.random(),
+                name: `${type.toUpperCase()} Citadel`,
+                type: 'architecture',
+                category: type,
+                mesh: group,
+                dialogue: `You approach the legendary ${type}. Ancient runes glow along its walls, triggering a mystical JRPG event!`
+            };
+            worldObjects.push(worldObj);
+            appState.selectedObject = worldObj;
+            showToast(`Placed JRPG ${type} with interactive dialogue! 🏰✨`);
+        }
+
+        function createArchitectureMesh(type) {
+            const group = new THREE.Group();
+            let baseMat = new THREE.MeshStandardMaterial({ color: 0x9333ea, roughness: 0.2, metalness: 0.8, emissive: 0x6b21a8, emissiveIntensity: 0.4 });
+            let roofMat = new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.2, metalness: 0.5 });
+
+            if (type === 'castle') {
+                const base = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 1.6), baseMat);
+                base.position.y = 0.6;
+                base.castShadow = true;
+                const roof = new THREE.Mesh(new THREE.ConeGeometry(1.1, 1.0, 4), roofMat);
+                roof.position.y = 1.7;
+                roof.castShadow = true;
+                group.add(base, roof);
+            } else if (type === 'shrine') {
+                const woodMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4, metalness: 0.3 });
+                const goldMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.1, metalness: 0.9, emissive: 0xfbbf24, emissiveIntensity: 0.5 });
+                const pillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.8), woodMat);
+                pillarL.position.set(-0.6, 0.9, 0);
+                const pillarR = pillarL.clone();
+                pillarR.position.x = 0.6;
+                const beamTop = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.15, 0.3), goldMat);
+                beamTop.position.y = 1.6;
+                group.add(pillarL, pillarR, beamTop);
+            } else if (type === 'tower') {
+                const towerMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.1, metalness: 0.9, emissive: 0x1d4ed8, emissiveIntensity: 0.6 });
+                const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 3.2, 16), towerMat);
+                tower.position.y = 1.6;
+                tower.castShadow = true;
+                group.add(tower);
+            } else if (type === 'portal') {
+                const portalMat = new THREE.MeshStandardMaterial({ color: 0xd946ef, roughness: 0.1, metalness: 0.5, emissive: 0xd946ef, emissiveIntensity: 0.9, wireframe: true });
+                const portal = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.2, 16, 32), portalMat);
+                portal.position.y = 1.0;
+                group.add(portal);
+            } else if (type === 'bridge') {
+                const bridgeMat = new THREE.MeshStandardMaterial({ color: 0x60a5fa, roughness: 0.3, metalness: 0.6 });
+                const bridge = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 1.0), bridgeMat);
+                bridge.position.y = 0.5;
+                group.add(bridge);
+            } else {
+                const houseMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.5 });
+                const house = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.0, 1.2), houseMat);
+                house.position.y = 0.5;
+                group.add(house);
+            }
+            return group;
+        }
+
+        // Custom Skin / Texture Upload for any Object
+        function uploadObjectSkin(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const textureUrl = e.target.result;
+                textureLoader.load(textureUrl, (texture) => {
+                    applyTextureToTarget(texture);
+                    showToast(`Custom skin "${file.name}" applied successfully! 🎨✨`);
+                }, undefined, (err) => {
+                    showToast('Error loading texture image.');
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function applyPresetSkin(style) {
+            let color = 0xfbbf24;
+            let emissive = 0xd97706;
+            if (style === 'neon') { color = 0x38bdf8; emissive = 0x0284c7; }
+            else if (style === 'moss') { color = 0x34d399; emissive = 0x059669; }
+            else if (style === 'obsidian') { color = 0xa855f7; emissive = 0x7e22ce; }
+
+            const newMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.2, metalness: 0.8, emissive: emissive, emissiveIntensity: 0.6 });
+            applyMaterialToTarget(newMat);
+            showToast(`Applied preset skin: ${style.toUpperCase()} ✨`);
+        }
+
+        function applyTextureToTarget(texture) {
+            const target = appState.selectedObject || worldObjects[worldObjects.length - 1];
+            if (!target || !target.mesh) {
+                showToast('Please select or place an object in the world first!');
+                return;
+            }
+            target.mesh.traverse((child) => {
+                if (child.isMesh) {
+                    child.material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.3, metalness: 0.4 });
+                }
+            });
+        }
+
+        function applyMaterialToTarget(material) {
+            const target = appState.selectedObject || worldObjects[worldObjects.length - 1];
+            if (!target || !target.mesh) {
+                showToast('Please select or place an object in the world first!');
+                return;
+            }
+            target.mesh.traverse((child) => {
+                if (child.isMesh) {
+                    child.material = material;
+                }
+            });
+        }
+
+        function importHeroModel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const group = createProxyHeroFigurine();
+                group.position.set((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 6);
+                scene.add(group);
+
+                const worldObj = {
+                    id: Date.now() + Math.random(),
+                    name: file.name,
+                    type: 'hero',
+                    mesh: group,
+                    dialogue: `Hero "${file.name}" joins your JRPG party! "I am ready for the ultimate boss battle, Commander!"`
+                };
+                worldObjects.push(worldObj);
+                appState.selectedObject = worldObj;
+                updateHeroListUI();
+                showToast(`Successfully imported hero "${file.name}"! 👘✨`);
+            };
+            reader.readAsText(file);
+        }
+
+        function createProxyHeroFigurine() {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({ color: 0xd946ef, roughness: 0.2, metalness: 0.7, emissive: 0xa855f7, emissiveIntensity: 0.5 });
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 1.6, 16), mat);
+            body.position.y = 0.8;
+            body.castShadow = true;
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 24), mat);
+            head.position.y = 1.8;
+            group.add(body, head);
+            return group;
+        }
+
+        function updateHeroListUI() {
+            const list = document.getElementById('hero-list');
+            const heroes = worldObjects.filter(o => o.type === 'hero');
+            if (heroes.length === 0) {
+                list.innerHTML = `<p class="text-[11px] text-slate-500 italic text-center py-2">No heroes imported yet.</p>`;
+                return;
+            }
+            list.innerHTML = '';
+            heroes.forEach((hero) => {
+                const item = document.createElement('div');
+                item.className = "glass-panel p-2 rounded-xl border border-purple-500/30 flex items-center justify-between text-xs";
+                item.innerHTML = `
+                    <span class="truncate text-purple-200 font-medium">👘 ${hero.name}</span>
+                    <button onclick="selectWorldObject('${hero.id}')" class="emoji-btn px-2 py-0.5 bg-purple-600 rounded-lg text-[10px] font-bold text-white">Select</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // Distinct Media & Artifacts Upload with Visual Representations
+        function uploadWorldMedia(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const url = e.target.result;
+                let type = 'other';
+                if (file.type.startsWith('image/')) type = 'image';
+                else if (file.type.startsWith('video/')) type = 'video';
+                else if (file.type.startsWith('audio/')) type = 'audio';
+                else if (file.type.includes('pdf') || file.type.includes('text')) type = 'document';
+
+                const group = createDistinctMediaMesh(type, url);
+                group.position.set((Math.random() - 0.5) * 8, 0.8, (Math.random() - 0.5) * 8);
+                scene.add(group);
+
+                const artifact = {
+                    id: Date.now() + Math.random(),
+                    name: file.name,
+                    type: type,
+                    url: url,
+                    mesh: group,
+                    dialogue: `You discovered media artifact "${file.name}". Inspecting opens immersive viewer and triggered scene events!`
+                };
+
+                worldObjects.push(artifact);
+                appState.selectedObject = artifact;
+                updateMediaInventoryUI();
+                showToast(`Distinct media artifact "${file.name}" placed in world! 📦✨`);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function createDistinctMediaMesh(type, url) {
+            const group = new THREE.Group();
+
+            if (type === 'image') {
+                // Holographic Picture Frame
+                const frameMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.2, metalness: 0.9 });
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 0.1), frameMat);
+                
+                textureLoader.load(url, (texture) => {
+                    const canvasMat = new THREE.MeshBasicMaterial({ map: texture });
+                    const canvasMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.0), canvasMat);
+                    canvasMesh.position.z = 0.06;
+                    group.add(canvasMesh);
+                });
+                group.add(frame);
+            } else if (type === 'video') {
+                // Video Screen Monument
+                const screenMat = new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.3, emissive: 0xdb2777, emissiveIntensity: 0.6 });
+                const screen = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.2, 0.15), screenMat);
+                group.add(screen);
+            } else if (type === 'audio') {
+                // Glowing Sound Crystal
+                const crystalMat = new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.1, metalness: 0.9, emissive: 0xd946ef, emissiveIntensity: 0.9 });
+                const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.8, 0), crystalMat);
+                group.add(crystal);
+            } else {
+                // Magical Scroll / Book Monument
+                const bookMat = new THREE.MeshStandardMaterial({ color: 0x8b5cf6, roughness: 0.4, emissive: 0x6d28d9, emissiveIntensity: 0.5 });
+                const book = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.2, 0.3), bookMat);
+                group.add(book);
+            }
+            return group;
+        }
+
+        function updateMediaInventoryUI() {
+            const list = document.getElementById('media-inventory-list');
+            const mediaList = worldObjects.filter(o => o.type === 'image' || o.type === 'video' || o.type === 'audio' || o.type === 'document' || o.type === 'other');
+            if (mediaList.length === 0) {
+                list.innerHTML = `<p class="text-[11px] text-slate-500 italic text-center py-2">No media artifacts in the world yet.</p>`;
+                return;
+            }
+            list.innerHTML = '';
+            mediaList.forEach((art) => {
+                const item = document.createElement('div');
+                item.className = "glass-panel p-2.5 rounded-xl border border-blue-500/30 flex items-center justify-between text-xs";
+                let icon = '📦';
+                if (art.type === 'audio') icon = '🎵';
+                else if (art.type === 'image') icon = '🖼️';
+                else if (art.type === 'video') icon = '🎬';
+                else if (art.type === 'document') icon = '📄';
+
+                item.innerHTML = `
+                    <div class="flex items-center space-x-2 truncate cursor-pointer" onclick="selectWorldObject('${art.id}')">
+                        <span>${icon}</span>
+                        <span class="truncate text-blue-200 font-medium">${art.name}</span>
+                    </div>
+                    <button onclick="openJRPGDialogue(${JSON.stringify(art).replace(/"/g, '&quot;')})" class="emoji-btn px-2 py-0.5 bg-blue-600 rounded-lg text-[10px] font-bold text-white">Interact</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function selectWorldObject(id) {
+            const obj = worldObjects.find(o => o.id == id);
+            if (obj) {
+                appState.selectedObject = obj;
+                openJRPGDialogue(obj);
+            }
+        }
+
+        // JRPG Interactive Dialogue & Triggered Scene System
+        function openJRPGDialogue(obj) {
+            currentDialogueTarget = obj;
+            document.getElementById('dialogue-speaker').innerText = obj.name || 'JRPG Entity';
+            document.getElementById('dialogue-subtitle').innerText = `Event Trigger: ${obj.type.toUpperCase()}`;
+            document.getElementById('dialogue-text').innerText = obj.dialogue || 'A mysterious resonance echoes through the JRPG nexus...';
+            document.getElementById('jrpg-dialogue-modal').classList.remove('hidden');
+        }
+
+        function closeDialogueModal() {
+            document.getElementById('jrpg-dialogue-modal').classList.add('hidden');
+        }
+
+        function triggerDialogueAction(action) {
+            if (!currentDialogueTarget) return;
+
+            if (action === 'inspect') {
+                closeDialogueModal();
+                if (currentDialogueTarget.type === 'audio') {
+                    playWorldAudio(currentDialogueTarget);
+                } else if (currentDialogueTarget.type === 'image' || currentDialogueTarget.type === 'video' || currentDialogueTarget.type === 'document') {
+                    openMediaModal(currentDialogueTarget);
+                } else {
+                    showToast(`Inspected "${currentDialogueTarget.name}". JRPG lore unlocked! 📜✨`);
+                }
+            } else if (action === 'skin') {
+                closeDialogueModal();
+                setBuilderMode('skins');
+                showToast('Customize object skin in the Skin Studio! 🎨');
+            } else if (action === 'quest') {
+                closeDialogueModal();
+                showToast(`⚔️ Triggered boss battle / quest event with ${currentDialogueTarget.name}! Victory bonus acquired! 🏆`);
+            }
+        }
+
+        function playWorldAudio(art) {
+            activeAudioArtifact = art;
+            const audioEl = document.getElementById('global-audio-element');
+            audioEl.src = art.url;
+            audioEl.play().catch(e => console.log(e));
+            
+            document.getElementById('audio-title').innerText = art.name;
+            document.getElementById('audio-status').innerText = 'Playing 3D Sound Crystal...';
+            document.getElementById('audio-play-btn').innerText = '⏸️';
+            document.getElementById('audio-dock').classList.remove('hidden');
+            showToast(`Playing audio: ${art.name} 🎵`);
+        }
+
+        function toggleAudioPlayback() {
+            const audioEl = document.getElementById('global-audio-element');
+            if (audioEl.paused) {
+                audioEl.play();
+                document.getElementById('audio-play-btn').innerText = '⏸️';
+                document.getElementById('audio-status').innerText = 'Playing 3D Sound Crystal...';
+            } else {
+                audioEl.pause();
+                document.getElementById('audio-play-btn').innerText = '▶️';
+                document.getElementById('audio-status').innerText = 'Paused';
+            }
+        }
+
+        function closeAudioDock() {
+            const audioEl = document.getElementById('global-audio-element');
+            audioEl.pause();
+            document.getElementById('audio-dock').classList.add('hidden');
+        }
+
+        function onAudioEnded() {
+            document.getElementById('audio-play-btn').innerText = '▶️';
+            document.getElementById('audio-status').innerText = 'Playback Finished';
+        }
+
+        function openMediaModal(art) {
+            document.getElementById('modal-title').innerText = art.name;
+            const container = document.getElementById('modal-content-container');
+            container.innerHTML = '';
+
+            if (art.type === 'image') {
+                container.innerHTML = `<img src="${art.url}" class="max-w-full max-h-[50vh] rounded-2xl object-contain border border-pink-500/30">`;
+            } else if (art.type === 'video') {
+                container.innerHTML = `<video src="${art.url}" controls autoplay class="max-w-full max-h-[50vh] rounded-2xl"></video>`;
+            } else {
+                container.innerHTML = `<div class="p-4 text-center text-xs text-slate-300">Document / Text Artifact loaded successfully. <a href="${art.url}" download="${art.name}" class="text-pink-400 underline font-bold mt-2 block">Download / Open File</a></div>`;
+            }
+            document.getElementById('media-modal').classList.remove('hidden');
+        }
+
+        function closeMediaModal() {
+            document.getElementById('media-modal').classList.add('hidden');
+            document.getElementById('modal-content-container').innerHTML = '';
+        }
+
+        function clearAllArchitecture() {
+            worldObjects.forEach(obj => {
+                if (scene && obj.mesh) scene.remove(obj.mesh);
+            });
+            worldObjects = [];
+            updateHeroListUI();
+            updateMediaInventoryUI();
+            showToast('Cleared all world objects! ⚠️');
+        }
+
+        function saveWorldProject() {
+            const projectData = {
+                worldObjects: worldObjects.map(o => ({ id: o.id, name: o.name, type: o.type, dialogue: o.dialogue, pos: o.mesh.position }))
+            };
+            const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'jrpg-infinity-worldmap-project.json';
+            link.click();
+            showToast('World project saved to JSON! 💾');
+        }
+
+        function loadWorldProject(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    clearAllArchitecture();
+                    if (data.worldObjects) {
+                        data.worldObjects.forEach(item => {
+                            const group = createArchitectureMesh('castle');
+                            group.position.set(item.pos.x, item.pos.y, item.pos.z);
+                            scene.add(group);
+                            worldObjects.push({ id: item.id, name: item.name, type: item.type, mesh: group, dialogue: item.dialogue });
+                        });
+                    }
+                    showToast('World project loaded successfully! 📂✨');
+                } catch(err) {
+                    showToast('Error parsing project file.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
+
+            worldObjects.forEach((obj, idx) => {
+                if (obj.mesh && (obj.type === 'audio' || obj.type === 'architecture')) {
+                    obj.mesh.rotation.y += delta * 0.5;
+                }
+            });
+
+            if (controls) controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
+        }
+    </script>
+</body>
+</html>
