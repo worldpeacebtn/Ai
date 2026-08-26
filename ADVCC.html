@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magical Anime Studio & Arcade 3D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use reliable jsDelivr CDNs for Three.js r128 and add-ons -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+    <!-- Google Fonts: Poppins & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Poppins:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', 'Inter', sans-serif; user-select: none; overflow: hidden; background: #0f172a; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(236, 72, 153, 0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(236, 72, 153, 0.8); }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .glow-pink { box-shadow: 0 0 25px rgba(236, 72, 153, 0.4); }
+        .glow-cyan { box-shadow: 0 0 25px rgba(6, 182, 212, 0.4); }
+        .emoji-btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .emoji-btn:hover { transform: scale(1.08); filter: drop-shadow(0 0 10px rgba(255,255,255,0.7)); }
+        .emoji-btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="w-screen h-screen relative flex flex-col overflow-hidden text-white">
+
+    <div id="canvas-container" class="absolute inset-0 w-full h-full z-0"></div>
+
+    <!-- Top Navigation Header -->
+    <header class="absolute top-0 left-0 right-0 z-30 p-3 flex flex-wrap items-center justify-between pointer-events-none">
+        <div class="glass-panel px-4 py-2 rounded-2xl flex items-center space-x-3 pointer-events-auto shadow-2xl glow-pink">
+            <span class="text-2xl animate-spin" style="animation-duration: 6s;">✨</span>
+            <div>
+                <h1 class="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-400 text-lg sm:text-xl tracking-wider">MAGICAL ANIME STUDIO</h1>
+                <p class="text-xs text-pink-200/70 font-medium">Sailor 3D Creator & Arcade Suite</p>
+            </div>
+        </div>
+
+        <!-- Mode Selector Bar -->
+        <div class="glass-panel px-3 py-1.5 rounded-2xl flex items-center space-x-2 pointer-events-auto shadow-2xl mt-2 sm:mt-0 overflow-x-auto">
+            <button onclick="switchMode('creator')" id="mode-creator-btn" class="emoji-btn px-3 py-1.5 rounded-xl bg-pink-600 text-white font-bold text-xs sm:text-sm flex items-center space-x-1 shadow-md">
+                <span>🎨</span> <span class="hidden md:inline">Creator</span>
+            </button>
+            <button onclick="switchMode('fighter')" id="mode-fighter-btn" class="emoji-btn px-3 py-1.5 rounded-xl bg-slate-800/80 text-slate-300 font-bold text-xs sm:text-sm flex items-center space-x-1 hover:bg-slate-700">
+                <span>⚔️</span> <span class="hidden md:inline">Anime Fighter</span>
+            </button>
+            <button onclick="switchMode('novel')" id="mode-novel-btn" class="emoji-btn px-3 py-1.5 rounded-xl bg-slate-800/80 text-slate-300 font-bold text-xs sm:text-sm flex items-center space-x-1 hover:bg-slate-700">
+                <span>📖</span> <span class="hidden md:inline">Visual Novel</span>
+            </button>
+        </div>
+
+        <!-- Project Actions Bar -->
+        <div class="glass-panel px-3 py-2 rounded-2xl flex items-center space-x-2 pointer-events-auto shadow-2xl mt-2 sm:mt-0">
+            <button onclick="openTexturePainter()" class="emoji-btn p-2 rounded-xl bg-purple-600/60 hover:bg-purple-600 text-white text-lg shadow-md" title="Draw 2D Texture">🖌️</button>
+            <button onclick="exportCharacterGLTF()" class="emoji-btn p-2 rounded-xl bg-cyan-600/60 hover:bg-cyan-600 text-white text-lg shadow-md" title="Export 3D Model (GLTF)">📦</button>
+            <button onclick="saveProjectJSON()" class="emoji-btn p-2 rounded-xl bg-emerald-600/60 hover:bg-emerald-600 text-white text-lg shadow-md" title="Save Project">💾</button>
+            <label class="emoji-btn p-2 rounded-xl bg-amber-600/60 hover:bg-amber-600 text-white text-lg shadow-md cursor-pointer" title="Upload / Load Project">
+                📂 <input type="file" id="import-file" accept=".json" class="hidden" onchange="importProjectJSON(event)">
+            </label>
+        </div>
+    </header>
+
+    <aside id="creator-panel" class="absolute left-4 top-24 bottom-20 w-80 max-w-[calc(100vw-2rem)] glass-panel rounded-3xl z-20 p-4 flex flex-col space-y-4 shadow-2xl overflow-y-auto transition-all duration-300">
+        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+            <h2 class="font-bold text-pink-300 text-base flex items-center space-x-2">
+                <span>👘</span> <span>Character Customizer</span>
+            </h2>
+            <span class="text-xs bg-pink-500/20 text-pink-300 px-2 py-0.5 rounded-full">Sailor Style</span>
+        </div>
+
+        <!-- Section: Hair & Face -->
+        <div class="space-y-3">
+            <label class="text-xs font-semibold text-slate-300 flex items-center space-x-1"><span>💇</span><span>Hair Style & Odango</span></label>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="setCharacterPart('hair', 'twintails')" class="emoji-btn p-2 rounded-xl bg-slate-800/80 border border-pink-500/30 text-xs font-medium text-pink-200 hover:bg-pink-600/40">🎀 Twintails</button>
+                <button onclick="setCharacterPart('hair', 'spiky')" class="emoji-btn p-2 rounded-xl bg-slate-800/80 border border-pink-500/30 text-xs font-medium text-pink-200 hover:bg-pink-600/40">⚡ Spiky</button>
+                <button onclick="setCharacterPart('hair', 'long')" class="emoji-btn p-2 rounded-xl bg-slate-800/80 border border-pink-500/30 text-xs font-medium text-pink-200 hover:bg-pink-600/40">👩‍🎤 Flowing</button>
+            </div>
+            <div class="flex items-center justify-between pt-1">
+                <span class="text-xs text-slate-300">Hair Color</span>
+                <input type="color" id="hair-color-picker" value="#f43f5e" onchange="updateColor('hair', this.value)" class="w-10 h-8 rounded-lg cursor-pointer bg-transparent border border-white/20">
+            </div>
+        </div>
+
+        <!-- Section: Outfit -->
+        <div class="space-y-3 border-t border-white/10 pt-3">
+            <label class="text-xs font-semibold text-slate-300 flex items-center space-x-1"><span>👗</span><span>Sailor Fuku / Armor</span></label>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="setCharacterPart('outfit', 'sailor')" class="emoji-btn p-2 rounded-xl bg-slate-800/80 border border-cyan-500/30 text-xs font-medium text-cyan-200 hover:bg-cyan-600/40">⚓ Sailor Uniform</button>
+                <button onclick="setCharacterPart('outfit', 'armor')" class="emoji-btn p-2 rounded-xl bg-slate-800/80 border border-cyan-500/30 text-xs font-medium text-cyan-200 hover:bg-cyan-600/40">🛡️ Magical Armor</button>
+            </div>
+            <div class="flex items-center justify-between pt-1">
+                <span class="text-xs text-slate-300">Outfit Primary Color</span>
+                <input type="color" id="outfit-color-picker" value="#06b6d4" onchange="updateColor('outfit', this.value)" class="w-10 h-8 rounded-lg cursor-pointer bg-transparent border border-white/20">
+            </div>
+            <div class="flex items-center justify-between pt-1">
+                <span class="text-xs text-slate-300">Ribbon / Accent Color</span>
+                <input type="color" id="accent-color-picker" value="#ec4899" onchange="updateColor('accent', this.value)" class="w-10 h-8 rounded-lg cursor-pointer bg-transparent border border-white/20">
+            </div>
+        </div>
+
+        <!-- Section: Accessories -->
+        <div class="space-y-3 border-t border-white/10 pt-3">
+            <label class="text-xs font-semibold text-slate-300 flex items-center space-x-1"><span>👑</span><span>Magical Tiara & Wings</span></label>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="toggleAccessory('tiara')" id="btn-tiara" class="emoji-btn p-2 rounded-xl bg-amber-500/30 border border-amber-500/50 text-xs font-medium text-amber-200">✨ Tiara ON</button>
+                <button onclick="toggleAccessory('wings')" id="btn-wings" class="emoji-btn p-2 rounded-xl bg-purple-500/30 border border-purple-500/50 text-xs font-medium text-purple-200">🦋 Wings ON</button>
+            </div>
+        </div>
+
+        <!-- Section: Eye Color -->
+        <div class="space-y-3 border-t border-white/10 pt-3">
+            <label class="text-xs font-semibold text-slate-300 flex items-center space-x-1"><span>👁️</span><span>Eyes & Expression</span></label>
+            <div class="flex items-center justify-between">
+                <span class="text-xs text-slate-300">Eye Color</span>
+                <input type="color" id="eye-color-picker" value="#3b82f6" onchange="updateColor('eyes', this.value)" class="w-10 h-8 rounded-lg cursor-pointer bg-transparent border border-white/20">
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="setExpression('happy')" class="emoji-btn p-2 rounded-xl bg-slate-800 text-xs">😊 Happy</button>
+                <button onclick="setExpression('confident')" class="emoji-btn p-2 rounded-xl bg-slate-800 text-xs">😎 Cool</button>
+                <button onclick="setExpression('determined')" class="emoji-btn p-2 rounded-xl bg-slate-800 text-xs">🔥 Fierce</button>
+            </div>
+        </div>
+    </aside>
+
+    <aside id="animation-panel" class="absolute right-4 top-24 bottom-20 w-72 max-w-[calc(100vw-2rem)] glass-panel rounded-3xl z-20 p-4 flex flex-col space-y-4 shadow-2xl overflow-y-auto transition-all duration-300">
+        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+            <h2 class="font-bold text-cyan-300 text-base flex items-center space-x-2">
+                <span>🕺</span> <span>Animations & FX</span>
+            </h2>
+            <span class="text-xs bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full">Live Studio</span>
+        </div>
+
+        <div class="space-y-3">
+            <label class="text-xs font-semibold text-slate-300 flex items-center space-x-1"><span>🎬</span><span>Pose & Motion</span></label>
+            <div class="grid grid-cols-1 gap-2">
+                <button onclick="setAnimation('idle')" class="emoji-btn p-2.5 rounded-xl bg-slate-800/80 border border-cyan-500/30 text-xs font-medium text-cyan-200 flex items-center space-x-2"><span>🧘</span><span>Idle Floating Pose</span></button>
+                <button onclick="setAnimation('magic')" class="emoji-btn p-2.5 rounded-xl bg-slate-800/80 border border-pink-500/30 text-xs font-medium text-pink-200 flex items-center space-x-2"><span>💫</span><span>Magical Transformation</span></button>
+                <button onclick="setAnimation('punch')" class="emoji-btn p-2.5 rounded-xl bg-slate-800/80 border border-amber-500/30 text-xs font-medium text-amber-200 flex items-center space-x-2"><span>👊</span><span>Fighting Combo Kick</span></button>
+                <button onclick="setAnimation('victory')" class="emoji-btn p-2.5 rounded-xl bg-slate-800/80 border border-emerald-500/30 text-xs font-medium text-emerald-200 flex items-center space-x-2"><span>✌️</span><span>Victory Pose</span></button>
+            </div>
+        </div>
+
+        <div class="space-y-3 border-t border-white/10 pt-3">
+            <label class="text-xs font-semibold text-slate-300 flex items-center space-x-1"><span>✨</span><span>Special FX Aura</span></label>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="toggleParticleAura('stars')" class="emoji-btn p-2 rounded-xl bg-purple-500/30 border border-purple-500/50 text-xs font-medium text-purple-200">✨ Sparkle Aura</button>
+                <button onclick="toggleParticleAura('fire')" class="emoji-btn p-2 rounded-xl bg-red-500/30 border border-red-500/50 text-xs font-medium text-red-200">🔥 Flame Burst</button>
+            </div>
+        </div>
+
+        <div class="space-y-3 border-t border-white/10 pt-3">
+            <label class="text-xs font-semibold text-slate-300 flex items-center space-x-1"><span>🌍</span><span>Stage Environment</span></label>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="setStage('moon')" class="emoji-btn p-2 rounded-xl bg-slate-800 text-xs">🌕 Sailor Moon Shrine</button>
+                <button onclick="setStage('cyber')" class="emoji-btn p-2 rounded-xl bg-slate-800 text-xs">🌆 Neo Tokyo Rooftop</button>
+            </div>
+        </div>
+    </aside>
+
+    <div id="texture-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-6 rounded-3xl max-w-md w-full shadow-2xl flex flex-col space-y-4 border border-purple-500/40">
+            <div class="flex items-center justify-between">
+                <h3 class="font-extrabold text-lg text-purple-300 flex items-center space-x-2"><span>🎨</span><span>2D Texture Painter</span></h3>
+                <button onclick="closeTexturePainter()" class="emoji-btn text-xl text-slate-400 hover:text-white">✕</button>
+            </div>
+            <p class="text-xs text-slate-300">Draw patterns, stickers or symbols on the 2D canvas below. It wraps dynamically into the 3D character's clothing texture!</p>
+            
+            <div class="relative w-full aspect-square bg-slate-900 rounded-2xl border border-white/20 overflow-hidden flex items-center justify-center">
+                <canvas id="paint-canvas" width="256" height="256" class="w-full h-full cursor-crosshair touch-none"></canvas>
+            </div>
+
+            <div class="flex items-center justify-between space-x-2">
+                <div class="flex items-center space-x-2">
+                    <input type="color" id="brush-color" value="#ffffff" class="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-white/20">
+                    <select id="brush-size" class="bg-slate-800 text-xs px-2 py-1.5 rounded-lg border border-white/20 text-white">
+                        <option value="4">Fine</option>
+                        <option value="12" selected>Medium</option>
+                        <option value="24">Thick</option>
+                    </select>
+                </div>
+                <button onclick="clearPaintCanvas()" class="emoji-btn px-3 py-1.5 bg-red-600/60 hover:bg-red-600 rounded-xl text-xs font-bold">🗑️ Clear</button>
+                <button onclick="applyTextureToCharacter()" class="emoji-btn px-4 py-1.5 bg-purple-600 hover:bg-purple-500 rounded-xl text-xs font-bold shadow-lg">✨ Apply to 3D</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fighter HUD -->
+    <div id="fighter-hud" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 hidden flex flex-col items-center space-y-3 w-full max-w-xl px-4 pointer-events-auto">
+        <div class="w-full glass-panel p-4 rounded-2xl flex items-center justify-between shadow-2xl border border-pink-500/40">
+            <div class="flex flex-col space-y-1 w-5/12">
+                <div class="flex justify-between text-xs font-bold text-pink-300"><span>P1: Sailor Avatar</span><span id="p1-hp-text">100%</span></div>
+                <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-white/20"><div id="p1-hp" class="h-full bg-gradient-to-r from-pink-500 to-purple-500 w-full transition-all"></div></div>
+            </div>
+            <span class="text-2xl font-black text-amber-400 animate-pulse">VS</span>
+            <div class="flex flex-col space-y-1 w-5/12">
+                <div class="flex justify-between text-xs font-bold text-cyan-300"><span id="p2-name">Dark Shadow Boss</span><span id="p2-hp-text">100%</span></div>
+                <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-white/20"><div id="p2-hp" class="h-full bg-gradient-to-r from-cyan-500 to-blue-600 w-full transition-all"></div></div>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="fighterAction('punch')" class="emoji-btn px-5 py-2.5 rounded-2xl bg-pink-600 hover:bg-pink-500 font-extrabold text-sm shadow-xl">👊 Light Punch</button>
+            <button onclick="fighterAction('special')" class="emoji-btn px-5 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-500 font-extrabold text-sm shadow-xl">💫 Moon Beam Blast</button>
+            <button onclick="fighterAction('block')" class="emoji-btn px-5 py-2.5 rounded-2xl bg-cyan-600 hover:bg-cyan-500 font-extrabold text-sm shadow-xl">🛡️ Shield Guard</button>
+        </div>
+    </div>
+
+    <!-- Visual Novel HUD -->
+    <div id="novel-hud" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 hidden flex flex-col items-center space-y-3 w-full max-w-2xl px-4 pointer-events-auto">
+        <div class="w-full glass-panel p-6 rounded-3xl shadow-2xl border border-purple-500/40 flex flex-col space-y-3 relative">
+            <div class="flex items-center justify-between">
+                <span id="novel-speaker" class="font-extrabold text-pink-300 text-sm bg-pink-500/20 px-3 py-1 rounded-xl">Sailor Hero</span>
+                <span class="text-xs text-slate-400">📖 Visual Novel Mode</span>
+            </div>
+            <p id="novel-dialogue" class="text-sm sm:text-base text-slate-200 font-medium min-h-[3rem] leading-relaxed">"Welcome to Neo Tokyo! We must solve the mystery of the missing crystal before midnight strikes!"</p>
+            <div class="flex items-center justify-end space-x-2 pt-2 border-t border-white/10">
+                <button onclick="nextDialogue()" class="emoji-btn px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl text-xs font-bold shadow-md">Next ➡️</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="absolute bottom-6 right-6 z-50 glass-panel px-4 py-3 rounded-2xl border border-pink-500/40 shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center space-x-3 pointer-events-none">
+        <span id="toast-icon" class="text-xl">✨</span>
+        <span id="toast-msg" class="text-xs font-bold text-pink-200">Notification Message</span>
+    </div>
+
+    <script>
+        // Global Three.js State
+        let scene, camera, renderer, controls;
+        let characterGroup, stageGroup, lightingGroup;
+        let clock = new THREE.Clock();
+
+        let appState = {
+            mode: 'creator',
+            hairStyle: 'twintails',
+            hairColor: '#f43f5e',
+            outfitStyle: 'sailor',
+            outfitColor: '#06b6d4',
+            accentColor: '#ec4899',
+            eyeColor: '#3b82f6',
+            tiara: true,
+            wings: true,
+            expression: 'happy',
+            animation: 'idle',
+            aura: null,
+            stage: 'moon',
+            customTextureUrl: null
+        };
+
+        let particleSystem = null;
+        let paintCanvas, paintCtx, isDrawing = false;
+        let novelIndex = 0;
+
+        const novelLines = [
+            { speaker: 'Sailor Hero', text: '"Welcome to Neo Tokyo! We must solve the mystery of the missing crystal before midnight strikes!"' },
+            { speaker: 'Mysterious Rival', text: '"You are too late! The crystal is already pulsing with dark energy!"' },
+            { speaker: 'Sailor Hero', text: '"Moon Prism Power, Make Up! We will never surrender!"' },
+            { speaker: 'Narrator', text: 'An epic battle of magical energy begins in the neon skies!' }
+        ];
+
+        // Initialize 3D Engine on Window Load
+        window.onload = function() {
+            init3D();
+            initPainter();
+            animate();
+            showToast('Magical Anime Studio & Arcade loaded successfully! ✨');
+        };
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+
+            // Scene Setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+            scene.fog = new THREE.FogExp2(0x0f172a, 0.015);
+
+            // Camera Setup
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 3.5, 9);
+
+            // Renderer Setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // OrbitControls Setup (Now loaded reliably from jsDelivr)
+            if (typeof THREE.OrbitControls !== 'undefined') {
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.maxPolarAngle = Math.PI / 2 + 0.05;
+                controls.minDistance = 2;
+                controls.maxDistance = 25;
+                controls.target.set(0, 1.3, 0);
+            } else {
+                console.warn('THREE.OrbitControls not found, using fallback camera control.');
+            }
+
+            // Lighting Setup
+            lightingGroup = new THREE.Group();
+            const ambient = new THREE.AmbientLight(0xffffff, 0.9);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(5, 12, 7);
+            dirLight.castShadow = true;
+            const pointLight = new THREE.PointLight(0xec4899, 2.5, 12);
+            pointLight.position.set(0, 3, 2);
+            lightingGroup.add(ambient, dirLight, pointLight);
+            scene.add(lightingGroup);
+
+            buildStage();
+            buildCharacter();
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function buildStage() {
+            if (stageGroup) scene.remove(stageGroup);
+            stageGroup = new THREE.Group();
+
+            const floorGeo = new THREE.CylinderGeometry(12, 12, 0.4, 48);
+            let floorColor = appState.stage === 'moon' ? 0x1e1b4b : 0x090d16;
+            const floorMat = new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.3, metalness: 0.7 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.position.y = -0.2;
+            floor.receiveShadow = true;
+            stageGroup.add(floor);
+
+            const grid = new THREE.GridHelper(24, 24, 0xec4899, 0x06b6d4);
+            grid.position.y = 0.01;
+            stageGroup.add(grid);
+
+            // Arch / Shrine frame
+            const archGeo = new THREE.TorusGeometry(7, 0.25, 16, 48, Math.PI);
+            const archMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xfbbf24, emissiveIntensity: 0.4 });
+            const arch = new THREE.Mesh(archGeo, archMat);
+            arch.position.set(0, 0, 0);
+            arch.rotation.x = Math.PI / 2;
+            stageGroup.add(arch);
+
+            scene.add(stageGroup);
+        }
+
+        function buildCharacter() {
+            if (characterGroup) scene.remove(characterGroup);
+            characterGroup = new THREE.Group();
+
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.4 });
+            const hairMat = new THREE.MeshStandardMaterial({ color: appState.hairColor, roughness: 0.3 });
+            const outfitMat = new THREE.MeshStandardMaterial({ color: appState.outfitColor, roughness: 0.3 });
+            const accentMat = new THREE.MeshStandardMaterial({ color: appState.accentColor, roughness: 0.3 });
+            const eyeMat = new THREE.MeshStandardMaterial({ color: appState.eyeColor, roughness: 0.2 });
+
+            if (appState.customTextureUrl) {
+                new THREE.TextureLoader().load(appState.customTextureUrl, (tex) => {
+                    outfitMat.map = tex;
+                    outfitMat.needsUpdate = true;
+                });
+            }
+
+            // Head
+            const headGeo = new THREE.SphereGeometry(0.35, 32, 32);
+            const head = new THREE.Mesh(headGeo, skinMat);
+            head.position.y = 2.1;
+            head.castShadow = true;
+            characterGroup.add(head);
+
+            // Eyes
+            const eyeGeo = new THREE.SphereGeometry(0.06, 16, 16);
+            const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeL.position.set(0.12, 2.12, 0.31);
+            const eyeR = eyeL.clone();
+            eyeR.position.x = -0.12;
+            characterGroup.add(eyeL, eyeR);
+
+            // Hair Style
+            if (appState.hairStyle === 'twintails') {
+                const hairCapGeo = new THREE.SphereGeometry(0.37, 32, 32);
+                const hairCap = new THREE.Mesh(hairCapGeo, hairMat);
+                hairCap.position.y = 2.15;
+                characterGroup.add(hairCap);
+
+                const tailGeo = new THREE.CylinderGeometry(0.04, 0.14, 1.4, 16);
+                const tailL = new THREE.Mesh(tailGeo, hairMat);
+                tailL.position.set(0.42, 1.8, -0.15);
+                tailL.rotation.z = -0.3;
+                const tailR = tailL.clone();
+                tailR.position.x = -0.42;
+                tailR.rotation.z = 0.3;
+                characterGroup.add(tailL, tailR);
+            } else if (appState.hairStyle === 'spiky') {
+                const spikeGeo = new THREE.ConeGeometry(0.42, 0.8, 16);
+                const spikyHair = new THREE.Mesh(spikeGeo, hairMat);
+                spikyHair.position.y = 2.45;
+                characterGroup.add(spikyHair);
+            } else {
+                const longGeo = new THREE.CylinderGeometry(0.38, 0.42, 1.6, 16);
+                const longHair = new THREE.Mesh(longGeo, hairMat);
+                longHair.position.set(0, 1.7, -0.1);
+                characterGroup.add(longHair);
+            }
+
+            // Tiara Accessory
+            if (appState.tiara) {
+                const tiaraGeo = new THREE.TorusGeometry(0.22, 0.03, 16, 32, Math.PI);
+                const tiaraMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xfbbf24, emissiveIntensity: 0.8 });
+                const tiara = new THREE.Mesh(tiaraGeo, tiaraMat);
+                tiara.position.set(0, 2.25, 0.22);
+                tiara.rotation.x = Math.PI / 4;
+                characterGroup.add(tiara);
+            }
+
+            // Torso & Outfit
+            const torsoGeo = new THREE.CylinderGeometry(0.18, 0.26, 1.1, 16);
+            const torso = new THREE.Mesh(torsoGeo, outfitMat);
+            torso.position.y = 1.25;
+            torso.castShadow = true;
+            characterGroup.add(torso);
+
+            // Skirt / Armor Accent
+            const skirtGeo = new THREE.ConeGeometry(0.55, 0.4, 16);
+            const skirt = new THREE.Mesh(skirtGeo, accentMat);
+            skirt.position.y = 0.82;
+            characterGroup.add(skirt);
+
+            // Wings Accessory
+            if (appState.wings) {
+                const wingMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, emissive: 0xc084fc, emissiveIntensity: 0.5, side: THREE.DoubleSide });
+                const wingPlane = new THREE.PlaneGeometry(1.2, 0.8);
+                const wingL = new THREE.Mesh(wingPlane, wingMat);
+                wingL.position.set(0.6, 1.5, -0.3);
+                wingL.rotation.y = -0.4;
+                const wingR = wingL.clone();
+                wingR.position.x = -0.6;
+                wingR.rotation.y = 0.4;
+                characterGroup.add(wingL, wingR);
+            }
+
+            // Limbs
+            const armGeo = new THREE.CylinderGeometry(0.06, 0.05, 0.9, 16);
+            const armL = new THREE.Mesh(armGeo, skinMat);
+            armL.position.set(0.34, 1.25, 0);
+            armL.rotation.z = -0.2;
+            const armR = armL.clone();
+            armR.position.x = -0.34;
+            armR.rotation.z = 0.2;
+            characterGroup.add(armL, armR);
+
+            const legGeo = new THREE.CylinderGeometry(0.07, 0.06, 0.9, 16);
+            const legL = new THREE.Mesh(legGeo, skinMat);
+            legL.position.set(0.15, 0.35, 0);
+            const legR = legL.clone();
+            legR.position.x = -0.15;
+            characterGroup.add(legL, legR);
+
+            scene.add(characterGroup);
+        }
+
+        // --- Customization & UI Functions ---
+        function switchMode(mode) {
+            appState.mode = mode;
+            document.querySelectorAll('header button[id^="mode-"]').forEach(btn => {
+                btn.className = "emoji-btn px-3 py-1.5 rounded-xl bg-slate-800/80 text-slate-300 font-bold text-xs sm:text-sm flex items-center space-x-1 hover:bg-slate-700";
+            });
+            document.getElementById(`mode-${mode}-btn`).className = "emoji-btn px-3 py-1.5 rounded-xl bg-pink-600 text-white font-bold text-xs sm:text-sm flex items-center space-x-1 shadow-md";
+
+            document.getElementById('creator-panel').style.display = (mode === 'creator') ? 'flex' : 'none';
+            document.getElementById('animation-panel').style.display = (mode === 'creator') ? 'flex' : 'none';
+            document.getElementById('fighter-hud').style.display = (mode === 'fighter') ? 'flex' : 'none';
+            document.getElementById('novel-hud').style.display = (mode === 'novel') ? 'flex' : 'none';
+
+            if (mode === 'fighter') {
+                showToast('Entered Anime Fighter Arcade Mode! ⚔️');
+            } else if (mode === 'novel') {
+                showToast('Entered Visual Novel Story Mode! 📖');
+                novelIndex = 0;
+                updateNovelDialogue();
+            } else {
+                showToast('Switched to Creator Studio mode! ✨');
+            }
+        }
+
+        function setCharacterPart(part, val) {
+            if (part === 'hair') appState.hairStyle = val;
+            if (part === 'outfit') appState.outfitStyle = val;
+            buildCharacter();
+            showToast(`Updated ${part} style! 👘`);
+        }
+
+        function updateColor(type, hex) {
+            if (type === 'hair') appState.hairColor = hex;
+            if (type === 'outfit') appState.outfitColor = hex;
+            if (type === 'accent') appState.accentColor = hex;
+            if (type === 'eyes') appState.eyeColor = hex;
+            buildCharacter();
+        }
+
+        function toggleAccessory(acc) {
+            if (acc === 'tiara') {
+                appState.tiara = !appState.tiara;
+                document.getElementById('btn-tiara').className = appState.tiara ? "emoji-btn p-2 rounded-xl bg-amber-500/30 border border-amber-500/50 text-xs font-medium text-amber-200" : "emoji-btn p-2 rounded-xl bg-slate-800 border border-white/10 text-xs text-slate-400";
+            }
+            if (acc === 'wings') {
+                appState.wings = !appState.wings;
+                document.getElementById('btn-wings').className = appState.wings ? "emoji-btn p-2 rounded-xl bg-purple-500/30 border border-purple-500/50 text-xs font-medium text-purple-200" : "emoji-btn p-2 rounded-xl bg-slate-800 border border-white/10 text-xs text-slate-400";
+            }
+            buildCharacter();
+            showToast(`Toggled ${acc}! ✨`);
+        }
+
+        function setExpression(expr) {
+            appState.expression = expr;
+            showToast(`Expression set to ${expr}! 😊`);
+        }
+
+        function setAnimation(anim) {
+            appState.animation = anim;
+            showToast(`Motion set to ${anim}! 🎬`);
+        }
+
+        function setStage(stage) {
+            appState.stage = stage;
+            buildStage();
+            showToast(`Loaded ${stage} stage environment! 🌍`);
+        }
+
+        function toggleParticleAura(type) {
+            if (appState.aura === type) {
+                appState.aura = null;
+                if (particleSystem) scene.remove(particleSystem);
+                particleSystem = null;
+                showToast('Removed particle aura.');
+                return;
+            }
+            appState.aura = type;
+            if (particleSystem) scene.remove(particleSystem);
+
+            const count = 300;
+            const geom = new THREE.BufferGeometry();
+            const positions = new Float32Array(count * 3);
+            for (let i = 0; i < count * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 4;
+                positions[i+1] = Math.random() * 3;
+                positions[i+2] = (Math.random() - 0.5) * 4;
+            }
+            geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const mat = new THREE.PointsMaterial({
+                color: type === 'stars' ? 0xfbbf24 : 0xef4444,
+                size: 0.08,
+                transparent: true,
+                opacity: 0.8
+            });
+            particleSystem = new THREE.Points(geom, mat);
+            scene.add(particleSystem);
+            showToast(`Activated ${type} particle aura! ✨`);
+        }
+
+        // --- 2D Texture Painter ---
+        function openTexturePainter() {
+            document.getElementById('texture-modal').classList.remove('hidden');
+        }
+        function closeTexturePainter() {
+            document.getElementById('texture-modal').classList.add('hidden');
+        }
+        function initPainter() {
+            paintCanvas = document.getElementById('paint-canvas');
+            paintCtx = paintCanvas.getContext('2d');
+            paintCtx.fillStyle = '#0f172a';
+            paintCtx.fillRect(0, 0, paintCanvas.width, paintCanvas.height);
+
+            paintCanvas.addEventListener('mousedown', startDraw);
+            paintCanvas.addEventListener('mousemove', draw);
+            paintCanvas.addEventListener('mouseup', stopDraw);
+            paintCanvas.addEventListener('touchstart', (e) => { startDraw(e.touches[0]); e.preventDefault(); });
+            paintCanvas.addEventListener('touchmove', (e) => { draw(e.touches[0]); e.preventDefault(); });
+            paintCanvas.addEventListener('touchend', stopDraw);
+        }
+        function startDraw(e) {
+            isDrawing = true;
+            paintCtx.beginPath();
+            const rect = paintCanvas.getBoundingClientRect();
+            paintCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = paintCanvas.getBoundingClientRect();
+            paintCtx.strokeStyle = document.getElementById('brush-color').value;
+            paintCtx.lineWidth = parseInt(document.getElementById('brush-size').value);
+            paintCtx.lineCap = 'round';
+            paintCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            paintCtx.stroke();
+        }
+        function stopDraw() { isDrawing = false; }
+        function clearPaintCanvas() {
+            paintCtx.fillStyle = '#0f172a';
+            paintCtx.fillRect(0, 0, paintCanvas.width, paintCanvas.height);
+            showToast('Cleared 2D canvas!');
+        }
+        function applyTextureToCharacter() {
+            appState.customTextureUrl = paintCanvas.toDataURL();
+            buildCharacter();
+            closeTexturePainter();
+            showToast('Applied custom 2D texture to 3D model! 🎨');
+        }
+
+        // --- Arcade Mini-Games & VN Logic ---
+        let p1Hp = 100, p2Hp = 100;
+        function fighterAction(action) {
+            if (action === 'punch') {
+                p2Hp = Math.max(0, p2Hp - 15);
+                showToast('You landed a Light Punch! 👊');
+            } else if (action === 'special') {
+                p2Hp = Math.max(0, p2Hp - 35);
+                showToast('Moon Beam Blast dealt massive damage! 💫');
+            } else {
+                showToast('Shield Guard activated! Blocked incoming attack. 🛡️');
+            }
+            document.getElementById('p2-hp').style.width = p2Hp + '%';
+            document.getElementById('p2-hp-text').innerText = p2Hp + '%';
+            if (p2Hp <= 0) {
+                showToast('VICTORY! You defeated the Dark Shadow Boss! 🎉');
+                setTimeout(() => { p1Hp = 100; p2Hp = 100; document.getElementById('p2-hp').style.width = '100%'; document.getElementById('p2-hp-text').innerText = '100%'; }, 2000);
+            }
+        }
+
+        function updateNovelDialogue() {
+            const line = novelLines[novelIndex];
+            document.getElementById('novel-speaker').innerText = line.speaker;
+            document.getElementById('novel-dialogue').innerText = line.text;
+        }
+        function nextDialogue() {
+            novelIndex = (novelIndex + 1) % novelLines.length;
+            updateNovelDialogue();
+        }
+
+        // --- Export & Save ---
+        function exportCharacterGLTF() {
+            if (typeof THREE.GLTFExporter === 'undefined') {
+                showToast('GLTFExporter not loaded.');
+                return;
+            }
+            const exporter = new THREE.GLTFExporter();
+            exporter.parse(scene, (gltf) => {
+                const output = JSON.stringify(gltf, null, 2);
+                const blob = new Blob([output], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'magical-anime-character.gltf';
+                link.click();
+                showToast('Exported 3D model as GLTF successfully! 📦');
+            }, { binary: false });
+        }
+
+        function saveProjectJSON() {
+            const data = JSON.stringify(appState, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'magical-anime-project.json';
+            link.click();
+            showToast('Project saved successfully! 💾');
+        }
+
+        function importProjectJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const loaded = JSON.parse(e.target.result);
+                    appState = { ...appState, ...loaded };
+                    buildCharacter();
+                    buildStage();
+                    showToast('Project loaded successfully! 📂');
+                } catch(err) {
+                    showToast('Error parsing project file.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- Main Animation Render Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
+
+            if (characterGroup) {
+                if (appState.animation === 'idle') {
+                    characterGroup.position.y = Math.sin(time * 3) * 0.06;
+                    characterGroup.rotation.y = Math.sin(time * 1.5) * 0.1;
+                } else if (appState.animation === 'magic') {
+                    characterGroup.rotation.y += delta * 4;
+                    characterGroup.position.y = Math.abs(Math.sin(time * 6)) * 0.3;
+                } else if (appState.animation === 'punch') {
+                    characterGroup.position.x = Math.sin(time * 12) * 0.15;
+                } else {
+                    characterGroup.position.y = 0;
+                }
+            }
+
+            if (particleSystem) {
+                particleSystem.rotation.y += delta * 0.5;
+            }
+
+            if (controls) controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
