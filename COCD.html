@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magical Anime Studio & Arcade 3D: Cinematic Spiderweb Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Poppins:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', 'Inter', sans-serif; user-select: none; overflow: hidden; background: #070714; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(168, 85, 247, 0.9); }
+        .glass-panel {
+            background: rgba(18, 10, 35, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(192, 132, 252, 0.25);
+            box-shadow: 0 0 40px rgba(147, 51, 234, 0.2);
+        }
+        .glow-purple { box-shadow: 0 0 35px rgba(168, 85, 247, 0.6); }
+        .glow-cyan { box-shadow: 0 0 35px rgba(6, 182, 212, 0.6); }
+        .emoji-btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .emoji-btn:hover { transform: scale(1.08); filter: drop-shadow(0 0 12px rgba(232, 121, 249, 0.9)); }
+        .emoji-btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="w-screen h-screen relative flex flex-col overflow-hidden text-white">
+
+    <div id="canvas-container" class="absolute inset-0 w-full h-full z-0"></div>
+
+    <!-- Top Navigation & Master HUD -->
+    <header class="absolute top-0 left-0 right-0 z-30 p-3 flex flex-wrap items-center justify-between pointer-events-none">
+        <div class="glass-panel px-4 py-2.5 rounded-2xl flex items-center space-x-3 pointer-events-auto glow-purple">
+            <span class="text-2xl animate-spin" style="animation-duration: 6s;">🕷️</span>
+            <div>
+                <h1 class="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-300 to-cyan-400 text-base sm:text-xl tracking-wider">CINEMATIC SPIDERWEB STUDIO</h1>
+                <p class="text-xs text-purple-200/80 font-medium">High-Poly Model & Storyboard Theatre</p>
+            </div>
+        </div>
+
+        <!-- Mode Selector Bar -->
+        <div class="glass-panel px-3 py-1.5 rounded-2xl flex items-center space-x-2 pointer-events-auto shadow-2xl mt-2 sm:mt-0 overflow-x-auto">
+            <button onclick="switchMode('creator')" id="mode-creator-btn" class="emoji-btn px-3 py-1.5 rounded-xl bg-purple-700 text-white font-bold text-xs sm:text-sm flex items-center space-x-1 shadow-md">
+                <span>👘</span> <span class="hidden md:inline">High-Poly Studio</span>
+            </button>
+            <button onclick="switchMode('builder')" id="mode-builder-btn" class="emoji-btn px-3 py-1.5 rounded-xl bg-slate-900/80 text-slate-300 font-bold text-xs sm:text-sm flex items-center space-x-1 hover:bg-slate-800">
+                <span>🏗️</span> <span class="hidden md:inline">Stage Builder</span>
+            </button>
+            <button onclick="switchMode('spiderweb')" id="mode-spiderweb-btn" class="emoji-btn px-3 py-1.5 rounded-xl bg-slate-900/80 text-slate-300 font-bold text-xs sm:text-sm flex items-center space-x-1 hover:bg-slate-800">
+                <span>🕸️</span> <span class="hidden md:inline">Spiderweb Storyboard</span>
+            </button>
+            <button onclick="switchMode('theatre')" id="mode-theatre-btn" class="emoji-btn px-3 py-1.5 rounded-xl bg-slate-900/80 text-slate-300 font-bold text-xs sm:text-sm flex items-center space-x-1 hover:bg-slate-800">
+                <span>🎬</span> <span class="hidden md:inline">Canvas Theatre</span>
+            </button>
+            <button onclick="toggleSettingsModal()" class="emoji-btn px-3 py-1.5 rounded-xl bg-pink-600/80 text-white font-bold text-xs sm:text-sm flex items-center space-x-1 shadow-md">
+                <span>⚙️</span> <span class="hidden md:inline">Quantum Vault</span>
+            </button>
+        </div>
+
+        <!-- Action Tools -->
+        <div class="glass-panel px-3 py-2 rounded-2xl flex items-center space-x-2 pointer-events-auto shadow-2xl mt-2 sm:mt-0">
+            <button onclick="openTexturePainter()" class="emoji-btn p-2 rounded-xl bg-purple-600/60 hover:bg-purple-600 text-white text-base shadow-md" title="Texture Painter">🖌️</button>
+            <button onclick="exportCharacterGLTF()" class="emoji-btn p-2 rounded-xl bg-cyan-600/60 hover:bg-cyan-600 text-white text-base shadow-md" title="Export GLTF">📦</button>
+            <button onclick="saveProjectJSON()" class="emoji-btn p-2 rounded-xl bg-emerald-600/60 hover:bg-emerald-600 text-white text-base shadow-md" title="Save Project">💾</button>
+            <label class="emoji-btn p-2 rounded-xl bg-amber-600/60 hover:bg-amber-600 text-white text-base shadow-md cursor-pointer" title="Load Project">
+                📂 <input type="file" id="import-file" accept=".json" class="hidden" onchange="importProjectJSON(event)">
+            </label>
+        </div>
+    </header>
+
+    <aside id="creator-panel" class="absolute left-4 top-24 bottom-20 w-80 max-w-[calc(100vw-2rem)] glass-panel rounded-3xl z-20 p-4 flex flex-col space-y-4 shadow-2xl overflow-y-auto transition-all duration-300">
+        <div class="flex items-center justify-between border-b border-purple-500/20 pb-3">
+            <h2 class="font-bold text-purple-300 text-base flex items-center space-x-2">
+                <span>✨</span> <span>High-Poly Character Sculpt</span>
+            </h2>
+            <span class="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">FF7 Tier Mesh</span>
+        </div>
+
+        <div class="space-y-3">
+            <label class="text-xs font-semibold text-slate-300 flex items-center space-x-1"><span>💇</span><span>Detailed Hair & Odango</span></label>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="setCharacterPart('hair', 'twintails')" class="emoji-btn p-2 rounded-xl bg-slate-900/80 border border-purple-500/30 text-xs font-medium text-purple-200 hover:bg-purple-600/40">🎀 Twintails</button>
+                <button onclick="setCharacterPart('hair', 'spiky')" class="emoji-btn p-2 rounded-xl bg-slate-900/80 border border-purple-500/30 text-xs font-medium text-purple-200 hover:bg-purple-600/40">⚡ FF7 Spiky</button>
+                <button onclick="setCharacterPart('hair', 'long')" class="emoji-btn p-2 rounded-xl bg-slate-900/80 border border-purple-500/30 text-xs font-medium text-purple-200 hover:bg-purple-600/40">👩‍🎤 Cascade</button>
+            </div>
+            <div class="flex items-center justify-between pt-1">
+                <span class="text-xs text-slate-300">Hair Tint</span>
+                <input type="color" id="hair-color-picker" value="#f43f5e" onchange="updateColor('hair', this.value)" class="w-10 h-8 rounded-lg cursor-pointer bg-transparent border border-white/20">
+            </div>
+        </div>
+
+        <div class="space-y-3 border-t border-purple-500/20 pt-3">
+            <label class="text-xs font-semibold text-slate-300 flex items-center space-x-1"><span>🛡️</span><span>Cinematic Outfits & Armor</span></label>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="setCharacterPart('outfit', 'sailor')" class="emoji-btn p-2 rounded-xl bg-slate-900/80 border border-cyan-500/30 text-xs font-medium text-cyan-200 hover:bg-cyan-600/40">⚓ Sailor Fuku</button>
+                <button onclick="setCharacterPart('outfit', 'armor')" class="emoji-btn p-2 rounded-xl bg-slate-900/80 border border-cyan-500/30 text-xs font-medium text-cyan-200 hover:bg-cyan-600/40">⚔️ Magitek Plate</button>
+                <button onclick="setCharacterPart('outfit', 'cyber')" class="emoji-btn p-2 rounded-xl bg-slate-900/80 border border-purple-500/30 text-xs font-medium text-purple-200 hover:bg-purple-600/40">🦾 Cyber Mecha</button>
+                <button onclick="setCharacterPart('outfit', 'shrine')" class="emoji-btn p-2 rounded-xl bg-slate-900/80 border border-amber-500/30 text-xs font-medium text-amber-200 hover:bg-amber-600/40">⛩️ Shrine Robe</button>
+            </div>
+            <div class="flex items-center justify-between pt-1">
+                <span class="text-xs text-slate-300">Primary Tone</span>
+                <input type="color" id="outfit-color-picker" value="#8b5cf6" onchange="updateColor('outfit', this.value)" class="w-10 h-8 rounded-lg cursor-pointer bg-transparent border border-white/20">
+            </div>
+            <div class="flex items-center justify-between pt-1">
+                <span class="text-xs text-slate-300">Accent Trim</span>
+                <input type="color" id="accent-color-picker" value="#ec4899" onchange="updateColor('accent', this.value)" class="w-10 h-8 rounded-lg cursor-pointer bg-transparent border border-white/20">
+            </div>
+        </div>
+
+        <div class="space-y-3 border-t border-purple-500/20 pt-3">
+            <label class="text-xs font-semibold text-slate-300 flex items-center space-x-1"><span>👑</span><span>Wings & Tiara</span></label>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="toggleAccessory('tiara')" id="btn-tiara" class="emoji-btn p-2 rounded-xl bg-amber-500/30 border border-amber-500/50 text-xs font-medium text-amber-200">✨ Crown ON</button>
+                <button onclick="toggleAccessory('wings')" id="btn-wings" class="emoji-btn p-2 rounded-xl bg-purple-500/30 border border-purple-500/50 text-xs font-medium text-purple-200">🦋 Wings ON</button>
+            </div>
+        </div>
+    </aside>
+
+    <aside id="builder-panel" class="absolute left-4 top-24 bottom-20 w-80 max-w-[calc(100vw-2rem)] glass-panel rounded-3xl z-20 p-4 hidden flex-col space-y-4 shadow-2xl overflow-y-auto transition-all duration-300">
+        <div class="flex items-center justify-between border-b border-purple-500/20 pb-3">
+            <h2 class="font-bold text-cyan-300 text-base flex items-center space-x-2">
+                <span>🏗️</span> <span>Stage Environment Builder</span>
+            </h2>
+            <span class="text-xs bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full">Sandbox Mode</span>
+        </div>
+        <p class="text-xs text-slate-300">Click anywhere on the stage floor to spawn your customized character or props! Click any spawned character to select, re-edit, or return to Quantum Inventory.</p>
+
+        <div class="space-y-2">
+            <label class="text-xs font-semibold text-slate-300 block">📦 Quantum Inventory Spawn Vault</label>
+            <button onclick="spawnCharacterOnStage('hero')" class="emoji-btn w-full py-2.5 rounded-xl bg-purple-600/80 hover:bg-purple-600 text-xs font-bold shadow-md flex items-center justify-center space-x-2"><span>✨</span><span>Spawn Active Character</span></button>
+            <button onclick="spawnCharacterOnStage('rival')" class="emoji-btn w-full py-2.5 rounded-xl bg-cyan-600/80 hover:bg-cyan-600 text-xs font-bold shadow-md flex items-center justify-center space-x-2"><span>⚔️</span><span>Spawn Shadow Rival</span></button>
+            <button onclick="spawnPropOnStage('crystal')" class="emoji-btn w-full py-2.5 rounded-xl bg-amber-600/80 hover:bg-amber-600 text-xs font-bold shadow-md flex items-center justify-center space-x-2"><span>🔮</span><span>Spawn Magic Crystal</span></button>
+        </div>
+
+        <div id="selected-object-actions" class="glass-panel p-3 rounded-2xl border border-pink-500/40 space-y-2 hidden">
+            <h4 class="font-bold text-xs text-pink-300 flex items-center space-x-1"><span>🎯</span><span>Selected Entity Control</span></h4>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="returnSelectedToInventory()" class="emoji-btn py-2 bg-red-600/70 hover:bg-red-600 rounded-xl text-xs font-bold">🔮 Quantum Vault</button>
+                <button onclick="editSelectedCharacter()" class="emoji-btn py-2 bg-purple-600/70 hover:bg-purple-600 rounded-xl text-xs font-bold">✏️ Edit Model</button>
+            </div>
+        </div>
+
+        <div class="space-y-2 border-t border-purple-500/20 pt-3">
+            <label class="text-xs font-semibold text-slate-300 block">🌍 Environment Stage Theme</label>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="setStage('nexus')" class="emoji-btn p-2 rounded-xl bg-slate-900 text-xs font-bold text-purple-200">🌌 Purple Nexus</button>
+                <button onclick="setStage('cyber')" class="emoji-btn p-2 rounded-xl bg-slate-900 text-xs font-bold text-cyan-200">🌆 Neo Tokyo</button>
+                <button onclick="setStage('arena')" class="emoji-btn p-2 rounded-xl bg-slate-900 text-xs font-bold text-amber-200">🏟️ Colosseum</button>
+                <button onclick="setStage('void')" class="emoji-btn p-2 rounded-xl bg-slate-900 text-xs font-bold text-slate-300">🖤 Deep Void</button>
+            </div>
+        </div>
+    </aside>
+
+    <aside id="spiderweb-panel" class="absolute left-4 top-24 bottom-20 w-80 max-w-[calc(100vw-2rem)] glass-panel rounded-3xl z-20 p-4 hidden flex-col space-y-4 shadow-2xl overflow-y-auto transition-all duration-300">
+        <div class="flex items-center justify-between border-b border-purple-500/20 pb-3">
+            <h2 class="font-bold text-purple-300 text-base flex items-center space-x-2">
+                <span>🕸️</span> <span>Spiderweb Storyboard</span>
+            </h2>
+            <span class="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">Movie Board</span>
+        </div>
+        <p class="text-xs text-slate-300">Cinematic spiderweb node map. Glassy purple shiny morphing spheres connected by energy strands holding dialogue & scene cues in order like a movie board.</p>
+
+        <div id="spiderweb-nodes-list" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+            <!-- Dynamically generated scene nodes -->
+        </div>
+
+        <button onclick="addSpiderwebNode()" class="emoji-btn w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-extrabold shadow-lg">✨ Add Storyboard Scene Node</button>
+    </aside>
+
+    <div id="theatre-hud" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 hidden flex flex-col items-center space-y-3 w-full max-w-2xl px-4 pointer-events-auto">
+        <div class="glass-panel p-6 rounded-3xl shadow-2xl border border-purple-500/50 flex flex-col space-y-4 w-full">
+            <div class="flex items-center justify-between border-b border-purple-500/20 pb-2">
+                <span id="theatre-node-title" class="font-extrabold text-purple-300 text-sm">🎬 Scene 1: Awakening in the Purple Nexus</span>
+                <span class="text-xs text-pink-300 animate-pulse">🔴 LIVE THEATRE PLAYBACK</span>
+            </div>
+            <p id="theatre-dialogue" class="text-sm sm:text-base text-slate-200 font-medium min-h-[3rem] leading-relaxed">"The crystal pulses with resonant energy across the spiderweb node network. Our hero steps forward..."</p>
+            <div class="flex items-center justify-between pt-2 border-t border-purple-500/20">
+                <div class="flex items-center space-x-2">
+                    <button onclick="prevTheatreScene()" class="emoji-btn px-3 py-1.5 bg-slate-900 rounded-xl text-xs font-bold">⏮️ Prev</button>
+                    <button onclick="nextTheatreScene()" class="emoji-btn px-3 py-1.5 bg-purple-600 rounded-xl text-xs font-bold">Next ⏭️</button>
+                </div>
+                <button onclick="switchMode('spiderweb')" class="emoji-btn px-4 py-1.5 bg-pink-600 rounded-xl text-xs font-bold shadow-lg">🕸️ Edit Spiderweb Board</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Texture Painter Modal -->
+    <div id="texture-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-6 rounded-3xl max-w-md w-full shadow-2xl flex flex-col space-y-4 border border-purple-500/40">
+            <div class="flex items-center justify-between">
+                <h3 class="font-extrabold text-lg text-purple-300 flex items-center space-x-2"><span>🎨</span><span>2D Texture Painter</span></h3>
+                <button onclick="closeTexturePainter()" class="emoji-btn text-xl text-slate-400 hover:text-white">✕</button>
+            </div>
+            <p class="text-xs text-slate-300">Paint custom emblems to wrap onto your high-poly character outfit!</p>
+            <div class="relative w-full aspect-square bg-slate-950 rounded-2xl border border-purple-500/30 overflow-hidden flex items-center justify-center">
+                <canvas id="paint-canvas" width="256" height="256" class="w-full h-full cursor-crosshair touch-none"></canvas>
+            </div>
+            <div class="flex items-center justify-between space-x-2">
+                <div class="flex items-center space-x-2">
+                    <input type="color" id="brush-color" value="#c084fc" class="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-white/20">
+                    <select id="brush-size" class="bg-slate-900 text-xs px-2 py-1.5 rounded-lg border border-purple-500/30 text-white">
+                        <option value="4">Fine</option>
+                        <option value="12" selected>Medium</option>
+                        <option value="24">Thick</option>
+                    </select>
+                </div>
+                <button onclick="clearPaintCanvas()" class="emoji-btn px-3 py-1.5 bg-red-600/60 hover:bg-red-600 rounded-xl text-xs font-bold">🗑️ Clear</button>
+                <button onclick="applyTextureToCharacter()" class="emoji-btn px-4 py-1.5 bg-purple-600 hover:bg-purple-500 rounded-xl text-xs font-bold shadow-lg">✨ Apply Texture</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quantum Vault Modal -->
+    <div id="settings-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-6 rounded-3xl max-w-lg w-full shadow-2xl flex flex-col space-y-5 border border-purple-500/40">
+            <div class="flex items-center justify-between border-b border-purple-500/20 pb-3">
+                <h3 class="font-extrabold text-lg text-purple-300 flex items-center space-x-2"><span>🔮</span><span>Quantum Vault & Storage</span></h3>
+                <button onclick="toggleSettingsModal()" class="emoji-btn text-xl text-slate-400 hover:text-white">✕</button>
+            </div>
+            <p class="text-xs text-slate-300">All spawned stage entities, spiderweb scene nodes, and high-poly character presets are stored in quantum crystalline memory.</p>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="exportCharacterGLTF(); toggleSettingsModal();" class="emoji-btn p-3 rounded-2xl bg-purple-600/30 border border-purple-500/50 text-xs font-bold text-purple-200">📦 Export GLTF Model</button>
+                <button onclick="saveProjectJSON(); toggleSettingsModal();" class="emoji-btn p-3 rounded-2xl bg-cyan-600/30 border border-cyan-500/50 text-xs font-bold text-cyan-200">💾 Save Project JSON</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="absolute bottom-6 right-6 z-50 glass-panel px-4 py-3 rounded-2xl border border-purple-500/50 shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center space-x-3 pointer-events-none">
+        <span id="toast-icon" class="text-xl">✨</span>
+        <span id="toast-msg" class="text-xs font-bold text-purple-200">Notification Message</span>
+    </div>
+
+    <script>
+        // Global Three.js State
+        let scene, camera, renderer, controls;
+        let characterGroup, stageGroup, spiderwebGroup;
+        let clock = new THREE.Clock();
+
+        let appState = {
+            mode: 'creator', // creator, builder, spiderweb, theatre
+            hairStyle: 'twintails',
+            hairColor: '#f43f5e',
+            outfitStyle: 'sailor',
+            outfitColor: '#8b5cf6',
+            accentColor: '#ec4899',
+            eyeColor: '#06b6d4',
+            tiara: true,
+            wings: true,
+            stage: 'nexus',
+            customTextureUrl: null
+        };
+
+        // Stage & Spiderweb entities
+        let spawnedEntities = []; // { id, mesh, type, state }
+        let selectedEntity = null;
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+
+        let spiderwebNodes = [
+            { id: 1, title: 'Scene 1: Awakening in Nexus', dialogue: 'The crystalline spiderweb pulses with purple energy across the dimensions.', x: 0, y: 3, z: 0 },
+            { id: 2, title: 'Scene 2: Shadow Rival Appears', dialogue: 'A dark silhouette descends from the neon glowing web strands!', x: 3, y: 2, z: -2 },
+            { id: 3, title: 'Scene 3: Ultimate Magical Clash', dialogue: 'Prism energy erupts in an epic cinematic battle!', x: -3, y: 2, z: -2 }
+        ];
+        let currentTheatreIndex = 0;
+        let paintCanvas, paintCtx, isDrawing = false;
+
+        // Initialize on window load
+        window.onload = function() {
+            init3D();
+            initPainter();
+            populateSpiderwebNodesList();
+            animate();
+            showToast('Cinematic Spiderweb Studio loaded successfully! 🕷️✨');
+        };
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x070714);
+            scene.fog = new THREE.FogExp2(0x070714, 0.012);
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 4, 10);
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Controls setup
+            if (typeof THREE.OrbitControls !== 'undefined') {
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.maxPolarAngle = Math.PI / 2 + 0.02;
+                controls.minDistance = 2;
+                controls.maxDistance = 30;
+                controls.target.set(0, 1.5, 0);
+            }
+
+            // Lighting setup
+            const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+            const dirLight = new THREE.DirectionalLight(0xe879f9, 1.4);
+            dirLight.position.set(6, 14, 8);
+            dirLight.castShadow = true;
+            const pointLight = new THREE.PointLight(0x06b6d4, 3, 15);
+            pointLight.position.set(0, 3, 2);
+            scene.add(ambient, dirLight, pointLight);
+
+            buildStage();
+            buildActiveCharacter();
+            buildSpiderweb3DNetwork();
+
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('click', onCanvasClick);
+        }
+
+        function buildStage() {
+            if (stageGroup) scene.remove(stageGroup);
+            stageGroup = new THREE.Group();
+
+            let floorColor = 0x120826;
+            if (appState.stage === 'cyber') floorColor = 0x050b14;
+            if (appState.stage === 'arena') floorColor = 0x240d0d;
+            if (appState.stage === 'void') floorColor = 0x020205;
+
+            const floorGeo = new THREE.CylinderGeometry(14, 14, 0.5, 64);
+            const floorMat = new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.2, metalness: 0.8 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.position.y = -0.25;
+            floor.receiveShadow = true;
+            stageGroup.add(floor);
+
+            const grid = new THREE.GridHelper(28, 28, 0xa855f7, 0x06b6d4);
+            grid.position.y = 0.01;
+            stageGroup.add(grid);
+
+            scene.add(stageGroup);
+        }
+
+        function buildActiveCharacter() {
+            if (characterGroup) scene.remove(characterGroup);
+            characterGroup = createHighPolyCharacter(appState);
+            characterGroup.position.set(0, 0, 0);
+            scene.add(characterGroup);
+        }
+
+        function createHighPolyCharacter(config) {
+            const group = new THREE.Group();
+
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.35, metalness: 0.05 });
+            const hairMat = new THREE.MeshStandardMaterial({ color: config.hairColor, roughness: 0.25, metalness: 0.2 });
+            const outfitMat = new THREE.MeshStandardMaterial({ color: config.outfitColor, roughness: 0.2, metalness: 0.6 });
+            const accentMat = new THREE.MeshStandardMaterial({ color: config.accentColor, roughness: 0.2, metalness: 0.6 });
+            const eyeMat = new THREE.MeshStandardMaterial({ color: config.eyeColor, roughness: 0.1, metalness: 0.8 });
+
+            if (config.customTextureUrl) {
+                new THREE.TextureLoader().load(config.customTextureUrl, (tex) => {
+                    outfitMat.map = tex;
+                    outfitMat.needsUpdate = true;
+                });
+            }
+
+            // High-Poly Head with jaw structure
+            const headGeo = new THREE.SphereGeometry(0.34, 32, 32);
+            const head = new THREE.Mesh(headGeo, skinMat);
+            head.position.y = 2.15;
+            head.castShadow = true;
+            group.add(head);
+
+            // Refined Eyes
+            const eyeGeo = new THREE.SphereGeometry(0.055, 24, 24);
+            const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeL.position.set(0.11, 2.18, 0.30);
+            const eyeR = eyeL.clone();
+            eyeR.position.x = -0.11;
+            group.add(eyeL, eyeR);
+
+            // Hair Styles
+            if (config.hairStyle === 'twintails') {
+                const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.36, 32, 32), hairMat);
+                hairCap.position.y = 2.2;
+                group.add(hairCap);
+
+                const tailGeo = new THREE.CylinderGeometry(0.03, 0.15, 1.5, 24);
+                const tailL = new THREE.Mesh(tailGeo, hairMat);
+                tailL.position.set(0.45, 1.8, -0.15);
+                tailL.rotation.z = -0.35;
+                const tailR = tailL.clone();
+                tailR.position.x = -0.45;
+                tailR.rotation.z = 0.35;
+                group.add(tailL, tailR);
+            } else if (config.hairStyle === 'spiky') {
+                const spikeGeo = new THREE.ConeGeometry(0.42, 0.9, 24);
+                const spikyHair = new THREE.Mesh(spikeGeo, hairMat);
+                spikyHair.position.y = 2.5;
+                group.add(spikyHair);
+            } else {
+                const longGeo = new THREE.CylinderGeometry(0.37, 0.44, 1.7, 24);
+                const longHair = new THREE.Mesh(longGeo, hairMat);
+                longHair.position.set(0, 1.75, -0.1);
+                group.add(longHair);
+            }
+
+            // Tiara
+            if (config.tiara) {
+                const tiaraGeo = new THREE.TorusGeometry(0.22, 0.025, 16, 32, Math.PI);
+                const tiaraMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.9, roughness: 0.1, emissive: 0xfbbf24, emissiveIntensity: 0.6 });
+                const tiara = new THREE.Mesh(tiaraGeo, tiaraMat);
+                tiara.position.set(0, 2.3, 0.22);
+                tiara.rotation.x = Math.PI / 4;
+                group.add(tiara);
+            }
+
+            // Torso & Armor Layers
+            const torsoGeo = new THREE.CylinderGeometry(0.17, 0.25, 1.15, 24);
+            const torso = new THREE.Mesh(torsoGeo, outfitMat);
+            torso.position.y = 1.25;
+            torso.castShadow = true;
+            group.add(torso);
+
+            // Skirt / Plated Armor Waist
+            const skirtGeo = new THREE.ConeGeometry(0.52, 0.38, 24);
+            const skirt = new THREE.Mesh(skirtGeo, accentMat);
+            skirt.position.y = 0.82;
+            group.add(skirt);
+
+            // Wings
+            if (config.wings) {
+                const wingMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, emissive: 0xc084fc, emissiveIntensity: 0.6, side: THREE.DoubleSide });
+                const wingPlane = new THREE.PlaneGeometry(1.3, 0.85);
+                const wingL = new THREE.Mesh(wingPlane, wingMat);
+                wingL.position.set(0.6, 1.5, -0.25);
+                wingL.rotation.y = -0.4;
+                const wingR = wingL.clone();
+                wingR.position.x = -0.6;
+                wingR.rotation.y = 0.4;
+                group.add(wingL, wingR);
+            }
+
+            // Articulated Limbs
+            const armGeo = new THREE.CylinderGeometry(0.055, 0.045, 0.95, 16);
+            const armL = new THREE.Mesh(armGeo, skinMat);
+            armL.position.set(0.33, 1.25, 0);
+            armL.rotation.z = -0.2;
+            const armR = armL.clone();
+            armR.position.x = -0.33;
+            armR.rotation.z = 0.2;
+            group.add(armL, armR);
+
+            const legGeo = new THREE.CylinderGeometry(0.065, 0.055, 0.95, 16);
+            const legL = new THREE.Mesh(legGeo, skinMat);
+            legL.position.set(0.14, 0.35, 0);
+            const legR = legL.clone();
+            legR.position.x = -0.14;
+            group.add(legL, legR);
+
+            return group;
+        }
+
+        function buildSpiderweb3DNetwork() {
+            if (spiderwebGroup) scene.remove(spiderwebGroup);
+            spiderwebGroup = new THREE.Group();
+
+            const sphereMat = new THREE.MeshPhysicalMaterial({
+                color: 0xc084fc,
+                emissive: 0x9333ea,
+                emissiveIntensity: 0.5,
+                roughness: 0.1,
+                metalness: 0.1,
+                transmission: 0.6,
+                transparent: true,
+                opacity: 0.95,
+                ior: 1.5
+            });
+
+            const lineMat = new THREE.LineBasicMaterial({ color: 0xe879f9, transparent: true, opacity: 0.6 });
+
+            // Create concentric spiderweb rings & radial spokes
+            const radii = [2, 4, 6];
+            radii.forEach(r => {
+                const ringGeo = new THREE.RingGeometry(r - 0.03, r + 0.03, 32);
+                const ringMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.PI / 2;
+                ring.position.y = 0.05;
+                spiderwebGroup.add(ring);
+            });
+
+            // Radial spokes & Node Spheres
+            spiderwebNodes.forEach((node, idx) => {
+                const angle = (idx / spiderwebNodes.length) * Math.PI * 2;
+                const r = 4.5;
+                node.x = Math.cos(angle) * r;
+                node.z = Math.sin(angle) * r;
+                node.y = 1.8;
+
+                // Connect to center
+                const points = [new THREE.Vector3(0, 0.5, 0), new THREE.Vector3(node.x, node.y, node.z)];
+                const geom = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(geom, lineMat);
+                spiderwebGroup.add(line);
+
+                // Node Sphere
+                const sphereGeo = new THREE.SphereGeometry(0.35, 32, 32);
+                const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+                sphere.position.set(node.x, node.y, node.z);
+                sphere.userData = { isSpiderNode: true, nodeId: node.id };
+                spiderwebGroup.add(sphere);
+            });
+
+            spiderwebGroup.visible = (appState.mode === 'spiderweb');
+            scene.add(spiderwebGroup);
+        }
+
+        function spawnCharacterOnStage(type) {
+            const config = { ...appState };
+            if (type === 'rival') {
+                config.hairStyle = 'spiky';
+                config.hairColor = '#06b6d4';
+                config.outfitColor = '#0f172a';
+                config.accentColor = '#06b6d4';
+            }
+            const mesh = createHighPolyCharacter(config);
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 2 + Math.random() * 3;
+            mesh.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+            scene.add(mesh);
+
+            const entity = { id: Date.now(), mesh: mesh, type: type, config: config };
+            spawnedEntities.push(entity);
+            showToast(`Spawned ${type} onto stage! 🏗️`);
+        }
+
+        function spawnPropOnStage(type) {
+            const geom = new THREE.OctahedronGeometry(0.5, 0);
+            const mat = new THREE.MeshPhysicalMaterial({ color: 0xfbbf24, emissive: 0xfbbf24, emissiveIntensity: 0.8, roughness: 0.1, transmission: 0.5 });
+            const mesh = new THREE.Mesh(geom, mat);
+            mesh.position.set((Math.random() - 0.5) * 5, 0.8, (Math.random() - 0.5) * 5);
+            scene.add(mesh);
+
+            spawnedEntities.push({ id: Date.now(), mesh: mesh, type: 'crystal' });
+            showToast('Spawned Magic Crystal prop! 🔮');
+        }
+
+        function onCanvasClick(event) {
+            if (appState.mode !== 'builder') return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            // Check spawned entities
+            const meshes = spawnedEntities.map(e => e.mesh);
+            const intersects = raycaster.intersectObjects(meshes, true);
+
+            if (intersects.length > 0) {
+                let hitMesh = intersects[0].object;
+                while (hitMesh.parent && hitMesh.parent !== scene) {
+                    hitMesh = hitMesh.parent;
+                }
+                const found = spawnedEntities.find(e => e.mesh === hitMesh);
+                if (found) {
+                    selectedEntity = found;
+                    document.getElementById('selected-object-actions').style.display = 'block';
+                    showToast(`Selected entity on stage! 🎯`);
+                    return;
+                }
+            }
+
+            // If clicked empty floor in builder mode, spawn active character there
+            if (stageGroup) {
+                const floorIntersects = raycaster.intersectObjects(stageGroup.children, true);
+                if (floorIntersects.length > 0) {
+                    const pt = floorIntersects[0].point;
+                    const mesh = createHighPolyCharacter(appState);
+                    mesh.position.set(pt.x, 0, pt.z);
+                    scene.add(mesh);
+                    spawnedEntities.push({ id: Date.now(), mesh: mesh, type: 'hero', config: appState });
+                    showToast('Spawned character at clicked floor location! ✨');
+                }
+            }
+        }
+
+        function returnSelectedToInventory() {
+            if (!selectedEntity) return;
+            scene.remove(selectedEntity.mesh);
+            spawnedEntities = spawnedEntities.filter(e => e.id !== selectedEntity.id);
+            selectedEntity = null;
+            document.getElementById('selected-object-actions').style.display = 'none';
+            showToast('Returned entity to Quantum Inventory Vault! 🔮');
+        }
+
+        function editSelectedCharacter() {
+            if (!selectedEntity || !selectedEntity.config) return;
+            appState = { ...appState, ...selectedEntity.config };
+            buildActiveCharacter();
+            switchMode('creator');
+            showToast('Loaded entity into High-Poly Creator Studio! ✏️');
+        }
+
+        function switchMode(mode) {
+            appState.mode = mode;
+            document.querySelectorAll('header button[id^="mode-"]').forEach(btn => {
+                btn.className = "emoji-btn px-3 py-1.5 rounded-xl bg-slate-900/80 text-slate-300 font-bold text-xs sm:text-sm flex items-center space-x-1 hover:bg-slate-800";
+            });
+            const activeBtn = document.getElementById(`mode-${mode}-btn`);
+            if (activeBtn) activeBtn.className = "emoji-btn px-3 py-1.5 rounded-xl bg-purple-700 text-white font-bold text-xs sm:text-sm flex items-center space-x-1 shadow-md";
+
+            document.getElementById('creator-panel').style.display = (mode === 'creator') ? 'flex' : 'none';
+            document.getElementById('builder-panel').style.display = (mode === 'builder') ? 'flex' : 'none';
+            document.getElementById('spiderweb-panel').style.display = (mode === 'spiderweb') ? 'flex' : 'none';
+            document.getElementById('theatre-hud').style.display = (mode === 'theatre') ? 'flex' : 'none';
+
+            if (characterGroup) characterGroup.visible = (mode !== 'spiderweb');
+            if (spiderwebGroup) spiderwebGroup.visible = (mode === 'spiderweb');
+
+            if (mode === 'spiderweb') showToast('Opened Spiderweb Storyboard Node Map! 🕸️');
+            else if (mode === 'theatre') { showToast('Canvas Theatre Playback Active! 🎬'); updateTheatreScene(); }
+            else if (mode === 'builder') showToast('Stage Builder Sandbox Ready! 🏗️');
+            else showToast('High-Poly Studio Active! ✨');
+        }
+
+        function populateSpiderwebNodesList() {
+            const list = document.getElementById('spiderweb-nodes-list');
+            list.innerHTML = '';
+            spiderwebNodes.forEach((node, idx) => {
+                const item = document.createElement('div');
+                item.className = "glass-panel p-3 rounded-2xl border border-purple-500/30 flex flex-col space-y-1";
+                item.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-xs text-purple-300">${node.title}</span>
+                        <button onclick="jumpToTheatreScene(${idx})" class="emoji-btn px-2 py-1 bg-purple-600/80 rounded-lg text-[10px] font-bold">▶️ Play</button>
+                    </div>
+                    <p class="text-[11px] text-slate-300">${node.dialogue}</p>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function addSpiderwebNode() {
+            const id = spiderwebNodes.length + 1;
+            spiderwebNodes.push({
+                id: id,
+                title: `Scene ${id}: Climax Event`,
+                dialogue: `New cinematic node event #${id} unfolding across the web.`,
+                x: (Math.random() - 0.5) * 6,
+                y: 2,
+                z: (Math.random() - 0.5) * 6
+            });
+            buildSpiderweb3DNetwork();
+            populateSpiderwebNodesList();
+            showToast('Added new spiderweb scene node! 🕸️');
+        }
+
+        function updateTheatreScene() {
+            const node = spiderwebNodes[currentTheatreIndex];
+            document.getElementById('theatre-node-title').innerText = node.title;
+            document.getElementById('theatre-dialogue').innerText = `"${node.dialogue}"`;
+        }
+
+        function nextTheatreScene() {
+            currentTheatreIndex = (currentTheatreIndex + 1) % spiderwebNodes.length;
+            updateTheatreScene();
+        }
+
+        function prevTheatreScene() {
+            currentTheatreIndex = (currentTheatreIndex - 1 + spiderwebNodes.length) % spiderwebNodes.length;
+            updateTheatreScene();
+        }
+
+        function jumpToTheatreScene(idx) {
+            currentTheatreIndex = idx;
+            switchMode('theatre');
+        }
+
+        function openTexturePainter() { document.getElementById('texture-modal').classList.remove('hidden'); }
+        function closeTexturePainter() { document.getElementById('texture-modal').classList.add('hidden'); }
+        function initPainter() {
+            paintCanvas = document.getElementById('paint-canvas');
+            paintCtx = paintCanvas.getContext('2d');
+            paintCtx.fillStyle = '#050b14';
+            paintCtx.fillRect(0, 0, paintCanvas.width, paintCanvas.height);
+
+            paintCanvas.addEventListener('mousedown', startDraw);
+            paintCanvas.addEventListener('mousemove', draw);
+            paintCanvas.addEventListener('mouseup', stopDraw);
+            paintCanvas.addEventListener('touchstart', (e) => { startDraw(e.touches[0]); e.preventDefault(); });
+            paintCanvas.addEventListener('touchmove', (e) => { draw(e.touches[0]); e.preventDefault(); });
+            paintCanvas.addEventListener('touchend', stopDraw);
+        }
+        function startDraw(e) {
+            isDrawing = true;
+            paintCtx.beginPath();
+            const rect = paintCanvas.getBoundingClientRect();
+            paintCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = paintCanvas.getBoundingClientRect();
+            paintCtx.strokeStyle = document.getElementById('brush-color').value;
+            paintCtx.lineWidth = parseInt(document.getElementById('brush-size').value);
+            paintCtx.lineCap = 'round';
+            paintCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            paintCtx.stroke();
+        }
+        function stopDraw() { isDrawing = false; }
+        function clearPaintCanvas() {
+            paintCtx.fillStyle = '#050b14';
+            paintCtx.fillRect(0, 0, paintCanvas.width, paintCanvas.height);
+            showToast('Cleared 2D texture canvas!');
+        }
+        function applyTextureToCharacter() {
+            appState.customTextureUrl = paintCanvas.toDataURL();
+            buildActiveCharacter();
+            closeTexturePainter();
+            showToast('Applied custom texture to high-poly character! 🎨');
+        }
+
+        function toggleSettingsModal() {
+            document.getElementById('settings-modal').classList.toggle('hidden');
+        }
+
+        function setCharacterPart(part, val) {
+            if (part === 'hair') appState.hairStyle = val;
+            if (part === 'outfit') appState.outfitStyle = val;
+            buildActiveCharacter();
+            showToast(`Sculpted high-poly ${part}! ✨`);
+        }
+
+        function updateColor(type, hex) {
+            if (type === 'hair') appState.hairColor = hex;
+            if (type === 'outfit') appState.outfitColor = hex;
+            if (type === 'accent') appState.accentColor = hex;
+            buildActiveCharacter();
+        }
+
+        function toggleAccessory(acc) {
+            if (acc === 'tiara') appState.tiara = !appState.tiara;
+            if (acc === 'wings') appState.wings = !appState.wings;
+            buildActiveCharacter();
+            showToast(`Toggled ${acc}! ✨`);
+        }
+
+        function setStage(stage) {
+            appState.stage = stage;
+            buildStage();
+            showToast(`Loaded ${stage} stage environment! 🌍`);
+        }
+
+        function exportCharacterGLTF() {
+            if (typeof THREE.GLTFExporter === 'undefined') { showToast('GLTFExporter not loaded.'); return; }
+            const exporter = new THREE.GLTFExporter();
+            exporter.parse(scene, (gltf) => {
+                const output = JSON.stringify(gltf, null, 2);
+                const blob = new Blob([output], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'cinematic-spiderweb-character.gltf';
+                link.click();
+                showToast('Exported High-Poly GLTF successfully! 📦');
+            }, { binary: false });
+        }
+
+        function saveProjectJSON() {
+            const data = JSON.stringify({ appState, spiderwebNodes, spawnedEntities: spawnedEntities.map(e => ({ type: e.type, config: e.config })) }, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'spiderweb-studio-project.json';
+            link.click();
+            showToast('Project saved to Quantum Vault! 💾');
+        }
+
+        function importProjectJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const loaded = JSON.parse(e.target.result);
+                    appState = { ...appState, ...loaded.appState };
+                    if (loaded.spiderwebNodes) spiderwebNodes = loaded.spiderwebNodes;
+                    buildActiveCharacter();
+                    buildStage();
+                    buildSpiderweb3DNetwork();
+                    populateSpiderwebNodesList();
+                    showToast('Project loaded from Quantum Vault! 📂');
+                } catch(err) { showToast('Error parsing file.'); }
+            };
+            reader.readAsText(file);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
+
+            if (characterGroup && characterGroup.visible) {
+                characterGroup.position.y = Math.sin(time * 3) * 0.05;
+                characterGroup.rotation.y = Math.sin(time * 1.2) * 0.08;
+            }
+
+            if (spiderwebGroup && spiderwebGroup.visible) {
+                spiderwebGroup.rotation.y += delta * 0.2;
+            }
+
+            if (controls) controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
+        }
+    </script>
+</body>
+</html>
