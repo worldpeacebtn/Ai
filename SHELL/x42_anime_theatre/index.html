@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#090719" />
+  <title>X42 — Utopia Now | Quantum Anime Theatre</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="scanlines"></div>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">X42</div>
+      <div>
+        <div class="eyebrow">DIVISION X42 · PAPER THEATRE</div>
+        <h1>UTOPIA <span>NOW</span></h1>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="ghost" data-tab="story">Novel</button>
+      <button class="ghost" data-tab="stage">Stage</button>
+      <button class="primary" id="playTop">▶ Play scene</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero-grid">
+      <aside class="panel character-panel">
+        <div class="panel-title"><span>01</span> CHARACTER CORE</div>
+        <div class="character-stage">
+          <div class="orbit o1"></div><div class="orbit o2"></div>
+          <div class="sprite-wrap float" id="heroSprite">
+            <img src="assets/hero-character.png" alt="X42 character sprite" />
+          </div>
+          <div class="glow"></div>
+        </div>
+        <div class="character-meta">
+          <div>
+            <div class="tiny">LEAD PUPPET</div>
+            <h2>Rin / X-42</h2>
+          </div>
+          <div class="status"><i></i> LIVE</div>
+        </div>
+        <p class="muted">A paper-born navigator who wakes inside a quantum theatre where every prop can become a doorway.</p>
+        <div class="stat-grid">
+          <div><b>42</b><span>Signal</span></div>
+          <div><b>∞</b><span>Branches</span></div>
+          <div><b>X</b><span>Resolve</span></div>
+        </div>
+      </aside>
+
+      <section class="panel stage-panel" id="stage">
+        <div class="stage-head">
+          <div>
+            <div class="eyebrow">QUANTUM UTOPIA · PRO STUDIO</div>
+            <h2>Scene 01: Awakening in Nexus</h2>
+          </div>
+          <div class="stage-tools">
+            <button class="chip active">Cinematic Auto</button>
+            <button class="chip" id="chromaBtn">Chroma</button>
+          </div>
+        </div>
+        <div class="stage-canvas" id="stageCanvas">
+          <div class="grid-floor"></div>
+          <div class="web-lines"></div>
+          <div class="moon"></div>
+          <div class="stage-caption">
+            <span class="live-dot"></span>
+            <span id="captionText">The crystalline web pulses violet across the dimensions.</span>
+          </div>
+          <div class="scene-character" id="sceneCharacter">
+            <img src="assets/outfit-shadow.png" alt="Rin stage sprite" />
+          </div>
+          <div class="prop prop-orb" id="orbProp"><img src="assets/energy-orb.png" alt="energy orb" /></div>
+          <div class="prop prop-lantern"><img src="assets/lantern.png" alt="lantern" /></div>
+          <div class="portal" id="portal"><span>42</span></div>
+          <div class="spark s1">✦</div><div class="spark s2">✧</div><div class="spark s3">✦</div>
+        </div>
+        <div class="timeline">
+          <button class="round" id="prevScene">◀</button>
+          <div class="timeline-track"><span id="timelineFill"></span></div>
+          <span class="frame" id="frameLabel">FRAME 01 / 06</span>
+          <button class="round" id="nextScene">▶</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="workspace">
+      <nav class="tabs">
+        <button class="tab active" data-tab="stage">🎭 Stage</button>
+        <button class="tab" data-tab="story">📖 Novel</button>
+        <button class="tab" data-tab="equipment">⚙ Equipment</button>
+        <button class="tab" data-tab="assets">☁ GitHub Assets</button>
+      </nav>
+
+      <section class="tab-page active" id="page-stage">
+        <div class="cards">
+          <article class="panel compact">
+            <div class="panel-title"><span>SCENE</span> PLAYBACK</div>
+            <h3 id="sceneTitle">The Gate That Remembers</h3>
+            <p id="sceneBody">Rin opens her eyes. The stage is made of paper, but the stars behind it are real.</p>
+            <button class="primary wide" id="playScene">▶ Run animation</button>
+          </article>
+          <article class="panel compact">
+            <div class="panel-title"><span>MOOD</span> ENGINE</div>
+            <div class="mood-bars">
+              <label>Dream <i style="width:92%"></i></label>
+              <label>Cyber <i style="width:78%"></i></label>
+              <label>Wonder <i style="width:86%"></i></label>
+              <label>Danger <i style="width:44%"></i></label>
+            </div>
+          </article>
+          <article class="panel compact">
+            <div class="panel-title"><span>CONTROL</span> PAD</div>
+            <div class="control-pad">
+              <button data-action="sleep">SLEEP</button>
+              <button data-action="fight">FIGHT</button>
+              <button data-action="learn">LEARN</button>
+              <button data-action="dance">DANCE</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="tab-page" id="page-story">
+        <div class="novel panel">
+          <div class="novel-cover">
+            <div class="cover-glow"></div>
+            <img src="assets/outfit-hoodie.png" alt="Rin outfit" />
+            <div class="cover-title">X42<br><span>UTOPIA NOW</span></div>
+          </div>
+          <article>
+            <div class="eyebrow">ANIME WEB NOVEL · CHAPTER 01</div>
+            <h2>The Theatre Beyond the Fold</h2>
+            <p>Rin woke to the sound of paper breathing.</p>
+            <p>Above her, a violet lattice stretched across a black horizon. Every thread carried a memory: a classroom, a battlefield, a moonlit dance, a quiet room where somebody had once dreamed of a better world.</p>
+            <p>Her jacket lay beside her. The green <b>X</b> symbols glowed as if they had been waiting for her hands.</p>
+            <p>She lifted the jacket. Somewhere beyond the stage, a gate answered with the number <b>42</b>.</p>
+            <blockquote>“If the world is a theatre, then we are not the audience.”</blockquote>
+            <p>Rin stepped forward. The paper floor folded into a road of stars.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="tab-page" id="page-equipment">
+        <div class="equipment-grid" id="equipmentGrid"></div>
+      </section>
+
+      <section class="tab-page" id="page-assets">
+        <div class="asset-layout">
+          <article class="panel asset-import">
+            <div class="panel-title"><span>UPLOAD</span> GITHUB / RAW URL</div>
+            <h2>Bring your own sprites</h2>
+            <p class="muted">Paste a GitHub file URL. The app converts normal <code>/blob/</code> links to <code>raw.githubusercontent.com</code> automatically. Works with PNG, JPG, WEBP and GIF.</p>
+            <div class="input-row">
+              <input id="assetName" placeholder="Asset name, e.g. Rin battle sprite" />
+              <select id="assetType"><option value="sprite">Sprite</option><option value="prop">Prop</option><option value="background">Background</option></select>
+            </div>
+            <input id="githubUrl" placeholder="https://github.com/you/repo/blob/main/assets/rin.png" />
+            <div class="input-row">
+              <button class="primary" id="addAsset">＋ Add asset</button>
+              <button class="ghost" id="clearAssets">Clear saved</button>
+            </div>
+            <p class="tiny">Tip: a GitHub repository can be public or served through GitHub Pages. Private raw files need a different authenticated delivery layer.</p>
+          </article>
+          <article class="panel">
+            <div class="panel-title"><span>INVENTORY</span> LINKED ASSETS</div>
+            <div id="assetList" class="asset-list"></div>
+          </article>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <footer>
+    <span>DIVISION X42</span><span>UTOPIA NOW</span><span>TOGETHER WE BUILD TOMORROW</span>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>
