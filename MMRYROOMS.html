@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quantum OmniStage Pro // Mobile Spherical Matrix</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cyber: ['Orbitron', 'sans-serif'],
+                        raj: ['Rajdhani', 'sans-serif'],
+                    },
+                    colors: {
+                        cyberPink: '#ff007f',
+                        cyberPurple: '#9d00ff',
+                        cyberBlue: '#00f3ff',
+                        cyberOrange: '#ff8800',
+                        cyberDark: '#05050a',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: #05050a;
+            color: #e2e8f0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        .holo-card {
+            background: rgba(15, 10, 30, 0.9);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 0, 127, 0.4);
+            box-shadow: 0 0 25px rgba(157, 0, 255, 0.25), inset 0 0 15px rgba(0, 243, 255, 0.15);
+        }
+        .sphere-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #00f3ff, #ff007f);
+            box-shadow: 0 0 15px rgba(0,243,255,0.5), inset 0 0 8px rgba(255,255,255,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            font-size: 18px;
+        }
+        .sphere-btn:active {
+            transform: scale(0.92);
+        }
+        .sub-sphere-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #9d00ff, #ff007f);
+            box-shadow: 0 0 12px rgba(157,0,255,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            font-size: 14px;
+        }
+        .sub-sphere-btn:hover {
+            transform: scale(1.15);
+        }
+        .touch-wheel {
+            background: rgba(10, 5, 20, 0.9);
+            border: 1px solid rgba(0, 243, 255, 0.5);
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.3);
+            border-radius: 9999px;
+            touch-action: none;
+        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0a0510; }
+        ::-webkit-scrollbar-thumb { background: #ff007f; border-radius: 2px; }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col relative" onclick="handleGlobalClick(event)">
+
+    <!-- Canvas Container -->
+    <div id="canvas-container" class="absolute inset-0 z-10 cursor-grab active:cursor-grabbing"></div>
+
+    <!-- Top Left Status / Room Badge -->
+    <div class="absolute top-4 left-4 z-30 flex items-center gap-3 pointer-events-auto">
+        <div class="holo-card px-4 py-2 rounded-2xl flex items-center gap-3 border border-cyberBlue/40 shadow-lg">
+            <span class="w-3 h-3 rounded-full bg-cyberPink animate-pulse"></span>
+            <span id="room-title-badge" class="font-cyber font-bold text-xs text-white tracking-wider">CORE MATRIX // ROOM 1</span>
+        </div>
+    </div>
+
+    <!-- Selected Object Value & Property Touch/Swipe Wheel HUD (Only shown when an object is selected) -->
+    <div id="object-hud" class="absolute top-16 right-4 z-30 holo-card p-3 rounded-2xl flex flex-col gap-2.5 w-60 shadow-2xl hidden pointer-events-auto border border-cyberPink/50">
+        <div class="flex items-center justify-between border-b border-cyberPink/30 pb-1.5">
+            <span id="selected-obj-name" class="font-cyber font-bold text-xs text-cyberBlue truncate">Selected Object</span>
+            <button onclick="clearActiveSelection()" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="flex flex-col gap-2 text-xs">
+            <div class="flex justify-between text-slate-300">
+                <span>Opacity / Alpha:</span>
+                <span id="param-val-lbl" class="font-mono text-cyberBlue font-bold">0.90</span>
+            </div>
+            <!-- Swipe / Touch Wheel Simulation -->
+            <div id="swipe-wheel" class="touch-wheel h-12 flex items-center justify-center cursor-ew-resize relative select-none" onpointerdown="startWheelDrag(event)">
+                <div class="absolute inset-0 flex items-center justify-center text-[10px] font-cyber text-cyberPink tracking-widest pointer-events-none">
+                    ⟲ SWIPE OR WHEEL ⟳
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-1 pt-1">
+                <button onclick="scaleSelectedObject(0.1)" class="bg-cyberDark/60 hover:bg-cyberPink/30 border border-cyberBlue/30 py-1.5 rounded-lg text-[10px] font-cyber text-white">Scale +</button>
+                <button onclick="scaleSelectedObject(-0.1)" class="bg-cyberDark/60 hover:bg-cyberPink/30 border border-cyberBlue/30 py-1.5 rounded-lg text-[10px] font-cyber text-white">Scale -</button>
+                <button onclick="duplicateSelectedObject()" class="bg-cyberPurple/40 hover:bg-cyberPurple/60 border border-cyberPurple py-1.5 rounded-lg text-[10px] font-cyber text-white">Copy</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- iPhone Keyboard Style Bottom Edge Spherical Toolbar & Blended Sub-options -->
+    <div class="absolute bottom-4 left-4 right-4 z-40 flex flex-col items-center gap-2.5 pointer-events-auto">
+        
+        <!-- Expanded Circular Spherical Sub-options (Blended smoothly above keyboard bar) -->
+        <div id="sub-menu-row" class="flex items-center gap-3 p-2 holo-card rounded-full shadow-2xl transition-all duration-300 hidden">
+            <!-- Dynamic sub-spheres populated here -->
+        </div>
+
+        <!-- Main iPhone Keyboard Bar (Bottom Edge, Always Visible) -->
+        <div class="w-full max-w-md holo-card p-2.5 rounded-full shadow-2xl flex items-center justify-around">
+            <div class="sphere-btn" onclick="toggleBottomMenu('ROOMS', event)" title="Rooms">🏠</div>
+            <div class="sphere-btn" onclick="toggleBottomMenu('SPAWN', event)" title="Spawner">✨</div>
+            <div class="sphere-btn" onclick="toggleBottomMenu('VAULT', event)" title="Media Vault">📂</div>
+            <div class="sphere-btn" onclick="toggleBottomMenu('GAME', event)" title="Game Mode">🕹️</div>
+            <div class="sphere-btn" onclick="clearActiveSelection()" title="Eraser">🧹</div>
+        </div>
+    </div>
+
+    <!-- Scrollable Terminal Library Modal -->
+    <div id="media-library-modal" class="fixed inset-0 z-50 bg-cyberDark/95 backdrop-blur-xl flex items-center justify-center p-4 hidden pointer-events-auto">
+        <div class="holo-card w-full max-w-xl h-[75vh] rounded-3xl flex flex-col overflow-hidden shadow-2xl border border-cyberPink/50">
+            <div class="p-4 border-b border-cyberPink/30 flex items-center justify-between bg-cyberDark/80">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">📂</span>
+                    <h2 class="font-cyber font-bold text-sm text-white">TERMINAL MEDIA & FILE VAULT</h2>
+                </div>
+                <button onclick="toggleLibraryModal(false)" class="text-slate-400 hover:text-white p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-3 border-b border-cyberPink/20 bg-cyberDark/60 flex items-center justify-between">
+                <input type="file" id="file-input" accept="image/*,video/*,text/*,.js,.html,.css,.json,.md,.py" class="hidden" multiple onchange="handleFileUpload(event)">
+                <button onclick="document.getElementById('file-input').click()" class="w-full holo-btn py-2 px-4 rounded-xl text-xs font-cyber text-white bg-cyberPink/50 border border-cyberPink/60 text-center cursor-pointer">
+                    <i class="fa-solid fa-upload mr-2"></i> Upload File / Image / GIF / Code / Text
+                </button>
+            </div>
+            <!-- Scrollable Terminal Element Inspector & Spawner list -->
+            <div id="library-grid" class="flex-1 p-4 overflow-y-auto grid grid-cols-2 gap-3 font-raj">
+                <!-- Dynamic media & file items -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Logic -->
+    <script>
+        let scene, camera, renderer, raycaster, mouse;
+        let objectsInScene = [];
+        let roomObjectsMap = {}; // Stores scene objects per room for session persistence
+        let selectedObject = null;
+        let currentRoomIdx = 0;
+        let isDraggingWheel = false;
+        let dragStartX = 0;
+        let isDraggingObject = false;
+        let planeIntersection = new THREE.Vector3();
+        let dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+
+        let glassRooms = [
+            { id: 0, name: "Core Glass Matrix", color: 0xff007f },
+            { id: 1, name: "Neon Sanctuary", color: 0x00f3ff },
+            { id: 2, name: "Prismatic Vault", color: 0x9d00ff }
+        ];
+
+        let mediaLibrary = [
+            { id: 1, name: "🌌 Galaxy Holo", type: "EMOJI", content: "🌌 Galaxy Holo" },
+            { id: 2, name: "🚀 Quantum Rocket", type: "EMOJI", content: "🚀 Quantum Rocket" },
+            { id: 3, name: "💎 Cyber Diamond", type: "EMOJI", content: "💎 Cyber Diamond" }
+        ];
+
+        function initThree() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x05050a);
+            scene.fog = new THREE.FogExp2(0x05050a, 0.025);
+
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 3, 10);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const pl1 = new THREE.PointLight(0xff007f, 4, 40);
+            pl1.position.set(5, 8, 5);
+            scene.add(pl1);
+
+            const pl2 = new THREE.PointLight(0x00f3ff, 4, 40);
+            pl2.position.set(-5, 8, -5);
+            scene.add(pl2);
+
+            buildGlassRoom(currentRoomIdx);
+            setupEventListeners();
+            animate();
+        }
+
+        function buildGlassRoom(roomIdx) {
+            // Save current room objects before switching
+            if (currentRoomIdx !== undefined && objectsInScene.length > 0) {
+                roomObjectsMap[currentRoomIdx] = [...objectsInScene];
+                objectsInScene.forEach(o => scene.remove(o.mesh));
+            }
+
+            currentRoomIdx = roomIdx;
+            objectsInScene = [];
+
+            const roomData = glassRooms[roomIdx] || glassRooms[0];
+            document.getElementById('room-title-badge').textContent = `${roomData.name.toUpperCase()} // ROOM ${roomIdx + 1}`;
+
+            // Room Enclosed Glass Box
+            const roomGeo = new THREE.BoxGeometry(16, 10, 16);
+            const roomMat = new THREE.MeshPhysicalMaterial({
+                color: roomData.color,
+                emissive: roomData.color,
+                emissiveIntensity: 0.1,
+                roughness: 0.1,
+                transmission: 0.85,
+                thickness: 1.2,
+                transparent: true,
+                opacity: 0.25,
+                side: THREE.BackSide
+            });
+            const glassBox = new THREE.Mesh(roomGeo, roomMat);
+            glassBox.position.set(0, 4, 0);
+            scene.add(glassBox);
+            objectsInScene.push({ id: 'glass_room', name: roomData.name, mesh: glassBox, type: 'ROOM', opacity: 0.25 });
+
+            // Floor Grid
+            const grid = new THREE.GridHelper(16, 16, roomData.color, 0x00f3ff);
+            grid.position.y = -1;
+            scene.add(grid);
+            objectsInScene.push({ id: 'floor', name: 'Room Floor', mesh: grid, type: 'ENV', opacity: 1 });
+
+            // Restore saved session objects for this room if available, otherwise spawn defaults
+            if (roomObjectsMap[roomIdx] && roomObjectsMap[roomIdx].length > 2) {
+                roomObjectsMap[roomIdx].forEach(o => {
+                    if (o.type !== 'ROOM' && o.type !== 'ENV') {
+                        scene.add(o.mesh);
+                        objectsInScene.push(o);
+                    }
+                });
+            } else {
+                spawnTextCard(0, 1.5, -2, `🌌 ${roomData.name}`);
+                spawnTextCard(-3, 2, -1, "🚀 Quantum Matrix");
+            }
+        }
+
+        function spawnTextCard(x, y, z, text) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#0f0a1e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#ff007f';
+            ctx.lineWidth = 8;
+            ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+
+            ctx.fillStyle = '#00f3ff';
+            ctx.font = 'bold 36px Orbitron';
+            ctx.textAlign = 'center';
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 10);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.colorSpace = THREE.SRGBColorSpace;
+            const geometry = new THREE.PlaneGeometry(3.2, 1.8);
+            const material = new THREE.MeshStandardMaterial({
+                map: texture,
+                emissive: 0xff007f,
+                emissiveIntensity: 0.4,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(x, y, z);
+            scene.add(mesh);
+
+            const objEntry = {
+                id: 'obj_' + Math.random().toString(36).substring(2, 9),
+                name: text,
+                mesh: mesh,
+                type: 'CARD',
+                opacity: 0.9
+            };
+            objectsInScene.push(objEntry);
+            return objEntry;
+        }
+
+        function spawnImageCard(x, y, z, url, name) {
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(url, (texture) => {
+                texture.colorSpace = THREE.SRGBColorSpace;
+                const imgAspect = texture.image.width / texture.image.height || 1.4;
+                const baseH = 2.2;
+                const baseW = baseH * Math.max(0.6, Math.min(1.8, imgAspect));
+
+                const geometry = new THREE.PlaneGeometry(baseW, baseH);
+                const material = new THREE.MeshStandardMaterial({
+                    map: texture,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.95
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(x, y, z);
+                scene.add(mesh);
+
+                const objEntry = {
+                    id: 'obj_' + Math.random().toString(36).substring(2, 9),
+                    name: name,
+                    mesh: mesh,
+                    type: 'MEDIA',
+                    opacity: 0.95
+                };
+                objectsInScene.push(objEntry);
+            });
+        }
+
+        function spawnFile2DPreviewCard(x, y, z, fileContent, fileName, fileType) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 768;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#0a0510';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#1a0f2e';
+            ctx.fillRect(0, 0, canvas.width, 80);
+            ctx.strokeStyle = '#ff007f';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#ff007f';
+            ctx.beginPath(); ctx.arc(40, 40, 12, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#00f3ff';
+            ctx.beginPath(); ctx.arc(80, 40, 12, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#9d00ff';
+            ctx.beginPath(); ctx.arc(120, 40, 12, 0, Math.PI*2); ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 28px Orbitron';
+            ctx.textAlign = 'left';
+            ctx.fillText(fileName.toUpperCase(), 160, 48);
+
+            ctx.fillStyle = '#00f3ff';
+            ctx.font = '20px Rajdhani';
+            ctx.textAlign = 'right';
+            ctx.fillText(`FORMAT: ${fileType.toUpperCase()}`, canvas.width - 40, 48);
+
+            ctx.fillStyle = '#e2e8f0';
+            ctx.font = '22px monospace';
+            const lines = fileContent.split('\n');
+            let startY = 130;
+            const maxLines = 22;
+            for (let i = 0; i < Math.min(lines.length, maxLines); i++) {
+                ctx.fillStyle = '#ff007f';
+                ctx.fillText((i + 1).toString().padStart(2, '0'), 40, startY);
+                ctx.fillStyle = i === 0 ? '#00f3ff' : '#e2e8f0';
+                ctx.fillText(lines[i].substring(0, 75), 100, startY);
+                startY += 28;
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.colorSpace = THREE.SRGBColorSpace;
+            const geometry = new THREE.PlaneGeometry(3.6, 2.7);
+            const material = new THREE.MeshStandardMaterial({
+                map: texture,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.95
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(x, y, z);
+            scene.add(mesh);
+
+            const objEntry = {
+                id: 'obj_' + Math.random().toString(36).substring(2, 9),
+                name: fileName,
+                mesh: mesh,
+                type: 'FILE_DOC',
+                opacity: 0.95
+            };
+            objectsInScene.push(objEntry);
+        }
+
+        // Touch & Grab / Reposition Event Handling
+        function setupEventListeners() {
+            const container = document.getElementById('canvas-container');
+
+            container.addEventListener('pointerdown', (event) => {
+                const rect = container.getBoundingClientRect();
+                mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(scene.children);
+
+                if (intersects.length > 0) {
+                    const hit = intersects.find(i => i.object !== objectsInScene.find(o => o.id === 'floor')?.mesh);
+                    if (hit) {
+                        const foundObj = objectsInScene.find(o => o.mesh === hit.object);
+                        if (foundObj && foundObj.type !== 'ENV' && foundObj.type !== 'ROOM') {
+                            selectObject(foundObj);
+                            isDraggingObject = true;
+                            dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()).negate(), foundObj.mesh.position);
+                        }
+                    }
+                }
+            });
+
+            container.addEventListener('pointermove', (event) => {
+                if (!isDraggingObject || !selectedObject) return;
+                const rect = container.getBoundingClientRect();
+                mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const targetPos = new THREE.Vector3();
+                raycaster.ray.intersectPlane(dragPlane, targetPos);
+                if (targetPos) {
+                    selectedObject.mesh.position.copy(targetPos);
+                }
+            });
+
+            container.addEventListener('pointerup', () => {
+                isDraggingObject = false;
+            });
+
+            window.addEventListener('wheel', (e) => {
+                if (!selectedObject) return;
+                const delta = e.deltaY < 0 ? 0.05 : -0.05;
+                adjustOpacityValue(delta);
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        function selectObject(obj) {
+            selectedObject = obj;
+            document.getElementById('selected-obj-name').textContent = obj.name;
+            document.getElementById('param-val-lbl').textContent = (obj.opacity || 0.9).toFixed(2);
+            document.getElementById('object-hud').classList.remove('hidden');
+        }
+
+        function clearActiveSelection() {
+            if (selectedObject) {
+                scene.remove(selectedObject.mesh);
+                objectsInScene = objectsInScene.filter(o => o !== selectedObject);
+                selectedObject = null;
+                document.getElementById('object-hud').classList.add('hidden');
+            } else {
+                objectsInScene.filter(o => o.type !== 'ENV' && o.type !== 'ROOM').forEach(o => scene.remove(o.mesh));
+                objectsInScene = objectsInScene.filter(o => o.type === 'ENV' || o.type === 'ROOM');
+            }
+        }
+
+        function scaleSelectedObject(delta) {
+            if (!selectedObject) return;
+            const currentScale = selectedObject.mesh.scale.x;
+            const newScale = Math.max(0.3, Math.min(2.5, currentScale + delta));
+            selectedObject.mesh.scale.set(newScale, newScale, newScale);
+        }
+
+        function duplicateSelectedObject() {
+            if (!selectedObject) return;
+            const clone = selectedObject.mesh.clone();
+            clone.position.x += 1.2;
+            scene.add(clone);
+            const newObj = {
+                id: 'obj_' + Math.random().toString(36).substring(2, 9),
+                name: selectedObject.name + " (Copy)",
+                mesh: clone,
+                type: selectedObject.type,
+                opacity: selectedObject.opacity
+            };
+            objectsInScene.push(newObj);
+            selectObject(newObj);
+        }
+
+        // Swipe & Touch Wheel Handling
+        function startWheelDrag(e) {
+            isDraggingWheel = true;
+            dragStartX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+            window.addEventListener('pointermove', onWheelDrag);
+            window.addEventListener('pointerup', stopWheelDrag);
+        }
+
+        function onWheelDrag(e) {
+            if (!isDraggingWheel || !selectedObject) return;
+            const currentX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+            const diff = (currentX - dragStartX) * 0.005;
+            dragStartX = currentX;
+            adjustOpacityValue(diff);
+        }
+
+        function stopWheelDrag() {
+            isDraggingWheel = false;
+            window.removeEventListener('pointermove', onWheelDrag);
+            window.removeEventListener('pointerup', stopWheelDrag);
+        }
+
+        function adjustOpacityValue(delta) {
+            if (!selectedObject) return;
+            selectedObject.opacity = Math.min(1.0, Math.max(0.1, (selectedObject.opacity || 0.9) + delta));
+            if (selectedObject.mesh.material) {
+                selectedObject.mesh.material.opacity = selectedObject.opacity;
+                selectedObject.mesh.material.transparent = true;
+            }
+            document.getElementById('param-val-lbl').textContent = selectedObject.opacity.toFixed(2);
+        }
+
+        // iPhone Keyboard Bottom Edge Spherical Toolbar & Sub-options
+        function toggleBottomMenu(type, event) {
+            event.stopPropagation();
+            const subRow = document.getElementById('sub-menu-row');
+            subRow.innerHTML = '';
+            subRow.classList.remove('hidden');
+
+            if (type === 'ROOMS') {
+                glassRooms.forEach((r, idx) => {
+                    subRow.innerHTML += `<div class="sub-sphere-btn" onclick="switchRoom(${idx}); hideSubMenu();" title="${r.name}">R${idx+1}</div>`;
+                });
+                subRow.innerHTML += `<div class="sub-sphere-btn" onclick="addNewRoom(); hideSubMenu();" title="Add Room">+</div>`;
+            } else if (type === 'SPAWN') {
+                subRow.innerHTML = `
+                    <div class="sub-sphere-btn" onclick="spawnTextCard(0,2,-2,'🚀 Rocket'); hideSubMenu();" title="Rocket">🚀</div>
+                    <div class="sub-sphere-btn" onclick="spawnTextCard(0,2,-2,'💎 Crystal'); hideSubMenu();" title="Crystal">💎</div>
+                    <div class="sub-sphere-btn" onclick="spawnTextCard(0,2,-2,'🌌 Nebula'); hideSubMenu();" title="Nebula">🌌</div>
+                `;
+            } else if (type === 'VAULT') {
+                hideSubMenu();
+                toggleLibraryModal(true);
+            } else if (type === 'GAME') {
+                subRow.innerHTML = `
+                    <div class="sub-sphere-btn" onclick="spawnTextCard((Math.random()-0.5)*4, 2, (Math.random()-0.5)*4, '🕹️ Play Arena'); hideSubMenu();" title="Spawn Arena">🎮</div>
+                `;
+            }
+        }
+
+        function hideSubMenu() {
+            document.getElementById('sub-menu-row').classList.add('hidden');
+        }
+
+        function handleGlobalClick(e) {
+            if (!e.target.closest('#sub-menu-row') && !e.target.closest('.sphere-btn') && !e.target.closest('#object-hud')) {
+                hideSubMenu();
+            }
+        }
+
+        function switchRoom(idx) {
+            buildGlassRoom(idx);
+        }
+
+        function addNewRoom() {
+            const newIdx = glassRooms.length;
+            glassRooms.push({ id: newIdx, name: `Glass Room #${newIdx + 1}`, color: Math.floor(Math.random()*16777215) });
+            switchRoom(newIdx);
+        }
+
+        function toggleLibraryModal(show) {
+            const modal = document.getElementById('media-library-modal');
+            if (show) {
+                modal.classList.remove('hidden');
+                renderLibraryGrid();
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function renderLibraryGrid() {
+            const grid = document.getElementById('library-grid');
+            grid.innerHTML = '';
+            mediaLibrary.forEach(item => {
+                grid.innerHTML += `
+                    <div class="holo-card p-3 rounded-2xl flex flex-col justify-between gap-2 border border-cyberPink/30">
+                        <span class="text-xs font-cyber text-white font-bold truncate">${item.name}</span>
+                        <button onclick="spawnTextCard(0,2,-2,'${item.content}'); toggleLibraryModal(false);" class="holo-btn py-1.5 rounded-xl text-[11px] font-cyber text-white bg-cyberPink/50 border border-cyberPink/60">Spawn to Room</button>
+                    </div>
+                `;
+            });
+        }
+
+        function handleFileUpload(e) {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+            for (let f of files) {
+                const url = URL.createObjectURL(f);
+                if (f.type.startsWith('image/')) {
+                    mediaLibrary.push({ id: mediaLibrary.length + 1, name: f.name, type: 'MEDIA', url: url });
+                    spawnImageCard((Math.random()-0.5)*4, 2, (Math.random()-0.5)*4, url, f.name);
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const content = event.target.result;
+                        mediaLibrary.push({ id: mediaLibrary.length + 1, name: f.name, type: 'FILE_DOC', content: content });
+                        spawnFile2DPreviewCard((Math.random()-0.5)*4, 2, (Math.random()-0.5)*4, content, f.name, f.name.split('.').pop() || 'doc');
+                    };
+                    reader.readAsText(f);
+                }
+            }
+            renderLibraryGrid();
+            toggleLibraryModal(false);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            objectsInScene.forEach(o => {
+                if (o.type === 'CARD') {
+                    o.mesh.rotation.y += 0.002;
+                }
+            });
+            renderer.render(scene, camera);
+        }
+
+        window.onload = initThree;
+    </script>
+</body>
+</html>
