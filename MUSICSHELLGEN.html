@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Disco Grid — Holo Media Studio</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root{
+  --cyan:#00f3ff;--magenta:#ff00ff;--lime:#62fcd7;--pink:#fd76b5;
+  --yellow:#f2ff86;--peach:#ffb795;--bg:#03040a;--panel:rgba(14,15,20,.78);
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#03040a;color:#eafaff;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;touch-action:none}
+canvas{display:block}
+#app{position:fixed;inset:0}
+#webgl{position:absolute;inset:0}
+.hud{position:absolute;z-index:20;pointer-events:none;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom))}
+.panel{pointer-events:auto;background:var(--panel);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(0,243,255,.18);box-shadow:0 0 25px rgba(0,243,255,.08),inset 0 0 20px rgba(0,243,255,.025);border-radius:10px}
+.top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px;padding:9px 12px}
+.logo{width:34px;height:34px;border:2px solid #fff;clip-path:polygon(50% 0,100% 27%,100% 73%,50% 100%,0 73%,0 27%);display:grid;place-items:center}
+.logo:after{content:"";width:12px;height:12px;border:2px solid var(--cyan);transform:rotate(45deg)}
+.brand h1{font-size:18px;margin:0;letter-spacing:.02em}.brand small{display:block;color:#a8adbd;font-size:10px;margin-top:1px}
+.controls{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+button,select,input[type=number]{font:inherit;color:#eafaff;background:#232630;border:1px solid #3b3f4b;border-radius:7px;padding:8px 10px}
+button{cursor:pointer}button:hover{border-color:var(--cyan);box-shadow:0 0 12px rgba(0,243,255,.18)}
+button.primary{background:#47d17a;color:#031109;border-color:#47d17a;font-weight:700}
+button.active{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 12px rgba(0,243,255,.2)}
+#randomBtn{font-weight:700}
+.mainPanel{position:absolute;right:12px;top:100px;width:min(360px,calc(100vw - 24px));max-height:calc(100vh - 180px);overflow:auto;padding:0}
+.section{border-bottom:1px solid #34363e}.section:last-child{border-bottom:0}
+.section h3{margin:0;padding:12px 14px;font-size:14px;letter-spacing:.01em;display:flex;justify-content:space-between}
+.section .body{padding:10px 14px 14px}
+.row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin:8px 0;font-size:12px;color:#c8ccd8}
+.row input[type=range]{width:135px}.value{font-variant-numeric:tabular-nums;color:#fff}
+.swatches{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.swatch{height:34px;border-radius:5px;border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;padding:0 9px;font-size:11px;text-shadow:0 1px 3px #000}
+#mediaList{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mediaThumb{position:relative;aspect-ratio:1;border:1px solid #363944;border-radius:6px;overflow:hidden;background:#090a0e;cursor:pointer}
+.mediaThumb img,.mediaThumb video{width:100%;height:100%;object-fit:cover}.mediaThumb span{position:absolute;bottom:2px;left:3px;font-size:8px;background:#000a;padding:2px 4px;border-radius:3px}
+#bottom{pointer-events:auto;display:flex;gap:8px;align-items:center;align-self:center;width:min(760px,100%);padding:9px}
+.status{flex:1;min-width:0}.status b{display:block;font-size:12px}.status span{font-size:9px;color:#8b92a5;letter-spacing:.08em}
+input[type=file]{display:none}
+.drop{border:1px dashed rgba(0,243,255,.4);padding:11px;text-align:center;color:#9defff;border-radius:7px;cursor:pointer;font-size:11px}
+.drop:hover{background:rgba(0,243,255,.08)}
+.range{accent-color:var(--cyan)}
+#toast{position:absolute;z-index:50;left:50%;top:70px;transform:translateX(-50%) translateY(-10px);opacity:0;transition:.25s;padding:9px 14px;border-radius:20px;background:#11151c;border:1px solid rgba(0,243,255,.35);font-size:11px;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#mobileHint{display:none}
+@media(max-width:700px){
+  .hud{padding-left:7px;padding-right:7px}
+  .brand{padding:7px 9px}.brand h1{font-size:15px}.brand small{font-size:8px}
+  .controls{max-width:55vw}.controls button{padding:7px 8px;font-size:11px}
+  .mainPanel{top:auto;bottom:75px;right:7px;width:calc(100vw - 14px);max-height:42vh}
+  .row input[type=range]{width:110px}
+  #bottom{width:calc(100% - 14px)}
+  #mobileHint{display:block;text-align:center;font-size:9px;color:#7c8498;margin-top:3px}
+}
+@media(orientation:portrait) and (max-width:700px){
+  #webgl canvas{filter:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="webgl"></div>
+  <div id="toast"></div>
+
+  <div class="hud">
+    <div class="top">
+      <div class="panel brand">
+        <div class="logo"></div>
+        <div><h1>Disco Grid</h1><small>HOLO MEDIA STUDIO // MOBILE READY</small></div>
+      </div>
+      <div class="controls">
+        <button id="randomBtn">⚡ RANDOM</button>
+        <button id="stageBtn">🌈 STAGE</button>
+        <button id="addBtn" class="primary">＋ MEDIA</button>
+      </div>
+    </div>
+
+    <div class="panel mainPanel">
+      <div class="section">
+        <h3>⌄ Circuit Grid Controls <span id="fps">60 FPS</span></h3>
+        <div class="body">
+          <div class="row"><span>Color Scheme</span><select id="scheme">
+            <option value="solar">Solar Flare</option><option value="cyber">Cyber Cyan</option><option value="matrix">Emerald Matrix</option><option value="candy">Chromatic Candy</option><option value="void">Deep Void</option>
+          </select></div>
+          <div class="row"><span>Animation Preset</span><select id="preset">
+            <option value="wave">Wave Grid</option><option value="static">Static Grid</option><option value="pulse">Bass Pulse</option><option value="orbit">Orbit Grid</option>
+          </select></div>
+          <div class="row"><span>Click To Randomize</span><button id="miniRandom">✓</button></div>
+          <div class="row"><span>Grid Intensity</span><input class="range" id="gridIntensity" type="range" min="0" max="1" step=".01" value=".32"></div>
+          <div class="row"><span>Bloom</span><input class="range" id="bloom" type="range" min="0" max="4" step=".05" value="2.5"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>⌄ Color Palette</h3>
+        <div class="body">
+          <div class="swatches">
+            <div class="swatch" style="background:#fd76b5">Primary Grid&nbsp; #fd76b5</div>
+            <div class="swatch" style="background:#62fcd7;color:#031">Secondary&nbsp; #62fcd7</div>
+            <div class="swatch" style="background:#f2ff86;color:#031">Circuit Logic&nbsp; #f2ff86</div>
+            <div class="swatch" style="background:#ffb795;color:#031">Data Pulses&nbsp; #ffb795</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>⌄ Holo Filter</h3>
+        <div class="body">
+          <div class="row"><span>Filter</span><select id="filterMode">
+            <option value="grid">Neon Grid</option><option value="rgb">RGB Prism</option><option value="scan">Scanline</option><option value="negative">Negative Grid</option><option value="none">Original</option>
+          </select></div>
+          <div class="row"><span>Black → Alpha</span><input class="range" id="alphaCut" type="range" min="0" max=".45" step=".005" value=".08"></div>
+          <div class="row"><span>Grid Amount</span><input class="range" id="mediaGrid" type="range" min="0" max="1" step=".01" value=".7"></div>
+          <div class="row"><span>Glow</span><input class="range" id="mediaGlow" type="range" min="0" max="2" step=".01" value="1"></div>
+          <div class="row"><span>Invert Alpha Order</span><button id="invertAlpha">OFF</button></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>⌄ Holographic Media</h3>
+        <div class="body">
+          <label class="drop" for="mediaInput">TAP TO UPLOAD IMAGE / VIDEO</label>
+          <input id="mediaInput" type="file" accept="image/*,video/*" multiple>
+          <div id="mediaList" style="margin-top:9px"></div>
+          <div id="mobileHint">Drag with one finger • pinch with two fingers • double tap to randomize</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>⌄ Camera / Room</h3>
+        <div class="body">
+          <div class="row"><span>Room Scale</span><input class="range" id="roomScale" type="range" min=".6" max="1.8" step=".01" value="1"></div>
+          <div class="row"><span>Camera FOV</span><input class="range" id="fov" type="range" min="35" max="85" step="1" value="60"></div>
+          <div class="row"><span>Holo Drift</span><input class="range" id="drift" type="range" min="0" max="2" step=".01" value="1"></div>
+          <button id="portraitBtn" style="width:100%">📱 PORTRAIT / MOBILE MODE</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="bottom" class="panel">
+      <div class="status"><b id="status">DISCO GRID // HOLO ROOM</b><span id="substatus">UPLOAD MEDIA TO FLOAT IT THROUGH THE ROOM</span></div>
+      <button id="play">▶</button>
+      <button id="pause">Ⅱ</button>
+      <label class="drop" for="audioInput" style="padding:7px 10px">AUDIO</label>
+      <input id="audioInput" type="file" accept="audio/*">
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
+import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const $=id=>document.getElementById(id);
+const toast=t=>{const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(window.__toast);window.__toast=setTimeout(()=>e.classList.remove('show'),1600)};
+
+const state={
+  primary:0xfd76b5,secondary:0x62fcd7,logic:0xf2ff86,pulse:0xffb795,
+  grid:.32,bloom:2.5,filter:'grid',alphaCut:.08,mediaGrid:.7,mediaGlow:1,
+  roomScale:1,drift:1,preset:'wave',invert:false,stage:0
+};
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x03040a);
+scene.fog=new THREE.FogExp2(0x03040a,.012);
+
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,1000);
+camera.position.set(0,3.2,11);
+const controls=new OrbitControls(camera,document.querySelector('#webgl'));
+controls.enableDamping=true;controls.enablePan=false;controls.minDistance=5;controls.maxDistance=25;
+controls.target.set(0,0,0);
+
+const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+$('webgl').appendChild(renderer.domElement);
+
+const composer=new EffectComposer(renderer);
+const renderPass=new RenderPass(scene,camera);
+const bloomPass=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),2.5,.5,.1);
+composer.addPass(renderPass);composer.addPass(bloomPass);
+
+const room=new THREE.Group();scene.add(room);
+
+const gridGeo=new THREE.PlaneGeometry(90,90,70,70);
+gridGeo.rotateX(-Math.PI/2);
+const base=[];
+for(let i=0;i<gridGeo.attributes.position.count;i++){
+  base.push(gridGeo.attributes.position.getX(i),gridGeo.attributes.position.getY(i),gridGeo.attributes.position.getZ(i));
+}
+const gridMat=new THREE.MeshBasicMaterial({color:state.primary,wireframe:true,transparent:true,opacity:state.grid});
+const grid=new THREE.Mesh(gridGeo,gridMat);grid.position.y=-3;room.add(grid);
+
+const core=new THREE.Group();room.add(core);
+let coreMesh,wireMesh;
+function buildCore(style=0){
+  if(coreMesh) core.remove(coreMesh);
+  if(wireMesh) core.remove(wireMesh);
+  let geo;
+  if(style%5===0) geo=new THREE.IcosahedronGeometry(2,2);
+  if(style%5===1) geo=new THREE.SphereGeometry(2,32,20);
+  if(style%5===2) geo=new THREE.TorusKnotGeometry(1.45,.38,120,18);
+  if(style%5===3) geo=new THREE.OctahedronGeometry(2.1,2);
+  if(style%5===4) geo=new THREE.DodecahedronGeometry(2.05,1);
+  const mat=new THREE.MeshBasicMaterial({color:state.secondary});
+  coreMesh=new THREE.Mesh(geo,mat);
+  const wireGeo=geo.clone();
+  const wireMat=new THREE.MeshBasicMaterial({color:state.primary,wireframe:true,transparent:true,opacity:.9});
+  wireMesh=new THREE.Mesh(wireGeo,wireMat);
+  core.add(coreMesh,wireMesh);
+}
+buildCore(0);
+
+for(let r=0;r<4;r++){
+  const g=new THREE.TorusGeometry(2.7+r*.55,.025,6,100);
+  const m=new THREE.MeshBasicMaterial({color:new THREE.Color().setHSL(r/4,.9,.6),transparent:true,opacity:.75});
+  const o=new THREE.Mesh(g,m);o.rotation.x=Math.PI/2+r*.2;o.userData.ring=r;core.add(o);
+}
+
+const particleCount=300;
+const pGeo=new THREE.BufferGeometry();
+const pPos=new Float32Array(particleCount*3);
+const pVel=[];
+for(let i=0;i<particleCount;i++){
+  const k=i*3;pPos[k]=(Math.random()-.5)*45;pPos[k+1]=(Math.random()-.5)*35;pPos[k+2]=(Math.random()-.5)*45;
+  pVel.push({x:(Math.random()-.5)*.035,y:(Math.random()-.5)*.035,z:(Math.random()-.5)*.04});
+}
+pGeo.setAttribute('position',new THREE.BufferAttribute(pPos,3));
+const pMat=new THREE.PointsMaterial({size:.12,color:0xffffff,transparent:true,opacity:.65,blending:THREE.AdditiveBlending});
+const particles=new THREE.Points(pGeo,pMat);room.add(particles);
+
+const mediaVertex=`
+varying vec2 vUv;
+void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}
+`;
+const mediaFragment=`
+uniform sampler2D uMap;
+uniform float uAlphaCut;
+uniform float uGrid;
+uniform float uGlow;
+uniform float uTime;
+uniform int uMode;
+uniform float uInvert;
+varying vec2 vUv;
+void main(){
+  vec4 c=texture2D(uMap,vUv);
+  float lum=dot(c.rgb,vec3(.299,.587,.114));
+  float cut=smoothstep(uAlphaCut,uAlphaCut+.08,lum);
+  if(uInvert>.5) cut=1.0-cut;
+  float gx=step(.88,fract(vUv.x*36.0));
+  float gy=step(.88,fract(vUv.y*36.0));
+  float lines=max(gx,gy);
+  vec3 neon=vec3(0.0);
+  neon.r=.5+.5*sin(uTime*1.5+vUv.x*12.0);
+  neon.g=.5+.5*sin(uTime*1.7+vUv.y*15.0+2.1);
+  neon.b=.5+.5*sin(uTime*1.9+vUv.x*9.0+4.2);
+  if(uMode==0) c.rgb=mix(c.rgb,c.rgb*.35+neon*.95,lines*uGrid);
+  if(uMode==1) c.rgb=c.rgb*(.65+neon*.75);
+  if(uMode==2){float scan=step(.5,fract(vUv.y*90.0));c.rgb*=mix(.72,1.18,scan);}
+  if(uMode==3) c.rgb=1.0-c.rgb;
+  c.rgb+=neon*lines*uGlow*.22;
+  c.a*=cut;
+  if(c.a<.015) discard;
+  gl_FragColor=c;
+}
+`;
+const mediaObjects=[];
+const modeId=()=>({grid:0,rgb:1,scan:2,negative:3,none:0}[state.filter]??0);
+
+function createMedia(url,type,name){
+  const texture=type.startsWith('video/')?new THREE.VideoTexture(makeVideo(url)):new THREE.TextureLoader().load(url);
+  texture.colorSpace=THREE.SRGBColorSpace;
+  let aspect=1;
+  const meshMat=new THREE.ShaderMaterial({
+    uniforms:{
+      uMap:{value:texture},uAlphaCut:{value:state.alphaCut},uGrid:{value:state.mediaGrid},
+      uGlow:{value:state.mediaGlow},uTime:{value:0},uMode:{value:modeId()},uInvert:{value:state.invert?1:0}
+    },
+    vertexShader:mediaVertex,fragmentShader:mediaFragment,transparent:true,depthWrite:false,side:THREE.DoubleSide
+  });
+  const geo=new THREE.PlaneGeometry(2.5,2.5);
+  const mesh=new THREE.Mesh(geo,meshMat);
+  mesh.position.set((Math.random()-.5)*8,Math.random()*5-1,(Math.random()-.5)*8);
+  mesh.rotation.set(Math.random()*.5,Math.random()*Math.PI,Math.random()*.3);
+  mesh.scale.setScalar(.7+Math.random()*.8);
+  mesh.userData={name,type,texture,base:mesh.position.clone(),phase:Math.random()*Math.PI*2,speed:.25+Math.random()*.6};
+  room.add(mesh);mediaObjects.push(mesh);
+  if(type.startsWith('video/')){
+    texture.source.data.addEventListener('loadedmetadata',()=>{
+      aspect=texture.source.data.videoWidth/texture.source.data.videoHeight||1;
+      mesh.scale.x*=aspect;
+    });
+  }else{
+    texture.image?.addEventListener?.('load',()=>{
+      aspect=texture.image.width/texture.image.height||1;mesh.scale.x*=aspect;
+    });
+  }
+  refreshMediaList();
+  toast('HOLO MEDIA DEPLOYED');
+}
+function makeVideo(url){
+  const v=document.createElement('video');v.src=url;v.loop=true;v.muted=true;v.playsInline=true;v.autoplay=true;v.play().catch(()=>{});
+  return v;
+}
+function refreshMediaList(){
+  $('mediaList').innerHTML='';
+  mediaObjects.forEach((m,i)=>{
+    const d=document.createElement('div');d.className='mediaThumb';d.title=m.userData.name;
+    const el=m.userData.type.startsWith('video/')?document.createElement('video'):document.createElement('img');
+    if(el.tagName==='VIDEO'){el.src=m.userData.texture.source.data.src;el.muted=true;el.loop=true;el.autoplay=true;el.playsInline=true}
+    else el.src=m.userData.texture.image?.src||'';
+    d.appendChild(el);const s=document.createElement('span');s.textContent=i+1;d.appendChild(s);
+    d.onclick=()=>selectMedia(m);$('mediaList').appendChild(d);
+  });
+}
+let selected=null;
+function selectMedia(m){selected=m;toast('HOLO '+m.userData.name.toUpperCase())}
+
+$('mediaInput').onchange=e=>[...e.target.files].forEach(f=>createMedia(URL.createObjectURL(f),f.type,f.name));
+$('addBtn').onclick=()=>$('mediaInput').click();
+
+function randomize(){
+  state.stage=(state.stage+1)%8;buildCore(state.stage);
+  const palettes=[
+    [0xfd76b5,0x62fcd7,0xf2ff86,0xffb795],[0x00f3ff,0xff00ff,0x7b61ff,0xffffff],
+    [0x00ff66,0x073b20,0xc7ff00,0x4affd0],[0xff3366,0xffcc00,0x9933ff,0x00ffff],
+    [0xff004c,0x00e5ff,0xffff00,0xff7b00],[0x8b5cf6,0x22d3ee,0xf472b6,0xfacc15],
+    [0xffffff,0x00f3ff,0xff00ff,0x62fcd7],[0xff0000,0x00ff00,0x0000ff,0xffffff]
+  ][state.stage];
+  [state.primary,state.secondary,state.logic,state.pulse]=palettes;
+  gridMat.color.setHex(state.primary);coreMesh.material.color.setHex(state.secondary);wireMesh.material.color.setHex(state.primary);
+  document.querySelectorAll('.swatch')[0].style.background='#'+state.primary.toString(16).padStart(6,'0');
+  document.querySelectorAll('.swatch')[1].style.background='#'+state.secondary.toString(16).padStart(6,'0');
+  mediaObjects.forEach(m=>{m.position.set((Math.random()-.5)*11,Math.random()*7-2,(Math.random()-.5)*11);m.rotation.set(Math.random()*1.2,Math.random()*6.28,Math.random()*1.2);m.scale.setScalar(.55+Math.random()*1.2);m.userData.phase=Math.random()*6.28});
+  toast('RANDOM RAINBOW STAGE');
+}
+$('randomBtn').onclick=randomize;$('miniRandom').onclick=randomize;$('stageBtn').onclick=()=>{state.stage++;buildCore(state.stage);toast('STAGE '+(state.stage%8+1))};
+
+function applyMediaUniforms(){
+  mediaObjects.forEach(m=>{const u=m.material.uniforms;u.uAlphaCut.value=state.alphaCut;u.uGrid.value=state.mediaGrid;u.uGlow.value=state.mediaGlow;u.uMode.value=modeId();u.uInvert.value=state.invert?1:0});
+}
+$('filterMode').onchange=e=>{state.filter=e.target.value;applyMediaUniforms()};
+$('alphaCut').oninput=e=>{state.alphaCut=+e.target.value;applyMediaUniforms()};
+$('mediaGrid').oninput=e=>{state.mediaGrid=+e.target.value;applyMediaUniforms()};
+$('mediaGlow').oninput=e=>{state.mediaGlow=+e.target.value;applyMediaUniforms()};
+$('invertAlpha').onclick=()=>{state.invert=!state.invert;$('invertAlpha').textContent=state.invert?'ON':'OFF';applyMediaUniforms()};
+
+const schemes={
+ solar:[0xfd76b5,0x62fcd7,0xf2ff86,0xffb795],
+ cyber:[0x00f3ff,0xff00ff,0x62fcd7,0xffffff],
+ matrix:[0x00ff66,0x003311,0xc7ff00,0x4affd0],
+ candy:[0xfd76b5,0x62fcd7,0xf2ff86,0xffb795],
+ void:[0x9933ff,0x00ffff,0xff00aa,0x6633ff]
+};
+$('scheme').onchange=e=>{[state.primary,state.secondary,state.logic,state.pulse]=schemes[e.target.value];gridMat.color.setHex(state.primary);coreMesh.material.color.setHex(state.secondary);wireMesh.material.color.setHex(state.primary)};
+$('preset').onchange=e=>state.preset=e.target.value;
+$('gridIntensity').oninput=e=>{state.grid=+e.target.value;gridMat.opacity=state.grid};
+$('bloom').oninput=e=>{state.bloom=+e.target.value;bloomPass.strength=state.bloom};
+$('roomScale').oninput=e=>state.roomScale=+e.target.value;
+$('drift').oninput=e=>state.drift=+e.target.value;
+$('fov').oninput=e=>{camera.fov=+e.target.value;camera.updateProjectionMatrix()};
+$('portraitBtn').onclick=()=>{camera.position.set(0,4,12);controls.target.set(0,1,0);toast('PORTRAIT CAMERA OPTIMIZED')};
+
+let audioCtx,analyser,audioSource,audioGain;let audioData;
+const audioEl=new Audio();
+$('audioInput').onchange=e=>{const f=e.target.files[0];if(!f)return;audioEl.src=URL.createObjectURL(f);initAudio();audioEl.play().then(()=>toast('AUDIO SIGNAL ACTIVE')).catch(()=>toast('PRESS PLAY'))};
+function initAudio(){
+ if(audioCtx)return;
+ audioCtx=new (window.AudioContext||window.webkitAudioContext)();analyser=audioCtx.createAnalyser();analyser.fftSize=1024;
+ audioData=new Uint8Array(analyser.frequencyBinCount);audioGain=audioCtx.createGain();audioGain.gain.value=.8;
+ audioSource=audioCtx.createMediaElementSource(audioEl);audioSource.connect(audioGain);audioGain.connect(analyser);analyser.connect(audioCtx.destination);
+}
+$('play').onclick=()=>{if(audioEl.src){initAudio();audioCtx.resume();audioEl.play().catch(()=>{})}else $('audioInput').click()};
+$('pause').onclick=()=>audioEl.pause();
+
+renderer.domElement.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='touch') renderer.domElement.setPointerCapture(e.pointerId);
+});
+renderer.domElement.addEventListener('pointermove',e=>{
+  if(!selected||e.pointerType!=='touch')return;
+  const dx=(e.movementX||0)*.018,dy=(e.movementY||0)*.018;
+  selected.rotation.y+=dx;selected.rotation.x+=dy;
+});
+renderer.domElement.addEventListener('dblclick',()=>{if(selected){selected.position.set((Math.random()-.5)*10,Math.random()*6-2,(Math.random()-.5)*10);toast('HOLO REPOSITIONED')}});
+
+let time=0,last=performance.now(),frames=0;
+function animate(){
+ requestAnimationFrame(animate);
+ const now=performance.now(),dt=Math.min(.05,(now-last)/1000);last=now;time+=dt;frames++;
+ if(frames%30===0)$('fps').textContent=Math.round(1/dt)+' FPS';
+
+ let bass=0,mid=0;
+ if(analyser){
+   analyser.getByteFrequencyData(audioData);
+   for(let i=0;i<10;i++)bass+=audioData[i];
+   for(let i=10;i<50;i++)mid+=audioData[i];
+   bass/=10;mid/=40;
+ }
+ bass/=255;mid/=255;
+
+ const pulse=state.preset==='pulse'?bass:state.preset==='static'?0:(.25+.75*Math.sin(time*2)*.5);
+ const target=(1+bass*.8)*state.roomScale;
+ core.scale.lerp(new THREE.Vector3(target,target,target),.08);
+ core.rotation.y+=dt*(.25+mid*.7);
+ core.rotation.x=Math.sin(time*.3)*.2;
+ core.children.forEach(o=>{if(o.userData.ring!==undefined){o.rotation.z=time*(.2+o.userData.ring*.08);o.material.color.setHSL((time*.08+o.userData.ring/4)%1,.9,.6)}});
+
+ const pos=gridGeo.attributes.position.array;
+ for(let i=0;i<pos.length;i+=3){
+   const ox=base[i],oy=base[i+1];
+   let z=0;
+   if(state.preset!=='static')z=Math.sin(ox*.2+time*3)*.5+Math.cos(oy*.2-time*2)*.5;
+   if(state.preset==='pulse')z+=Math.sin(Math.sqrt(ox*ox+oy*oy)*.5-time*5)*(bass*3)*Math.max(0,1-Math.sqrt(ox*ox+oy*oy)/50);
+   pos[i+2]=z;
+ }
+ gridGeo.attributes.position.needsUpdate=true;
+ grid.position.z=(time*5)%2;
+ grid.scale.setScalar(state.roomScale);
+
+ const pp=pGeo.attributes.position.array;
+ for(let i=0;i<particleCount;i++){
+   const k=i*3;pp[k]+=pVel[i].x*(1+bass*2);pp[k+1]+=pVel[i].y*(1+bass*2);pp[k+2]+=pVel[i].z*state.drift+(audioEl.paused?.015:.08);
+   if(pp[k+2]>12){pp[k]=(Math.random()-.5)*45;pp[k+1]=(Math.random()-.5)*35;pp[k+2]=-35}
+ }
+ pGeo.attributes.position.needsUpdate=true;
+
+ mediaObjects.forEach((m,i)=>{
+   const u=m.material.uniforms;u.uTime.value=time;
+   m.position.y=m.userData.base.y+Math.sin(time*m.userData.speed+m.userData.phase)*.45*state.drift;
+   m.position.x=m.userData.base.x+Math.cos(time*.23+m.userData.phase)*.18*state.drift;
+   m.rotation.y+=dt*(.12+m.userData.speed*.08);
+   if(m.userData.texture.isVideoTexture)m.userData.texture.needsUpdate=true;
+ });
+
+ bloomPass.strength=state.bloom+bass*1.5;
+ controls.update();
+ composer.render();
+}
+addEventListener('resize',()=>{
+ camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);
+ renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<700?1.25:1.75));
+});
+animate();
+</script>
+</body>
+</html>
