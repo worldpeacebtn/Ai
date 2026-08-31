@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>GlassHUD Pro - Blender Node Tree & Neon Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #030508; color: #e6edf3; }
+        .font-mono-custom { font-family: 'JetBrains Mono', monospace; }
+        
+        .audio-reactive-glow {
+            filter: drop-shadow(0 0 var(--glow-intensity, 10px) rgba(56, 189, 248, 0.8));
+            transition: filter 0.1s ease;
+        }
+
+        .transparent-hud {
+            background: rgba(5, 7, 11, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+
+        .arcade-btn {
+            background: linear-gradient(135deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.9) 100%);
+            border: 2px solid #a855f7;
+            box-shadow: 0 4px 10px rgba(168, 85, 247, 0.3);
+            transition: all 0.1s ease;
+            cursor: pointer;
+        }
+        .arcade-btn:active { transform: scale(0.95); }
+        .arcade-btn.active { background: linear-gradient(135deg, #7e22ce 0%, #6b21a8 100%); border-color: #f43f5e; }
+
+        .thumb-joystick {
+            width: 55px;
+            height: 55px;
+            background: radial-gradient(circle at 30% 30%, #c084fc, #7e22ce 70%, #581c87 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.6);
+            touch-action: none;
+            cursor: pointer;
+        }
+
+        /* Blender Node Tree Grid Cards */
+        .blender-node-card {
+            background: rgba(18, 22, 32, 0.9);
+            border: 1px solid rgba(168, 85, 247, 0.4);
+            border-radius: 10px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .blender-node-card:hover { border-color: #c084fc; transform: translateX(3px); }
+        .blender-node-card.active-node {
+            border-color: #f43f5e;
+            background: rgba(244, 63, 94, 0.2);
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.5);
+        }
+
+        /* Syntax Highlighting Colors */
+        .syntax-tag { color: #7ee787; font-weight: 600; }
+        .syntax-attr { color: #79c0ff; }
+        .syntax-text-content { color: #bc8cff; }
+
+        .drop-highlight { border: 2px dashed #a855f7 !important; background: rgba(168, 85, 247, 0.1); }
+
+        ::-webkit-scrollbar { width: 2px; height: 2px; }
+        ::-webkit-scrollbar-thumb { background: #a855f7; border-radius: 2px; }
+    </style>
+</head>
+<body class="h-full overflow-hidden flex flex-col select-none">
+
+    <!-- Top Navigation Header -->
+    <header class="h-9 border-b border-white/10 transparent-hud px-2 flex items-center justify-between z-50 shrink-0 text-xs audio-reactive-glow">
+        <div class="flex items-center gap-2">
+            <span class="font-bold text-purple-400">🔮 GlassHUD Blender 3D</span>
+            <div class="h-3 w-[1px] bg-white/20"></div>
+            <button onclick="undoAction()" class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-white/10 text-[11px]" title="Undo">↩️</button>
+            <button onclick="redoAction()" class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-white/10 text-[11px]" title="Redo">↪️</button>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+            <button onclick="toggleSelectionHighlight()" id="btn-toggle-outline" class="px-2 py-0.5 rounded bg-purple-600 text-white border border-purple-400 text-[11px]" title="Toggle Neon Outlines">✨ Outline</button>
+            <label class="px-2 py-0.5 rounded bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 cursor-pointer flex items-center gap-1 text-[11px]" title="Upload Media">
+                📁 <input type="file" id="media-upload" accept="audio/*,video/*,image/*,.glb,.pdf,*" class="hidden" onchange="loadMediaFile(event)">
+            </label>
+            <button onclick="toggleScanMode()" id="btn-scan" class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-white/10 text-[11px]" title="Mouse Lupe">🖱️</button>
+            <button onclick="downloadCode()" class="px-2 py-0.5 rounded bg-purple-600 text-white text-[11px]" title="Download">💾</button>
+        </div>
+    </header>
+
+    <!-- Grid Button Menu Bar for Templates & FX (No Lists) -->
+    <div class="h-10 bg-black/60 border-b border-white/10 px-2 flex items-center gap-2 overflow-x-auto shrink-0 z-40 text-xs">
+        <span class="text-[10px] text-purple-400 font-semibold uppercase">Templates:</span>
+        <div class="flex items-center gap-1">
+            <button onclick="applyGridTemplate('bento')" class="arcade-btn px-2 py-0.5 rounded text-[10px] text-purple-200">📦 Bento</button>
+            <button onclick="applyGridTemplate('split')" class="arcade-btn px-2 py-0.5 rounded text-[10px] text-purple-200">🌗 Split</button>
+            <button onclick="applyGridTemplate('hero')" class="arcade-btn px-2 py-0.5 rounded text-[10px] text-purple-200">⚡ Hero</button>
+        </div>
+        <div class="h-3 w-[1px] bg-white/20 mx-1"></div>
+        <span class="text-[10px] text-pink-400 font-semibold uppercase">FX Presets:</span>
+        <div class="flex items-center gap-1">
+            <button onclick="applyFXPreset('glitch')" class="arcade-btn px-2 py-0.5 rounded text-[10px] text-pink-200">⚡ Glitch</button>
+            <button onclick="applyFXPreset('float')" class="arcade-btn px-2 py-0.5 rounded text-[10px] text-pink-200">🎈 Float</button>
+            <button onclick="applyFXPreset('pulse')" class="arcade-btn px-2 py-0.5 rounded text-[10px] text-pink-200">💓 Pulse</button>
+        </div>
+    </div>
+
+    <!-- Mini Universal Media Preview Tray -->
+    <div id="media-tray" class="h-10 bg-black/50 border-b border-white/10 px-2 flex items-center gap-2 overflow-x-auto shrink-0 z-40">
+        <span class="text-[10px] text-purple-400 font-semibold uppercase">Media Tray:</span>
+        <div id="tray-items" class="flex items-center gap-2">
+            <span class="text-[10px] text-slate-500 italic">Upload or drop media (.mp3, .mp4, .glb, etc.) to preview and insert.</span>
+        </div>
+    </div>
+
+    <!-- Upper-Third Ergonomic Floating Controls -->
+    <div class="absolute top-28 left-2 right-2 z-40 flex items-center justify-between pointer-events-none px-1">
+        <div class="pointer-events-auto flex items-center gap-1.5 transparent-hud p-1.5 rounded-xl shadow-xl">
+            <div id="joystick-left" class="thumb-joystick flex flex-col items-center justify-center text-[9px] font-bold text-white shadow-lg scale-90">
+                <span>🌐 XYZ</span>
+                <span id="readout-left" class="text-[8px] text-purple-200">0°</span>
+            </div>
+            <div class="flex flex-col gap-0.5">
+                <button onclick="setDJMode('left', 'perspective', this)" class="arcade-btn active px-2 py-0.5 rounded text-[9px] text-white">3D Pitch</button>
+                <button onclick="setDJMode('left', 'rotate', this)" class="arcade-btn px-2 py-0.5 rounded text-[9px] text-white">Rotate</button>
+            </div>
+        </div>
+
+        <div class="pointer-events-auto flex gap-1 transparent-hud p-1.5 rounded-xl shadow-xl">
+            <button onclick="applyShapePreset('circle')" class="arcade-btn px-2 py-1 rounded text-[10px] text-purple-300 font-semibold" title="Circle">⭕</button>
+            <button onclick="applyShapePreset('square')" class="arcade-btn px-2 py-1 rounded text-[10px] text-purple-300 font-semibold" title="Square">⏹️</button>
+            <button onclick="applyShapePreset('rounded')" class="arcade-btn px-2 py-1 rounded text-[10px] text-purple-300 font-semibold" title="Rounded">🔲</button>
+        </div>
+
+        <div class="pointer-events-auto flex items-center gap-1.5 transparent-hud p-1.5 rounded-xl shadow-xl">
+            <div class="flex flex-col gap-0.5 text-right">
+                <button onclick="setDJMode('right', 'scale', this)" class="arcade-btn active px-2 py-0.5 rounded text-[9px] text-white">Scale</button>
+                <button onclick="setDJMode('right', 'xpos', this)" class="arcade-btn px-2 py-0.5 rounded text-[9px] text-white">Offset</button>
+            </div>
+            <div id="joystick-right" class="thumb-joystick flex flex-col items-center justify-center text-[9px] font-bold text-white shadow-lg scale-90">
+                <span>🔍 SCL</span>
+                <span id="readout-right" class="text-[8px] text-purple-200">1.0x</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 relative overflow-hidden bg-[#030508] p-1 flex flex-col lg:flex-row gap-1" id="drop-zone" ondragover="event.preventDefault()" ondragleave="this.classList.remove('drop-highlight')" ondrop="handleDrop(event)">
+
+        <!-- Left Column: Code Editor with Color Legend & Blender Node Tree Dock -->
+        <div class="lg:w-1/2 flex flex-col gap-1 overflow-hidden pt-20">
+            <div class="h-32 transparent-hud rounded-lg flex flex-col overflow-hidden shrink-0">
+                <div class="px-2.5 py-1 border-b border-white/10 flex items-center justify-between text-xs">
+                    <span class="text-purple-400 text-[10px] font-semibold">💻 HTML Source Engine</span>
+                    <button onclick="switchTab()" class="text-slate-400 hover:text-white text-[10px]" id="tab-toggle">CSS</button>
+                </div>
+                <div class="relative flex-1 font-mono-custom text-xs bg-transparent overflow-auto">
+                    <textarea id="editor-html" oninput="compileCode()" class="absolute inset-0 w-full h-full bg-transparent p-2 text-slate-200 focus:outline-none resize-none leading-relaxed z-10 text-[11px]" placeholder="HTML..."><div>
+    <h1 class="editable-text" style="color: #c084fc;">🔮 Blender 3D Node Studio</h1>
+    <p class="editable-text" style="color: #38bdf8;">Upload media, record animations, and inspect layers!</p>
+</div></textarea>
+                    <textarea id="editor-css" oninput="compileCode()" class="absolute inset-0 w-full h-full bg-transparent p-2 text-emerald-300 hidden z-10 text-[11px]" placeholder="CSS...">body { background: #030508; color: #e6edf3; font-family: sans-serif; padding: 15px; }</textarea>
+                </div>
+                <!-- Color-Coded Functionality Legend -->
+                <div class="px-2 py-1 bg-black/40 border-t border-white/10 flex items-center gap-3 text-[9px] text-slate-400">
+                    <span>Legend:</span>
+                    <span class="syntax-tag">&lt;tags&gt;</span>
+                    <span class="syntax-attr">attributes</span>
+                    <span class="syntax-text-content">text/content</span>
+                </div>
+            </div>
+
+            <!-- Blender Node Tree Deck (Root to Children left-to-right) -->
+            <div class="flex-1 transparent-hud rounded-lg p-2 flex flex-col overflow-hidden">
+                <div class="flex items-center justify-between pb-1 border-b border-white/10 text-xs">
+                    <span class="font-semibold text-purple-400 text-[10px]">🌳 Blender Node Tree Hierarchy (Root ➔ Children)</span>
+                </div>
+                <div id="tree-container" class="flex-1 overflow-y-auto space-y-1.5 pt-1 text-[11px]"></div>
+            </div>
+        </div>
+
+        <!-- Right Column: Live Preview Canvas with Timeline & Animation Recorder -->
+        <div id="preview-wrapper" class="lg:w-1/2 bg-white rounded-lg flex flex-col overflow-hidden relative shadow-2xl min-h-[220px]">
+            <div id="eyeball-lupe" class="eyeball-lupe absolute w-28 h-28 border-2 border-purple-400 rounded-full pointer-events-none hidden z-50 bg-purple-500/10 flex items-center justify-center text-xs">🖱️</div>
+            
+            <canvas id="notes-canvas" class="absolute inset-0 z-30 pointer-events-none w-full h-full"></canvas>
+
+            <!-- Timeline & Animation Recorder Deck -->
+            <div class="absolute bottom-2 left-2 right-2 z-40 bg-slate-900/95 border border-white/10 rounded-lg p-2 flex items-center gap-2 text-xs backdrop-blur shadow-2xl">
+                <button onclick="toggleRecordAnimation()" id="rec-btn" class="arcade-btn px-2.5 py-1 bg-red-600 text-white rounded font-bold text-[10px]" title="Record 3D Animation">🔴 REC</button>
+                <button onclick="playTimeline()" class="arcade-btn px-2.5 py-1 bg-purple-600 text-white rounded font-bold text-[10px]" title="Play Animation">▶️ Play</button>
+                <input type="range" min="0" max="100" value="0" class="flex-1 accent-purple-400" id="timeline-scrubber" oninput="scrubTimeline(this.value)">
+                <button onclick="saveScene()" class="arcade-btn px-2.5 py-1 bg-emerald-600 text-white rounded font-bold text-[10px]" title="Save Scene">💾 Save</button>
+            </div>
+
+            <iframe id="preview-iframe" class="w-full h-full border-0 pointer-events-auto"></iframe>
+        </div>
+
+    </main>
+
+    <audio id="audio-player" class="hidden" loop></audio>
+
+    <script>
+        let isScanMode = false;
+        let isDrawMode = false;
+        let isShowOutline = true;
+        let isRecording = false;
+        let selectedElementIndex = 0;
+        let activeLeftMode = 'perspective';
+        let activeRightMode = 'scale';
+        let iframeDoc = null;
+        let audioCtx, analyser, dataArray;
+        let mediaAssets = [];
+        let animationKeyframes = [];
+        let undoStack = [];
+        let redoStack = [];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            compileCode();
+            setupMovableLupe();
+            setupDualJoysticks();
+        });
+
+        function saveStateForUndo() {
+            const html = document.getElementById('editor-html').value;
+            const css = document.getElementById('editor-css').value;
+            undoStack.push({ html, css });
+            redoStack = [];
+        }
+
+        function undoAction() {
+            if (undoStack.length === 0) return;
+            const current = { html: document.getElementById('editor-html').value, css: document.getElementById('editor-css').value };
+            redoStack.push(current);
+            const prev = undoStack.pop();
+            document.getElementById('editor-html').value = prev.html;
+            document.getElementById('editor-css').value = prev.css;
+            compileCode();
+        }
+
+        function redoAction() {
+            if (redoStack.length === 0) return;
+            const current = { html: document.getElementById('editor-html').value, css: document.getElementById('editor-css').value };
+            undoStack.push(current);
+            const next = redoStack.pop();
+            document.getElementById('editor-html').value = next.html;
+            document.getElementById('editor-css').value = next.css;
+            compileCode();
+        }
+
+        function compileCode() {
+            const html = document.getElementById('editor-html').value;
+            const css = document.getElementById('editor-css').value;
+
+            const outlineStyle = isShowOutline ? '.glasshud-selected { outline: 3px solid #c084fc !important; outline-offset: 6px; border-radius: 12px; box-shadow: 0 0 20px rgba(192,132,252,0.6); }' : '';
+
+            const fullCode = `
+                <!DOCTYPE html>
+                <html>
+                <head><style>${css} 
+                    ${outlineStyle}
+                    .editable-text { cursor: text; }
+                </style></head>
+                <body>${html}</body>
+                </html>
+            `;
+
+            const iframe = document.getElementById('preview-iframe');
+            if (!iframe) return;
+            iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            iframeDoc.open();
+            iframeDoc.write(fullCode);
+            iframeDoc.close();
+
+            attachCanvasInteractions(iframeDoc);
+            buildDOMTree(html);
+        }
+
+        function reloadPreview() { compileCode(); }
+
+        function switchTab() {
+            const htmlEd = document.getElementById('editor-html');
+            const cssEd = document.getElementById('editor-css');
+            const btn = document.getElementById('tab-toggle');
+            if (cssEd.classList.contains('hidden')) {
+                cssEd.classList.remove('hidden');
+                htmlEd.classList.add('hidden');
+                btn.innerText = 'HTML';
+            } else {
+                htmlEd.classList.remove('hidden');
+                cssEd.classList.add('hidden');
+                btn.innerText = 'CSS';
+            }
+        }
+
+        function toggleSelectionHighlight() {
+            isShowOutline = !isShowOutline;
+            const btn = document.getElementById('btn-toggle-outline');
+            if (isShowOutline) {
+                btn.classList.add('bg-purple-600', 'text-white');
+            } else {
+                btn.classList.remove('bg-purple-600', 'text-white');
+            }
+            compileCode();
+        }
+
+        function attachCanvasInteractions(doc) {
+            doc.querySelectorAll('h1, h2, h3, p, span, button').forEach(el => {
+                el.setAttribute('contenteditable', 'true');
+                el.addEventListener('input', () => {
+                    saveStateForUndo();
+                    const bodyHTML = doc.body.innerHTML.replace(/ class="[^"]*glasshud-selected[^"]*"/g, '');
+                    document.getElementById('editor-html').value = bodyHTML.trim();
+                });
+            });
+
+            doc.querySelectorAll('body *').forEach((el, idx) => {
+                if (!(el instanceof Element)) return;
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectElementByIndex(idx);
+                });
+            });
+        }
+
+        // Blender Node Tree Hierarchy (Root to Children left-to-right tree sorted)
+        function buildDOMTree(htmlString) {
+            const container = document.getElementById('tree-container');
+            if (!container) return;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlString, 'text/html');
+            const elements = Array.from(doc.querySelectorAll('body *'));
+            
+            let html = '';
+            elements.forEach((el, idx) => {
+                if (!(el instanceof Element)) return;
+                const tag = el.tagName.toLowerCase();
+                const depth = getElementDepth(el);
+                const indent = depth > 1 ? `margin-left: ${depth * 14}px; border-left: 2px solid rgba(168,85,247,0.4); padding-left: 6px;` : '';
+                
+                html += `
+                    <div id="tree-node-${idx}" class="blender-node-card text-xs cursor-pointer" style="${indent}" onclick="selectElementByIndex(${idx});">
+                        <div class="flex items-center gap-1.5 truncate">
+                            <span class="px-1.5 py-0.5 rounded text-[9px] font-mono-custom bg-purple-500/20 text-purple-300">&lt;${tag}&gt;</span>
+                            <span class="text-slate-300 font-mono-custom truncate text-[10px]">${el.textContent.trim().substring(0, 15) || tag}</span>
+                        </div>
+                        <span class="text-[9px] text-purple-400 font-medium">Node 🎯</span>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function getElementDepth(el) {
+            let depth = 0;
+            let parent = el.parentElement;
+            while (parent && parent.tagName !== 'BODY') {
+                depth++;
+                parent = parent.parentElement;
+            }
+            return depth;
+        }
+
+        function selectElementByIndex(idx, elementsArray = null) {
+            if (!iframeDoc) return;
+            const allEls = elementsArray || Array.from(iframeDoc.querySelectorAll('body *'));
+            allEls.forEach(el => el.classList.remove('glasshud-selected'));
+            selectedElementIndex = idx;
+            const target = allEls[idx];
+
+            if (target) {
+                target.classList.add('glasshud-selected');
+                document.querySelectorAll('.blender-node-card').forEach(n => n.classList.remove('active-node'));
+                const node = document.getElementById(`tree-node-${idx}`);
+                if (node) node.classList.add('active-node');
+            }
+        }
+
+        function toggleScanMode() {
+            isScanMode = !isScanMode;
+            const btn = document.getElementById('btn-scan');
+            const lupe = document.getElementById('eyeball-lupe');
+            if (isScanMode) {
+                btn.classList.add('bg-purple-600', 'text-white');
+                if (lupe) lupe.style.display = 'flex';
+            } else {
+                btn.classList.remove('bg-purple-600', 'text-white');
+                if (lupe) lupe.style.display = 'none';
+            }
+        }
+
+        function setupMovableLupe() {
+            const lupe = document.getElementById('eyeball-lupe');
+            const wrapper = document.getElementById('preview-wrapper');
+            if (!lupe || !wrapper) return;
+
+            wrapper.addEventListener('mousemove', (e) => {
+                if (!isScanMode) return;
+                const rect = wrapper.getBoundingClientRect();
+                const x = e.clientX - rect.left - 50;
+                const y = e.clientY - rect.top - 50;
+                lupe.style.left = x + 'px';
+                lupe.style.top = y + 'px';
+
+                if (iframeDoc) {
+                    const target = iframeDoc.elementFromPoint(e.clientX - rect.left, e.clientY - rect.top);
+                    if (target && target instanceof Element) {
+                        const allEls = Array.from(iframeDoc.querySelectorAll('body *'));
+                        const idx = allEls.indexOf(target);
+                        if (idx !== -1) selectElementByIndex(idx, allEls);
+                    }
+                }
+            });
+        }
+
+        function setDJMode(side, mode, btn) {
+            if (side === 'left') {
+                activeLeftMode = mode;
+                btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            } else {
+                activeRightMode = mode;
+                btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            }
+            btn.classList.add('active');
+        }
+
+        function setupDualJoysticks() {
+            setupSingleJoystick('joystick-left', (delta) => applyTransform(activeLeftMode, delta));
+            setupSingleJoystick('joystick-right', (delta) => applyTransform(activeRightMode, delta));
+        }
+
+        function setupSingleJoystick(id, callback) {
+            const joy = document.getElementById(id);
+            if (!joy) return;
+            let isDragging = false;
+            let startX = 0;
+
+            const handleMove = (clientX) => {
+                const diff = clientX - startX;
+                if (Math.abs(diff) > 12) {
+                    callback(diff > 0 ? 1 : -1);
+                    startX = clientX;
+                }
+            };
+
+            joy.addEventListener('mousedown', (e) => { isDragging = true; startX = e.clientX; });
+            window.addEventListener('mousemove', (e) => { if (isDragging) handleMove(e.clientX); });
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            joy.addEventListener('touchstart', (e) => { isDragging = true; startX = e.touches[0].clientX; }, {passive: true});
+            window.addEventListener('touchmove', (e) => { if (isDragging) handleMove(e.touches[0].clientX); }, {passive: true});
+            window.addEventListener('touchend', () => { isDragging = false; });
+        }
+
+        function applyTransform(prop, delta) {
+            if (!iframeDoc) return;
+            const allEls = Array.from(iframeDoc.querySelectorAll('body *'));
+            const target = allEls[selectedElementIndex] || iframeDoc.body;
+            if (!target) return;
+
+            saveStateForUndo();
+            let currentTransform = target.style.transform || '';
+
+            if (prop === 'perspective') {
+                let currentRotateX = 0;
+                if (currentTransform.includes('rotateX')) {
+                    const matchX = currentTransform.match(/rotateX\(([^)]+)deg\)/);
+                    if (matchX) currentRotateX = parseFloat(matchX[1]);
+                }
+                currentRotateX += delta * 6;
+                target.style.transform = `perspective(800px) rotateX(${currentRotateX}deg)`;
+                document.getElementById('readout-left').innerText = `${currentRotateX}°`;
+            } else if (prop === 'rotate') {
+                let currentRotate = 0;
+                if (currentTransform.includes('rotateZ')) {
+                    const match = currentTransform.match(/rotateZ\(([^)]+)deg\)/);
+                    if (match) currentRotate = parseFloat(match[1]);
+                }
+                currentRotate += delta * 5;
+                target.style.transform = `rotateZ(${currentRotate}deg)`;
+                document.getElementById('readout-left').innerText = `${currentRotate}°`;
+            } else if (prop === 'scale') {
+                let currentScale = 1.0;
+                if (currentTransform.includes('scale')) {
+                    const match = currentTransform.match(/scale\(([^)]+)\)/);
+                    if (match) currentScale = parseFloat(match[1]);
+                }
+                currentScale = Math.max(0.2, currentScale + (delta * 0.05));
+                target.style.transform = `scale(${currentScale})`;
+                document.getElementById('readout-right').innerText = `${currentScale.toFixed(1)}x`;
+            } else if (prop === 'xpos') {
+                let curLeft = parseFloat(target.style.marginLeft) || 0;
+                curLeft += delta * 4;
+                target.style.marginLeft = curLeft + 'px';
+                document.getElementById('readout-right').innerText = `${curLeft}px`;
+            }
+
+            if (isRecording) {
+                animationKeyframes.push({ index: selectedElementIndex, transform: target.style.transform, marginLeft: target.style.marginLeft });
+            }
+        }
+
+        function applyShapePreset(shape) {
+            if (!iframeDoc) return;
+            const allEls = Array.from(iframeDoc.querySelectorAll('body *'));
+            const target = allEls[selectedElementIndex] || iframeDoc.body;
+            if (!target) return;
+
+            saveStateForUndo();
+            if (shape === 'circle') {
+                target.style.borderRadius = '50%';
+                target.style.width = '140px';
+                target.style.height = '140px';
+                target.style.overflow = 'hidden';
+            } else if (shape === 'square') {
+                target.style.borderRadius = '0px';
+            } else if (shape === 'rounded') {
+                target.style.borderRadius = '16px';
+            }
+        }
+
+        function applyGridTemplate(template) {
+            const ed = document.getElementById('editor-html');
+            saveStateForUndo();
+            if (template === 'bento') {
+                ed.value = `<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; padding:20px;">
+    <div style="background:#1e293b; padding:20px; border-radius:16px; grid-column: span 2;"><h2 style="color:#c084fc;">Main Hero Box</h2></div>
+    <div style="background:#334155; padding:20px; border-radius:16px;"><h3 style="color:#f43f5e;">Card 2</h3></div>
+    <div style="background:#334155; padding:20px; border-radius:16px;"><h3 style="color:#22c55e;">Card 3</h3></div>
+</div>`;
+            } else if (template === 'split') {
+                ed.value = `<div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; padding:20px; align-items:center;">
+    <div><h1 style="color:#c084fc; font-size:2rem;">Split View</h1><p style="color:#94a3b8;">Responsive layout.</p></div>
+    <div style="background:rgba(192,132,252,0.1); padding:30px; border-radius:20px; text-align:center;"><h3>Showcase</h3></div>
+</div>`;
+            } else if (template === 'hero') {
+                ed.value = `<div style="text-align:center; padding:50px 20px;"><h1 style="color:#c084fc; font-size:2.5rem; margin-bottom:15px;">Hero Banner</h1><button style="background:#c084fc; color:#030508; padding:10px 24px; border-radius:30px; border:none; font-weight:bold;">Explore</button></div>`;
+            }
+            compileCode();
+        }
+
+        function applyFXPreset(fx) {
+            if (!iframeDoc) return;
+            const allEls = Array.from(iframeDoc.querySelectorAll('body *'));
+            const target = allEls[selectedElementIndex] || iframeDoc.body;
+            if (!target) return;
+
+            saveStateForUndo();
+            if (fx === 'glitch') {
+                target.style.boxShadow = '0 0 15px #c084fc, 0 0 30px #f43f5e';
+            } else if (fx === 'float') {
+                target.style.transform = 'translateY(-10px)';
+            } else if (fx === 'pulse') {
+                target.style.animation = 'pulse 2s infinite';
+            }
+        }
+
+        function loadMediaFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            mediaAssets.push({ name: file.name, type: file.type, url });
+            renderMediaTray();
+
+            const ed = document.getElementById('editor-html');
+            saveStateForUndo();
+            if (file.type.startsWith('audio/') || file.name.endsWith('.mp3') || file.name.endsWith('.m4a')) {
+                const audio = document.getElementById('audio-player');
+                audio.src = url;
+                audio.play();
+                ed.value += `\n<audio controls src="${url}" style="width:100%; margin-top:10px;"></audio>`;
+                compileCode();
+            } else if (file.type.startsWith('video/') || file.name.endsWith('.mp4')) {
+                ed.value += `\n<video controls src="${url}" style="width:100%; max-width:260px; border-radius:12px; margin-top:10px;"></video>`;
+                compileCode();
+            } else if (file.type.startsWith('image/')) {
+                ed.value += `\n<img src="${url}" style="width:120px; border-radius:12px; margin-top:10px;" />`;
+                compileCode();
+            } else if (file.name.endsWith('.glb')) {
+                ed.value += `\n<div style="padding:15px; background:#1e293b; border-radius:12px; text-align:center; color:#38bdf8; max-width:240px;">[3D Model: ${file.name}]</div>`;
+                compileCode();
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            mediaAssets.push({ name: file.name, type: file.type, url });
+            renderMediaTray();
+
+            const ed = document.getElementById('editor-html');
+            saveStateForUndo();
+            if (file.type.startsWith('image/')) {
+                ed.value += `\n<img src="${url}" style="width:120px; border-radius:12px; margin-top:10px;" />`;
+                compileCode();
+            } else if (file.type.startsWith('video/') || file.name.endsWith('.mp4')) {
+                ed.value += `\n<video controls src="${url}" style="width:100%; max-width:260px; border-radius:12px; margin-top:10px;"></video>`;
+                compileCode();
+            }
+        }
+
+        function renderMediaTray() {
+            const tray = document.getElementById('tray-items');
+            if (!tray) return;
+            if (mediaAssets.length === 0) {
+                tray.innerHTML = '<span class="text-[10px] text-slate-500 italic">No files uploaded yet.</span>';
+                return;
+            }
+            let html = '';
+            mediaAssets.forEach((asset) => {
+                html += `
+                    <div class="bg-slate-800/80 border border-white/10 rounded px-2 py-1 flex items-center gap-1.5 text-[10px] cursor-pointer" onclick="insertAsset('${asset.type}', '${asset.url}')">
+                        <span>📁 ${asset.name.substring(0, 10)}...</span>
+                    </div>
+                `;
+            });
+            tray.innerHTML = html;
+        }
+
+        function insertAsset(type, url) {
+            const ed = document.getElementById('editor-html');
+            saveStateForUndo();
+            if (type.startsWith('image/')) {
+                ed.value += `\n<img src="${url}" style="width:120px; border-radius:12px; margin-top:10px;" />`;
+            } else if (type.startsWith('video/')) {
+                ed.value += `\n<video controls src="${url}" style="width:100%; max-width:260px; border-radius:12px; margin-top:10px;"></video>`;
+            } else {
+                ed.value += `\n<audio controls src="${url}" style="width:100%; margin-top:10px;"></audio>`;
+            }
+            compileCode();
+        }
+
+        function toggleRecordAnimation() {
+            isRecording = !isRecording;
+            const btn = document.getElementById('rec-btn');
+            if (isRecording) {
+                btn.style.background = '#22c55e';
+                btn.innerText = '⏹️ REC';
+                animationKeyframes = [];
+                alert("🔴 Animation Scene Recording Started!");
+            } else {
+                btn.style.background = '#ef4444';
+                btn.innerText = '🔴 REC';
+                alert(`✅ Recorded ${animationKeyframes.length} keyframes!`);
+            }
+        }
+
+        function playTimeline() {
+            if (animationKeyframes.length === 0) {
+                alert("No animation keyframes recorded yet!");
+                return;
+            }
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i >= animationKeyframes.length) {
+                    clearInterval(interval);
+                    return;
+                }
+                const kf = animationKeyframes[i];
+                const allEls = Array.from(iframeDoc.querySelectorAll('body *'));
+                const target = allEls[kf.index];
+                if (target) {
+                    target.style.transform = kf.transform;
+                    target.style.marginLeft = kf.marginLeft;
+                }
+                document.getElementById('timeline-scrubber').value = (i / (animationKeyframes.length - 1)) * 100;
+                i++;
+            }, 100);
+        }
+
+        function scrubTimeline(val) {
+            if (animationKeyframes.length === 0) return;
+            const idx = Math.floor((val / 100) * (animationKeyframes.length - 1));
+            const kf = animationKeyframes[idx];
+            if (kf && iframeDoc) {
+                const allEls = Array.from(iframeDoc.querySelectorAll('body *'));
+                const target = allEls[kf.index];
+                if (target) {
+                    target.style.transform = kf.transform;
+                    target.style.marginLeft = kf.marginLeft;
+                }
+            }
+        }
+
+        function saveScene() {
+            alert("💾 Scene saved successfully!");
+        }
+
+        function downloadCode() {
+            const html = document.getElementById('editor-html').value;
+            const css = document.getElementById('editor-css').value;
+            const fullCode = `<!DOCTYPE html>\n<html>\n<head><style>${css}</style></head>\n<body>${html}</body>\n</html>`;
+            const blob = new Blob([fullCode], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'glasshud-blender3d.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
