@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>⚡ Ai Desktop · v11</title>
+  <title>⚡ Ai Desktop · v11 (Stable)</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
     body {
@@ -368,6 +368,7 @@
       let nextFolderId = 1;
       const STORAGE_KEY = 'ai_desktop_state_v11';
       let listView = false;
+      let _isRendering = false; // recursion guard
 
       // DOM refs
       const desktop = document.getElementById('desktop');
@@ -526,7 +527,7 @@
         });
         saveState();
         renderDesktopIcons();
-        adjustDesktopHeight();
+        applyFilterAndSort(); // refresh filter after arrange
       }
 
       function adjustDesktopHeight() {
@@ -558,84 +559,90 @@
           arrangeIcons();
         }
         renderDesktopIcons();
+        applyFilterAndSort();
         saveState();
       }
 
       // --------------------------------------------------------------
-      // RENDER DESKTOP ICONS
+      // RENDER DESKTOP ICONS (no recursion)
       // --------------------------------------------------------------
       function renderDesktopIcons() {
-        document.querySelectorAll('.desktop-icon').forEach(el => el.remove());
-        const sorted = [...desktopIcons].sort((a,b) => {
-          if (a.type === 'folder' && b.type !== 'folder') return -1;
-          if (a.type !== 'folder' && b.type === 'folder') return 1;
-          return a.label.localeCompare(b.label);
-        });
-        sorted.forEach(icon => {
-          if (icon.folderId) return;
-          const div = document.createElement('div');
-          div.className = 'desktop-icon' + (icon.type === 'folder' ? ' folder' : '') + (icon.type === 'file' ? ' file' : '');
-          div.dataset.iconId = icon.id;
-          if (!listView) {
-            div.style.left = icon.x + 'px';
-            div.style.top = icon.y + 'px';
-          } else {
-            div.style.position = 'relative';
-            div.style.width = '100%';
-          }
-          if (icon.type === 'folder') {
-            const colorStyle = icon.color ? `background-color: ${icon.color}; border-color: ${icon.color};` : '';
-            div.innerHTML = `<div class="icon-img" style="${colorStyle}">📁</div><div class="icon-label">${icon.label}</div><div class="folder-badge">${icon.children ? icon.children.length : 0}</div>`;
-          } else if (icon.type === 'file') {
-            div.innerHTML = `<div class="icon-img">📄</div><div class="icon-label">${icon.label}</div>`;
-          } else {
-            const emoji = getIconEmoji(icon.file);
-            div.innerHTML = `<div class="icon-img">${emoji}</div><div class="icon-label">${icon.label}</div>`;
-          }
-          desktop.appendChild(div);
-          makeDraggable(div, icon);
-
-          // Double click / double tap
-          div.addEventListener('click', (e) => {
-            if (e.detail === 2) {
-              if (icon.type === 'app') launchApp(icon.file);
-              else if (icon.type === 'folder') openFolderWindow(icon.id);
-              else if (icon.type === 'file') alert('File: ' + icon.label);
-            }
+        if (_isRendering) return;
+        _isRendering = true;
+        try {
+          document.querySelectorAll('.desktop-icon').forEach(el => el.remove());
+          const sorted = [...desktopIcons].sort((a,b) => {
+            if (a.type === 'folder' && b.type !== 'folder') return -1;
+            if (a.type !== 'folder' && b.type === 'folder') return 1;
+            return a.label.localeCompare(b.label);
           });
-          let lastTap = 0;
-          div.addEventListener('touchstart', (e) => {
-            const now = Date.now();
-            if (now - lastTap < 400) {
-              e.preventDefault();
-              if (icon.type === 'app') launchApp(icon.file);
-              else if (icon.type === 'folder') openFolderWindow(icon.id);
-              else if (icon.type === 'file') alert('File: ' + icon.label);
+          sorted.forEach(icon => {
+            if (icon.folderId) return;
+            const div = document.createElement('div');
+            div.className = 'desktop-icon' + (icon.type === 'folder' ? ' folder' : '') + (icon.type === 'file' ? ' file' : '');
+            div.dataset.iconId = icon.id;
+            if (!listView) {
+              div.style.left = icon.x + 'px';
+              div.style.top = icon.y + 'px';
+            } else {
+              div.style.position = 'relative';
+              div.style.width = '100%';
             }
-            lastTap = now;
-          }, { passive: false });
-
-          div.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
             if (icon.type === 'folder') {
-              const action = prompt('Delete folder? (type "delete" to confirm)', '');
-              if (action === 'delete') deleteFolder(icon.id);
-            } else if (icon.type === 'app' || icon.type === 'file') {
-              const folderNames = folders.map(f => f.name);
-              const choice = prompt('Move to folder (enter folder name, leave empty to remove from folder):', '');
-              if (choice !== null) {
-                if (choice === '') moveIconToFolder(icon.id, null);
-                else {
-                  const folder = folders.find(f => f.name === choice);
-                  if (folder) moveIconToFolder(icon.id, folder.id);
-                  else alert('Folder not found.');
+              const colorStyle = icon.color ? `background-color: ${icon.color}; border-color: ${icon.color};` : '';
+              div.innerHTML = `<div class="icon-img" style="${colorStyle}">📁</div><div class="icon-label">${icon.label}</div><div class="folder-badge">${icon.children ? icon.children.length : 0}</div>`;
+            } else if (icon.type === 'file') {
+              div.innerHTML = `<div class="icon-img">📄</div><div class="icon-label">${icon.label}</div>`;
+            } else {
+              const emoji = getIconEmoji(icon.file);
+              div.innerHTML = `<div class="icon-img">${emoji}</div><div class="icon-label">${icon.label}</div>`;
+            }
+            desktop.appendChild(div);
+            makeDraggable(div, icon);
+
+            // Double click / double tap
+            div.addEventListener('click', (e) => {
+              if (e.detail === 2) {
+                if (icon.type === 'app') launchApp(icon.file);
+                else if (icon.type === 'folder') openFolderWindow(icon.id);
+                else if (icon.type === 'file') alert('File: ' + icon.label);
+              }
+            });
+            let lastTap = 0;
+            div.addEventListener('touchstart', (e) => {
+              const now = Date.now();
+              if (now - lastTap < 400) {
+                e.preventDefault();
+                if (icon.type === 'app') launchApp(icon.file);
+                else if (icon.type === 'folder') openFolderWindow(icon.id);
+                else if (icon.type === 'file') alert('File: ' + icon.label);
+              }
+              lastTap = now;
+            }, { passive: false });
+
+            div.addEventListener('contextmenu', (e) => {
+              e.preventDefault();
+              if (icon.type === 'folder') {
+                const action = prompt('Delete folder? (type "delete" to confirm)', '');
+                if (action === 'delete') deleteFolder(icon.id);
+              } else if (icon.type === 'app' || icon.type === 'file') {
+                const folderNames = folders.map(f => f.name);
+                const choice = prompt('Move to folder (enter folder name, leave empty to remove from folder):', '');
+                if (choice !== null) {
+                  if (choice === '') moveIconToFolder(icon.id, null);
+                  else {
+                    const folder = folders.find(f => f.name === choice);
+                    if (folder) moveIconToFolder(icon.id, folder.id);
+                    else alert('Folder not found.');
+                  }
                 }
               }
-            }
+            });
           });
-        });
-        applyFilterAndSort();
-        adjustDesktopHeight();
+          adjustDesktopHeight();
+        } finally {
+          _isRendering = false;
+        }
       }
 
       // --------------------------------------------------------------
@@ -701,14 +708,14 @@
               let folderIcon = dropTarget.closest('.desktop-icon.folder');
               if (folderIcon && folderIcon !== element) {
                 const folderId = folderIcon.dataset.iconId;
-                if (folderId) { moveIconToFolder(iconData.id, folderId); moved = true; renderDesktopIcons(); refreshFolderWindows(); }
+                if (folderId) { moveIconToFolder(iconData.id, folderId); moved = true; renderDesktopIcons(); refreshFolderWindows(); applyFilterAndSort(); }
               }
               const fwItem = dropTarget.closest('.fw-item');
               if (fwItem && !moved) {
                 const folderWindow = fwItem.closest('.folder-window');
                 if (folderWindow) {
                   const folderId = folderWindow.dataset.folderId;
-                  if (folderId) { moveIconToFolder(iconData.id, folderId); moved = true; renderDesktopIcons(); refreshFolderWindows(); }
+                  if (folderId) { moveIconToFolder(iconData.id, folderId); moved = true; renderDesktopIcons(); refreshFolderWindows(); applyFilterAndSort(); }
                 }
               }
             }
@@ -730,9 +737,11 @@
                 delete iconData.folderId;
                 renderDesktopIcons();
                 refreshFolderWindows();
+                applyFilterAndSort();
               } else {
                 saveState();
                 adjustDesktopHeight();
+                applyFilterAndSort(); // ensure filter still applied
               }
             }
             delete iconData._tempX;
@@ -760,6 +769,7 @@
         folders.push({ id, name, appIds: [], color });
         saveState();
         renderDesktopIcons();
+        applyFilterAndSort();
         return icon;
       }
 
@@ -775,6 +785,7 @@
         closeFolderWindow(folderId);
         saveState();
         renderDesktopIcons();
+        applyFilterAndSort();
       }
 
       function moveIconToFolder(iconId, folderId) {
@@ -802,6 +813,7 @@
         saveState();
         renderDesktopIcons();
         refreshFolderWindows();
+        applyFilterAndSort();
       }
 
       // --------------------------------------------------------------
@@ -1474,6 +1486,7 @@
         });
         saveState();
         renderDesktopIcons();
+        applyFilterAndSort();
         fileUploadInput.value = '';
         alert(files.length + ' file(s) uploaded.');
       });
@@ -1483,7 +1496,7 @@
       // --------------------------------------------------------------
       openAllBtn.addEventListener('click', () => {
         appList.forEach(app => { if (!windows.some(w => w.file === app.file)) launchApp(app.file); });
-        socialApps.forEach(social => { if (!windows.some(w => w.file === social.file) && social.file !== 'browser') { /* skip opening browser automatically */ } });
+        // social apps not auto-opened to avoid popups
       });
       closeAllBtn.addEventListener('click', () => { windows.slice().forEach(w => closeWindow(w.id)); });
 
@@ -1506,13 +1519,17 @@
       }
 
       // --------------------------------------------------------------
-      // FILTER & SORT
+      // FILTER & SORT (applies filter, then sorts)
       // --------------------------------------------------------------
       function applyFilterAndSort() {
+        if (_isRendering) return;
         const filter = filterInput.value.trim().toLowerCase();
-        const sort = sortSelect.value;
+        // We apply filter to windows and icons, then call sortIconsAndWindows for sorting.
+        // But sortIconsAndWindows already does sorting and calls renderDesktopIcons.
+        // We also need to show/hide based on filter.
+        // We'll handle filter in the DOM directly (show/hide) and then sort.
 
-        // filter windows
+        // Filter windows
         document.querySelectorAll('.window').forEach(el => {
           const id = parseInt(el.dataset.id);
           const win = windows.find(w => w.id === id);
@@ -1525,7 +1542,7 @@
           el.style.display = show ? 'flex' : 'none';
         });
 
-        // filter desktop icons
+        // Filter desktop icons
         document.querySelectorAll('.desktop-icon').forEach(el => {
           const iconId = el.dataset.iconId;
           const icon = desktopIcons.find(i => i.id === iconId);
@@ -1539,34 +1556,16 @@
                 show = tags.some(t => t.includes(filter));
               } else show = false;
             } else if (icon.type === 'file') show = icon.label.toLowerCase().includes(filter);
-            else show = true;
+            else show = true; // folders always visible
           }
           el.style.display = show ? 'flex' : 'none';
         });
 
-        // sort windows
-        windows.sort((a, b) => {
-          if (sort === 'name') return a.title.localeCompare(b.title);
-          if (sort === 'tag') return a.tags.localeCompare(b.tags);
-          if (sort === 'date') return a.date - b.date;
-          return 0;
-        });
-        const windowElements = Array.from(document.querySelectorAll('.window'));
-        windowElements.sort((elA, elB) => {
-          const idA = parseInt(elA.dataset.id);
-          const idB = parseInt(elB.dataset.id);
-          const winA = windows.find(w => w.id === idA);
-          const winB = windows.find(w => w.id === idB);
-          if (!winA || !winB) return 0;
-          return windows.indexOf(winA) - windows.indexOf(winB);
-        });
-        windowElements.forEach(el => desktop.appendChild(el));
-
-        // sort desktop icons via sortIconsAndWindows but not re-render constantly
-        // We'll just call sortIconsAndWindows which re-renders
+        // Now sort (which also re-renders icons)
         sortIconsAndWindows();
       }
 
+      // Attach filter and sort events
       filterInput.addEventListener('input', () => {
         applyFilterAndSort();
         clearFilterBtn.classList.toggle('show', filterInput.value.length > 0);
@@ -1750,11 +1749,12 @@
           });
           saveState();
           renderDesktopIcons();
+          applyFilterAndSort();
         } else {
           renderDesktopIcons();
+          applyFilterAndSort();
         }
-        applyFilterAndSort();
-        console.log('✨ Ai Desktop v11 ready!');
+        console.log('✨ Ai Desktop v11 (Stable) ready!');
         console.log(`📦 ${appList.length} apps loaded from GitHub.`);
       }
 
