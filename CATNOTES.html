@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ Ai Desktop · Cyberpunk Nexus</title>
+  <style>
+    /* ----- RESET & BASE ----- */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    body {
+      background: #0b0b1a;
+      color: #d0d0ff;
+      font-family: 'Segoe UI', 'Courier New', monospace;
+      height: 100vh;
+      overflow: hidden;
+      background-image: radial-gradient(circle at 20% 30%, #1a1a3a 0%, #0b0b1a 80%);
+    }
+    /* ----- TOOLBAR ----- */
+    #toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 0.6rem 1.5rem;
+      background: rgba(10, 10, 30, 0.85);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #3a2a6a;
+      position: relative;
+      z-index: 1000;
+    }
+    #toolbar h1 {
+      font-size: 1.6rem;
+      font-weight: 300;
+      letter-spacing: 2px;
+      text-shadow: 0 0 20px #7a5cff;
+      color: #b8b0ff;
+      margin-right: 1.5rem;
+    }
+    #toolbar button {
+      background: #1a1a3a;
+      border: 1px solid #4a3a8a;
+      color: #c8c0ff;
+      padding: 0.4rem 1.2rem;
+      border-radius: 30px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      transition: 0.2s;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    #toolbar button:hover {
+      background: #3a2a7a;
+      border-color: #9a7aff;
+      box-shadow: 0 0 20px #4a3a9a66;
+    }
+    #toolbar select,
+    #toolbar input[type="text"] {
+      background: #0f0f2a;
+      border: 1px solid #3a2a6a;
+      color: #d0d0ff;
+      padding: 0.4rem 0.8rem;
+      border-radius: 30px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    #toolbar select:focus,
+    #toolbar input[type="text"]:focus {
+      border-color: #9a7aff;
+    }
+    #toolbar .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-left: auto;
+    }
+    #toolbar .filter-group label {
+      font-size: 0.8rem;
+      color: #8a8aba;
+    }
+    /* ----- DESKTOP ----- */
+    #desktop {
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 100px); /* toolbar + taskbar */
+      overflow: hidden;
+      background: transparent;
+    }
+    /* ----- WINDOW ----- */
+    .window {
+      position: absolute;
+      min-width: 280px;
+      min-height: 200px;
+      background: rgba(16, 16, 40, 0.92);
+      backdrop-filter: blur(6px);
+      border: 1px solid #4a3a7a;
+      border-radius: 12px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.8), 0 0 30px #2a1a5a44;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: box-shadow 0.2s;
+      z-index: 10;
+      resize: none; /* we handle sizing manually */
+    }
+    .window:hover {
+      box-shadow: 0 8px 50px rgba(60, 40, 160, 0.3);
+    }
+    .window.maximized {
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      border-radius: 0;
+      border: none;
+    }
+    .window.minimized {
+      display: none;
+    }
+    /* window header */
+    .window-header {
+      display: flex;
+      align-items: center;
+      background: rgba(20, 20, 60, 0.8);
+      padding: 0.3rem 0.6rem;
+      border-bottom: 1px solid #3a2a6a;
+      cursor: grab;
+      flex-shrink: 0;
+      min-height: 36px;
+    }
+    .window-header:active {
+      cursor: grabbing;
+    }
+    .window-title {
+      flex: 1;
+      font-size: 0.9rem;
+      font-weight: 400;
+      letter-spacing: 0.5px;
+      color: #c8c0ff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-right: 0.5rem;
+    }
+    .window-controls {
+      display: flex;
+      gap: 0.3rem;
+    }
+    .window-controls button {
+      background: none;
+      border: none;
+      color: #8a7aaa;
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0 0.2rem;
+      transition: 0.15s;
+      line-height: 1;
+    }
+    .window-controls button:hover {
+      color: #d0c0ff;
+    }
+    .window-controls .btn-close:hover {
+      color: #ff6a8a;
+    }
+    .window-controls .btn-minimize:hover {
+      color: #ffcc66;
+    }
+    .window-controls .btn-maximize:hover {
+      color: #66ffcc;
+    }
+    /* window content */
+    .window-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+    .window-content iframe {
+      width: 100%;
+      flex: 1;
+      border: none;
+      background: #0a0a1a;
+    }
+    .window-notes-area {
+      background: rgba(0,0,0,0.3);
+      border-top: 1px solid #2a2a5a;
+      padding: 0.4rem 0.6rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      flex-shrink: 0;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .window-notes-area textarea {
+      background: #0a0a1a;
+      border: 1px solid #3a2a6a;
+      color: #c8c0ff;
+      padding: 0.3rem;
+      border-radius: 6px;
+      resize: vertical;
+      font-family: inherit;
+      font-size: 0.75rem;
+      min-height: 40px;
+      width: 100%;
+      outline: none;
+    }
+    .window-notes-area textarea:focus {
+      border-color: #9a7aff;
+    }
+    .window-tags {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+    .window-tags input {
+      background: #0a0a1a;
+      border: 1px solid #3a2a6a;
+      color: #d0d0ff;
+      padding: 0.1rem 0.5rem;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      flex: 1;
+      min-width: 60px;
+      outline: none;
+    }
+    .window-tags input:focus {
+      border-color: #9a7aff;
+    }
+    .window-tags .tag-label {
+      font-size: 0.65rem;
+      color: #8a8aba;
+    }
+    /* ----- TASKBAR ----- */
+    #taskbar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 44px;
+      background: rgba(10, 10, 30, 0.9);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid #3a2a6a;
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+      gap: 0.4rem;
+      z-index: 2000;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+    }
+    #taskbar .task-item {
+      background: #1a1a3a;
+      border: 1px solid #4a3a7a;
+      border-radius: 6px;
+      padding: 0.2rem 0.8rem;
+      font-size: 0.75rem;
+      color: #c8c0ff;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    #taskbar .task-item:hover {
+      background: #3a2a6a;
+      border-color: #9a7aff;
+    }
+    #taskbar .task-item .close-task {
+      color: #8a6a8a;
+      font-size: 0.8rem;
+      margin-left: 0.2rem;
+    }
+    #taskbar .task-item .close-task:hover {
+      color: #ff6a8a;
+    }
+    /* scrollbar custom */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #0a0a1a; }
+    ::-webkit-scrollbar-thumb { background: #4a3a7a; border-radius: 4px; }
+    /* responsive */
+    @media (max-width: 700px) {
+      #toolbar { flex-wrap: wrap; gap: 0.4rem; }
+      #toolbar h1 { font-size: 1.2rem; margin-right: 0.5rem; }
+      .window { min-width: 200px; min-height: 150px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOOLBAR -->
+  <div id="toolbar">
+    <h1>✦ Ai · DESKTOP ✦</h1>
+    <button id="addAppBtn">➕ Add App</button>
+    <select id="appSelect" style="display:none;"></select>
+    <button id="showAllBtn">📂 Show All</button>
+    <button id="exportBtn">📥 Export Notes</button>
+    <button id="importBtn">📤 Import Notes</button>
+    <input type="file" id="importFileInput" accept=".txt" style="display:none;" />
+    <div class="filter-group">
+      <label for="filterInput">🔍 Filter by tag:</label>
+      <input type="text" id="filterInput" placeholder="e.g. music, canvas" />
+      <label for="sortSelect">Sort:</label>
+      <select id="sortSelect">
+        <option value="name">Name</option>
+        <option value="tag">Tag</option>
+        <option value="date">Date added</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- DESKTOP -->
+  <div id="desktop"></div>
+
+  <!-- TASKBAR -->
+  <div id="taskbar"></div>
+
+  <script>
+    (function() {
+      // --------------------------------------------------------------
+      // 1. APP DEFINITIONS – same as before
+      // --------------------------------------------------------------
+      const appList = [
+        { file: 'index0',        desc: 'Legacy root – early proto' },
+        { file: 'index01',       desc: 'Another early iteration' },
+        { file: 'index2',        desc: 'Older experimental interface' },
+        { file: 'index42',       desc: 'The answer – quirky numeric entry' },
+        { file: 'CREATORBOARD',  desc: 'Digital canvas – sketch & generate' },
+        { file: 'SHELLCREATOR',  desc: 'Modular shell builder' },
+        { file: 'ULTRACREANODE', desc: 'High‑frequency generative core' },
+        { file: 'DEEPUCOCREA',   desc: 'Deep subconscious creation' },
+        { file: 'UNIWAVEEDITOR', desc: 'Universal waveform editor' },
+        { file: 'MUSICSHELL0',   desc: 'Audio playground – loop, sample' },
+        { file: 'MUSICSHELLGEN', desc: 'Generative music machine' },
+        { file: 'COSMICSHELL0',  desc: 'Cosmic visualiser – navigate the void' },
+        { file: 'SANCTUARYC',    desc: 'Calm refuge – peaceful digital space' },
+        { file: 'MIRAC',         desc: 'Miracle generator – unexpected wonders' },
+        { file: 'MMRYROOMS',     desc: 'Memory archive – store & revisit' },
+        { file: 'MS',            desc: 'Mind state – core consciousness' },
+        { file: 'MS2',           desc: 'Mind state v2 – upgraded shell' },
+        { file: 'MSNXTXPLORING', desc: 'Next‑gen mind explorer' },
+        { file: 'WEBAPPANIMATOR',desc: 'Web animation studio' },
+        { file: 'WEBEDI',        desc: 'Lightweight web editor' },
+        { file: 'WEBEDITX',      desc: 'Advanced web editor' },
+        { file: 'UID',           desc: 'Identity manager' },
+        { file: 'CYBERGIRLPOWA', desc: 'Empowered cyber‑aesthetic' },
+        { file: 'ADVCC',         desc: 'Advanced command console' },
+        { file: 'CC',            desc: 'Core command – quick terminal' },
+        { file: 'COCD',          desc: 'Command & control dashboard' },
+        { file: 'OBERLAYHUD',    desc: 'Heads‑up display – data overlay' },
+        { file: 'UCOEDI',        desc: 'Universal editor + HUD' },
+      ];
+
+      // --------------------------------------------------------------
+      // 2. STATE
+      // --------------------------------------------------------------
+      let windows = []; // each: { id, file, title, x, y, w, h, minimized, maximized, notes, tags, date }
+      let nextId = 1;
+      const STORAGE_KEY = 'ai_desktop_state';
+
+      // DOM refs
+      const desktop = document.getElementById('desktop');
+      const taskbar = document.getElementById('taskbar');
+      const addBtn = document.getElementById('addAppBtn');
+      const appSelect = document.getElementById('appSelect');
+      const showAllBtn = document.getElementById('showAllBtn');
+      const exportBtn = document.getElementById('exportBtn');
+      const importBtn = document.getElementById('importBtn');
+      const importFileInput = document.getElementById('importFileInput');
+      const filterInput = document.getElementById('filterInput');
+      const sortSelect = document.getElementById('sortSelect');
+
+      // --------------------------------------------------------------
+      // 3. HELPER FUNCTIONS
+      // --------------------------------------------------------------
+      function generateId() { return nextId++; }
+
+      function getAppUrl(file) {
+        return `./${file}.html`;
+      }
+
+      // --------------------------------------------------------------
+      // 4. WINDOW CREATION
+      // --------------------------------------------------------------
+      function createWindow(file, title, x, y, w, h, notes = '', tags = '', minimized = false, maximized = false) {
+        const id = generateId();
+        const winObj = {
+          id,
+          file,
+          title: title || file,
+          x: x || 100 + Math.random() * 150,
+          y: y || 60 + Math.random() * 100,
+          w: w || 500,
+          h: h || 400,
+          minimized,
+          maximized,
+          notes: notes || '',
+          tags: tags || '',
+          date: Date.now()
+        };
+        windows.push(winObj);
+        renderWindow(winObj);
+        saveState();
+        updateTaskbar();
+        return winObj;
+      }
+
+      function renderWindow(win) {
+        // remove existing DOM if any
+        const existing = document.querySelector(`.window[data-id="${win.id}"]`);
+        if (existing) existing.remove();
+
+        if (win.minimized) {
+          updateTaskbar();
+          return;
+        }
+
+        const div = document.createElement('div');
+        div.className = 'window';
+        if (win.maximized) div.classList.add('maximized');
+        div.dataset.id = win.id;
+        div.style.left = win.x + 'px';
+        div.style.top = win.y + 'px';
+        div.style.width = win.w + 'px';
+        div.style.height = win.h + 'px';
+        div.style.zIndex = 10 + windows.indexOf(win); // simple stacking
+
+        // header
+        const header = document.createElement('div');
+        header.className = 'window-header';
+        header.innerHTML = `
+          <span class="window-title">${win.title}</span>
+          <div class="window-controls">
+            <button class="btn-minimize" title="Minimize">−</button>
+            <button class="btn-maximize" title="Maximize">⛶</button>
+            <button class="btn-close" title="Close">✕</button>
+          </div>
+        `;
+        div.appendChild(header);
+
+        // content
+        const content = document.createElement('div');
+        content.className = 'window-content';
+        const iframe = document.createElement('iframe');
+        iframe.src = getAppUrl(win.file);
+        iframe.loading = 'lazy';
+        content.appendChild(iframe);
+
+        // notes area
+        const notesArea = document.createElement('div');
+        notesArea.className = 'window-notes-area';
+        notesArea.innerHTML = `
+          <div class="window-tags">
+            <span class="tag-label">🏷️ Tags:</span>
+            <input type="text" class="tag-input" placeholder="comma, separated" value="${win.tags}" />
+          </div>
+          <textarea class="note-textarea" placeholder="Write your notes here...">${win.notes}</textarea>
+        `;
+        content.appendChild(notesArea);
+        div.appendChild(content);
+
+        desktop.appendChild(div);
+
+        // ----- event binding -----
+        // drag
+        let dragData = null;
+        header.addEventListener('mousedown', (e) => {
+          if (e.target.closest('.window-controls')) return;
+          const rect = div.getBoundingClientRect();
+          dragData = {
+            offsetX: e.clientX - rect.left,
+            offsetY: e.clientY - rect.top,
+          };
+          const onMove = (ev) => {
+            if (!dragData) return;
+            let newX = ev.clientX - dragData.offsetX;
+            let newY = ev.clientY - dragData.offsetY;
+            // clamp to desktop
+            const deskRect = desktop.getBoundingClientRect();
+            newX = Math.max(0, Math.min(newX, deskRect.width - div.offsetWidth));
+            newY = Math.max(0, Math.min(newY, deskRect.height - div.offsetHeight));
+            div.style.left = newX + 'px';
+            div.style.top = newY + 'px';
+            // update state
+            const winData = windows.find(w => w.id === win.id);
+            if (winData) {
+              winData.x = newX;
+              winData.y = newY;
+              saveState();
+            }
+          };
+          const onUp = () => {
+            dragData = null;
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+          };
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+
+        // minimize
+        header.querySelector('.btn-minimize').addEventListener('click', (e) => {
+          e.stopPropagation();
+          win.minimized = true;
+          div.remove();
+          updateTaskbar();
+          saveState();
+        });
+
+        // maximize
+        header.querySelector('.btn-maximize').addEventListener('click', (e) => {
+          e.stopPropagation();
+          win.maximized = !win.maximized;
+          div.classList.toggle('maximized');
+          if (win.maximized) {
+            // store current size for restore
+            win._prevRect = { x: win.x, y: win.y, w: win.w, h: win.h };
+            div.style.left = '0';
+            div.style.top = '0';
+            div.style.width = '100%';
+            div.style.height = '100%';
+          } else {
+            const prev = win._prevRect || { x: 100, y: 60, w: 500, h: 400 };
+            win.x = prev.x;
+            win.y = prev.y;
+            win.w = prev.w;
+            win.h = prev.h;
+            div.style.left = win.x + 'px';
+            div.style.top = win.y + 'px';
+            div.style.width = win.w + 'px';
+            div.style.height = win.h + 'px';
+          }
+          saveState();
+        });
+
+        // close
+        header.querySelector('.btn-close').addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeWindow(win.id);
+        });
+
+        // notes & tags – auto-save on change
+        const noteTextarea = notesArea.querySelector('.note-textarea');
+        const tagInput = notesArea.querySelector('.tag-input');
+
+        noteTextarea.addEventListener('input', () => {
+          win.notes = noteTextarea.value;
+          saveState();
+        });
+        tagInput.addEventListener('input', () => {
+          win.tags = tagInput.value;
+          saveState();
+        });
+
+        // resize (optional – simple bottom-right resize)
+        // We'll skip for brevity, but can be added later.
+
+        updateTaskbar();
+        saveState();
+      }
+
+      function closeWindow(id) {
+        const idx = windows.findIndex(w => w.id === id);
+        if (idx === -1) return;
+        const win = windows[idx];
+        const el = document.querySelector(`.window[data-id="${id}"]`);
+        if (el) el.remove();
+        windows.splice(idx, 1);
+        updateTaskbar();
+        saveState();
+      }
+
+      // --------------------------------------------------------------
+      // 5. TASKBAR
+      // --------------------------------------------------------------
+      function updateTaskbar() {
+        taskbar.innerHTML = '';
+        windows.forEach(win => {
+          const item = document.createElement('div');
+          item.className = 'task-item';
+          item.innerHTML = `
+            <span>${win.title}</span>
+            <span class="close-task" data-id="${win.id}">✕</span>
+          `;
+          item.addEventListener('click', (e) => {
+            if (e.target.classList.contains('close-task')) return;
+            // unminimize or bring to front
+            if (win.minimized) {
+              win.minimized = false;
+              renderWindow(win);
+              // remove from taskbar? update will refresh
+            } else {
+              // bring to front – increase z-index
+              const el = document.querySelector(`.window[data-id="${win.id}"]`);
+              if (el) {
+                const maxZ = Math.max(...Array.from(document.querySelectorAll('.window')).map(el => parseInt(el.style.zIndex) || 0));
+                el.style.zIndex = maxZ + 1;
+              }
+            }
+            updateTaskbar();
+            saveState();
+          });
+          // close from taskbar
+          const closeSpan = item.querySelector('.close-task');
+          closeSpan.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeWindow(win.id);
+          });
+          taskbar.appendChild(item);
+        });
+      }
+
+      // --------------------------------------------------------------
+      // 6. ADD APP / SHOW ALL
+      // --------------------------------------------------------------
+      function populateAppSelect() {
+        appSelect.innerHTML = '';
+        appList.forEach(app => {
+          const opt = document.createElement('option');
+          opt.value = app.file;
+          opt.textContent = app.file + ' – ' + app.desc;
+          appSelect.appendChild(opt);
+        });
+      }
+
+      addBtn.addEventListener('click', () => {
+        if (appSelect.style.display === 'none') {
+          appSelect.style.display = 'inline-block';
+          populateAppSelect();
+        } else {
+          appSelect.style.display = 'none';
+        }
+      });
+
+      appSelect.addEventListener('change', () => {
+        const file = appSelect.value;
+        if (!file) return;
+        const app = appList.find(a => a.file === file);
+        if (!app) return;
+        // Check if already open
+        if (windows.some(w => w.file === file)) {
+          alert('This app is already open.');
+          return;
+        }
+        createWindow(file, file, 120 + Math.random() * 100, 80 + Math.random() * 80, 520, 420);
+        appSelect.style.display = 'none';
+        appSelect.value = '';
+      });
+
+      showAllBtn.addEventListener('click', () => {
+        appList.forEach(app => {
+          if (!windows.some(w => w.file === app.file)) {
+            createWindow(app.file, app.file, 120 + Math.random() * 150, 80 + Math.random() * 100, 520, 420);
+          }
+        });
+      });
+
+      // --------------------------------------------------------------
+      // 7. FILTER & SORT
+      // --------------------------------------------------------------
+      function applyFilterAndSort() {
+        const filter = filterInput.value.trim().toLowerCase();
+        const sort = sortSelect.value;
+        // We'll re-render all windows based on filter/sort
+        // but we need to keep existing windows; we'll just show/hide
+        const allWindows = document.querySelectorAll('.window');
+        allWindows.forEach(el => {
+          const id = parseInt(el.dataset.id);
+          const win = windows.find(w => w.id === id);
+          if (!win) return;
+          let show = true;
+          if (filter) {
+            const tags = win.tags.split(',').map(t => t.trim().toLowerCase());
+            show = tags.some(t => t.includes(filter));
+          }
+          el.style.display = show ? 'flex' : 'none';
+        });
+        // Sorting: we could reorder DOM, but we'll just rely on state order for new windows
+        // For simplicity, we'll re-sort the windows array and re-render all? That would lose positions.
+        // Instead, we'll just change the order of the windows array and then re-render all windows (keep positions).
+        // But to keep things simple, we'll only sort when adding new windows or on demand.
+        // We'll implement a full resort on button or we can just reorder the array and re-render all.
+        // For now, we'll keep it as is – the user can manually drag.
+        // We'll provide a sort function that reorders the windows array and then re-renders all.
+        // But that would reset positions. Better to not.
+        // We'll just rely on the filter for now.
+      }
+
+      filterInput.addEventListener('input', applyFilterAndSort);
+      sortSelect.addEventListener('change', () => {
+        // For sorting, we'll reorder the windows array and re-render all (keeping positions)
+        // but we need to preserve positions. We'll just re-sort the array and then re-render all windows.
+        // However re-rendering all would lose minimized state? We'll keep it.
+        // We'll implement a sort function that reorders windows and then re-renders only the ones that are not minimized.
+        // But to keep it simple, we'll just sort the array and then re-render all non-minimized.
+        const sortVal = sortSelect.value;
+        windows.sort((a, b) => {
+          if (sortVal === 'name') return a.title.localeCompare(b.title);
+          if (sortVal === 'tag') return a.tags.localeCompare(b.tags);
+          if (sortVal === 'date') return a.date - b.date;
+          return 0;
+        });
+        // Re-render all non-minimized windows
+        // First remove all windows from DOM
+        document.querySelectorAll('.window').forEach(el => el.remove());
+        windows.forEach(win => {
+          if (!win.minimized) renderWindow(win);
+        });
+        updateTaskbar();
+        saveState();
+      });
+
+      // --------------------------------------------------------------
+      // 8. EXPORT / IMPORT NOTES
+      // --------------------------------------------------------------
+      function exportNotes() {
+        const data = windows.map(win => ({
+          title: win.title,
+          file: win.file,
+          notes: win.notes,
+          tags: win.tags,
+          date: win.date
+        }));
+        const text = JSON.stringify(data, null, 2);
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'ai_notes_export.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      exportBtn.addEventListener('click', exportNotes);
+
+      importBtn.addEventListener('click', () => {
+        importFileInput.click();
+      });
+
+      importFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            if (!Array.isArray(data)) throw new Error('Invalid format');
+            // We'll update notes and tags for matching windows by file
+            data.forEach(item => {
+              const win = windows.find(w => w.file === item.file);
+              if (win) {
+                win.notes = item.notes || '';
+                win.tags = item.tags || '';
+                // Update DOM if window is open
+                const el = document.querySelector(`.window[data-id="${win.id}"]`);
+                if (el) {
+                  const textarea = el.querySelector('.note-textarea');
+                  const tagInput = el.querySelector('.tag-input');
+                  if (textarea) textarea.value = win.notes;
+                  if (tagInput) tagInput.value = win.tags;
+                }
+              }
+            });
+            saveState();
+            alert('Notes imported successfully!');
+          } catch (err) {
+            alert('Failed to import: ' + err.message);
+          }
+        };
+        reader.readAsText(file);
+        importFileInput.value = ''; // reset
+      });
+
+      // --------------------------------------------------------------
+      // 9. PERSISTENCE (localStorage)
+      // --------------------------------------------------------------
+      function saveState() {
+        const state = windows.map(win => ({
+          id: win.id,
+          file: win.file,
+          title: win.title,
+          x: win.x,
+          y: win.y,
+          w: win.w,
+          h: win.h,
+          minimized: win.minimized,
+          maximized: win.maximized,
+          notes: win.notes,
+          tags: win.tags,
+          date: win.date
+        }));
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) {}
+      }
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return false;
+          const data = JSON.parse(raw);
+          if (!Array.isArray(data)) return false;
+          // Restore windows
+          data.forEach(item => {
+            const win = {
+              id: item.id,
+              file: item.file,
+              title: item.title || item.file,
+              x: item.x || 100,
+              y: item.y || 60,
+              w: item.w || 500,
+              h: item.h || 400,
+              minimized: item.minimized || false,
+              maximized: item.maximized || false,
+              notes: item.notes || '',
+              tags: item.tags || '',
+              date: item.date || Date.now()
+            };
+            windows.push(win);
+            if (!win.minimized) {
+              renderWindow(win);
+            }
+          });
+          // update nextId
+          const maxId = windows.reduce((max, w) => Math.max(max, w.id), 0);
+          nextId = maxId + 1;
+          updateTaskbar();
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      // --------------------------------------------------------------
+      // 10. INIT
+      // --------------------------------------------------------------
+      // Attempt to load state
+      const loaded = loadState();
+      if (!loaded) {
+        // If no saved state, open a few default apps as demo
+        const demoApps = ['CREATORBOARD', 'MUSICSHELL0', 'COSMICSHELL0'];
+        demoApps.forEach((file, idx) => {
+          const app = appList.find(a => a.file === file);
+          if (app) {
+            createWindow(file, file, 100 + idx * 50, 60 + idx * 40, 480, 380);
+          }
+        });
+      }
+
+      // Populate app select (hidden initially)
+      populateAppSelect();
+      appSelect.style.display = 'none';
+
+      // Apply initial filter
+      applyFilterAndSort();
+
+      // Handle window resize for maximized windows? Not needed.
+
+      console.log('✨ Ai Desktop ready!');
+    })();
+  </script>
+</body>
+</html>
