@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Utopian Co-Creation Canvas Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --cyan-glow: rgba(102, 252, 241, 0.6);
+            --cyan-border: rgba(102, 252, 241, 0.3);
+            --bg-dark: #05070a;
+            --panel-bg: rgba(10, 15, 25, 0.92);
+            --text-primary: #e0f7fa;
+            --text-secondary: #a0b4c8;
+        }
+
+        body {
+            overscroll-behavior-y: none;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: background 0.5s ease;
+        }
+
+        body.night-mode {
+            --bg-dark: #000000;
+            --panel-bg: rgba(0, 0, 0, 0.95);
+            --cyan-border: rgba(102, 252, 241, 0.5);
+            --cyan-glow: rgba(102, 252, 241, 0.9);
+            --text-primary: #ffffff;
+            --text-secondary: #c0d0e0;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(102, 252, 241, 0.2);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 252, 241, 0.5);
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--cyan-border);
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), inset 0 1px 15px rgba(102, 252, 241, 0.05);
+            transition: background 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
+        }
+
+        .glow-text {
+            text-shadow: 0 0 10px var(--cyan-glow);
+        }
+
+        .canvas-grid {
+            background-size: 50px 50px;
+            background-image: linear-gradient(to right, rgba(102, 252, 241, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(102, 252, 241, 0.03) 1px, transparent 1px);
+            transition: background-image 0.5s ease;
+        }
+
+        .canvas-container {
+            display: none;
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .canvas-container.active {
+            display: block;
+        }
+
+        .canvas-item {
+            position: absolute;
+            cursor: grab;
+            transition: box-shadow 0.2s, border-color 0.2s;
+            user-select: none;
+            touch-action: none;
+            font-size: 16px;
+        }
+
+        .canvas-item:active {
+            cursor: grabbing;
+        }
+        .canvas-item.selected {
+            border: 2px solid #66fcf1 !important;
+            box-shadow: 0 0 25px rgba(102, 252, 241, 0.7) !important;
+            z-index: 100;
+        }
+
+        body.link-mode .canvas-item {
+            cursor: crosshair;
+        }
+        .linking-active {
+            border-color: #ff00ff !important;
+            box-shadow: 0 0 30px rgba(255, 0, 255, 0.8) !important;
+        }
+
+        #media-library {
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
+            transform: translateY(-100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+        #media-library.open {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .speech-bubble {
+            background: rgba(10, 20, 35, 0.95);
+            border: 1px solid var(--cyan-border);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: #fff;
+            position: relative;
+            min-width: 140px;
+        }
+
+        .note-node {
+            background: linear-gradient(135deg, rgba(20, 30, 50, 0.95), rgba(10, 15, 25, 0.95));
+            border: 1px solid var(--cyan-border);
+            border-radius: 8px;
+            padding: 12px;
+            color: #fff;
+            min-width: 160px;
+        }
+
+        #isometric-canvas {
+            background: radial-gradient(circle at center, #0a1424 0%, #03060a 100%);
+            transition: background 0.5s ease;
+        }
+
+        @keyframes spawn {
+            0% {
+                transform: scale(0) translateY(20px);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+        .animate-spawn {
+            animation: spawn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .glb-preview-canvas {
+            width: 200px;
+            height: 120px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid rgba(255, 105, 180, 0.5);
+            background: radial-gradient(circle at center, #1a0a20 0%, #000000 100%);
+        }
+
+        .html-embed-frame {
+            width: 280px;
+            height: 160px;
+            border-radius: 8px;
+            border: 2px solid rgba(102, 252, 241, 0.5);
+            background: #ffffff;
+            pointer-events: auto;
+            cursor: default;
+        }
+
+        .pdf-embed-frame {
+            width: 260px;
+            height: 180px;
+            border-radius: 8px;
+            border: 2px solid rgba(255, 165, 0, 0.5);
+            background: #1a1a1a;
+            pointer-events: auto;
+            cursor: default;
+        }
+
+        .edit-indicator {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #66fcf1;
+            color: #000;
+            font-size: 10px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.2s;
+            cursor: pointer;
+            pointer-events: auto;
+            border: 2px solid #000;
+        }
+        .canvas-item:hover .edit-indicator {
+            opacity: 1;
+        }
+
+        .export-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: rgba(5, 7, 10, 0.98);
+            border: 1px solid var(--cyan-border);
+            border-radius: 12px;
+            padding: 8px;
+            z-index: 100;
+            display: none;
+            min-width: 220px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
+        }
+        .export-menu.open {
+            display: block;
+        }
+        .export-menu button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: monospace;
+            color: #e0f7fa;
+            transition: background 0.2s;
+        }
+        .export-menu button:hover {
+            background: rgba(102, 252, 241, 0.1);
+        }
+
+        .moon-icon {
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        body.night-mode .moon-icon {
+            transform: rotate(180deg);
+        }
+
+        .colorful-border {
+            border-width: 2.5px !important;
+            border-style: solid !important;
+        }
+        .colorful-border.IMAGE {
+            border-color: #10b981 !important;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3) !important;
+        }
+        .colorful-border.VIDEO {
+            border-color: #a855f7 !important;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.3) !important;
+        }
+        .colorful-border.AUDIO {
+            border-color: #f59e0b !important;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.3) !important;
+        }
+        .colorful-border.MODEL3D {
+            border-color: #ec4899 !important;
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.3) !important;
+        }
+        .colorful-border.DOC {
+            border-color: #06b6d4 !important;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.3) !important;
+        }
+        .colorful-border.NODE {
+            border-color: #66fcf1 !important;
+            box-shadow: 0 0 15px rgba(102, 252, 241, 0.25) !important;
+        }
+        .colorful-border.BUBBLE {
+            border-color: #f472b6 !important;
+            box-shadow: 0 0 15px rgba(244, 114, 182, 0.25) !important;
+        }
+
+        /* Mobile HUD optimization */
+        @media (max-width: 768px) {
+            .desktop-label {
+                display: none !important;
+            }
+            .hud-btn {
+                padding: 8px !important;
+                font-size: 16px !important;
+            }
+            .tab-btn span {
+                display: none;
+            }
+            .tab-btn::after {
+                content: attr(data-emoji);
+                font-size: 18px;
+            }
+            .tool-btn span {
+                display: none;
+            }
+            .tool-btn::after {
+                content: attr(data-emoji);
+                font-size: 20px;
+            }
+            #media-library {
+                top: 50px;
+            }
+            header {
+                padding: 4px 6px !important;
+            }
+            .timeline-section {
+                height: 100px !important;
+                padding: 6px !important;
+            }
+            .timeline-track {
+                height: 30px !important;
+            }
+            .tool-sidebar {
+                bottom: 120px;
+                top: auto;
+                left: 50%;
+                transform: translateX(-50%);
+                flex-direction: row;
+                gap: 6px;
+                padding: 4px 8px;
+                border-radius: 20px;
+            }
+        }
+
+        /* coordinate editor */
+        .coord-editor {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            background: rgba(5, 7, 10, 0.95);
+            border: 1px solid var(--cyan-border);
+            border-radius: 8px;
+            padding: 8px;
+            z-index: 200;
+            display: none;
+            min-width: 180px;
+        }
+        .coord-editor.show {
+            display: block;
+        }
+        .coord-editor input {
+            width: 50px;
+            background: rgba(102, 252, 241, 0.1);
+            border: 1px solid rgba(102, 252, 241, 0.3);
+            color: #fff;
+            border-radius: 4px;
+            padding: 2px 4px;
+            font-size: 11px;
+            font-family: monospace;
+        }
+
+        .folder-btn {
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 6px;
+            border: 1px solid rgba(102, 252, 241, 0.4);
+            background: rgba(102, 252, 241, 0.1);
+            color: #e0f7fa;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .folder-btn.active {
+            background: rgba(102, 252, 241, 0.3);
+            border-color: #66fcf1;
+        }
+    </style>
+</head>
+<body class="bg-[#05070a] h-screen w-full flex flex-col text-cyan-50 font-sans antialiased overflow-hidden">
+
+    <header class="glass-panel relative z-40 flex items-center justify-between px-3 py-2 shrink-0 border-b-0">
+        <div class="flex items-center gap-2 md:gap-4 overflow-x-auto no-scrollbar" id="tabs-container">
+            <button onclick="switchTab('canvas-1')" data-emoji="🎨" class="tab-btn active text-cyan-400 border-b-2 border-cyan-400 px-3 py-1 text-xs md:text-sm font-mono tracking-wider transition-colors whitespace-nowrap hud-btn"><span class="desktop-label">MAIN CANVAS</span></button>
+            <button onclick="switchTab('canvas-2')" data-emoji="🗺️" class="tab-btn text-cyan-700 hover:text-cyan-400 px-3 py-1 text-xs md:text-sm font-mono tracking-wider transition-colors whitespace-nowrap hud-btn"><span class="desktop-label">2.5D XYZ MAP</span></button>
+            <button onclick="switchTab('canvas-3')" data-emoji="🧊" class="tab-btn text-cyan-700 hover:text-cyan-400 px-3 py-1 text-xs md:text-sm font-mono tracking-wider transition-colors whitespace-nowrap hud-btn"><span class="desktop-label">3D GLB LAB</span></button>
+        </div>
+        <div class="flex items-center gap-1 md:gap-3 flex-wrap justify-end">
+            <div class="flex items-center gap-1.5 bg-cyan-950/60 border border-cyan-800/50 px-2.5 py-1 rounded hud-btn">
+                <span class="text-[10px] font-mono text-cyan-300 desktop-label">Pro Specs:</span>
+                <input type="checkbox" id="pro-specs-toggle" onchange="toggleProSpecs(this.checked)" class="w-3.5 h-3.5 accent-cyan-400 cursor-pointer">
+            </div>
+            <button onclick="toggleNightMode()" id="night-mode-btn" class="flex items-center gap-2 bg-cyan-900/40 border border-cyan-500/40 px-3 py-1.5 rounded-full text-cyan-300 hover:bg-cyan-800/60 transition-all text-[10px] md:text-xs font-bold tracking-widest uppercase shadow-lg hud-btn" title="Toggle Night Mode">
+                <span class="moon-icon text-lg leading-none">🌙</span>
+            </button>
+            <button onclick="toggleMediaLibrary()" class="flex items-center gap-2 bg-cyan-900/40 border border-cyan-500/40 px-3 py-1.5 rounded-full text-cyan-300 hover:bg-cyan-800/60 transition-all text-[10px] md:text-xs font-bold tracking-widest uppercase shadow-lg hud-btn" title="Media Library">
+                <span class="text-lg leading-none">📚</span><span class="desktop-label">Library</span>
+            </button>
+            <div class="relative">
+                <button onclick="toggleExportMenu()" class="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-black px-3 py-1.5 rounded-full transition-all text-[10px] md:text-xs font-bold tracking-widest uppercase shadow-[0_0_15px_rgba(102,252,241,0.3)] hud-btn" title="Save / Export">
+                    <span class="text-lg leading-none">💾</span><span class="desktop-label">Export</span>
+                </button>
+                <div id="export-menu" class="export-menu">
+                    <button onclick="exportAsPNG('png', false)">📸 Save as PNG (Background)</button>
+                    <button onclick="exportAsPNG('png', true)">🌫️ Save as PNG (Transparent)</button>
+                    <button onclick="exportAsPNG('jpeg', false)">🖼️ Save as JPEG</button>
+                    <button onclick="exportAsPNG('webp', false)">🌐 Save as WebP</button>
+                    <hr class="my-2 border-cyan-800/40">
+                    <button onclick="exportAsHTML()">📄 Save as HTML (Full State)</button>
+                    <button onclick="exportAsHTMLWithPNG()">📦 Save HTML + PNG Snapshot</button>
+                </div>
+            </div>
+            <!-- Stage Selector -->
+            <div class="flex items-center gap-1 bg-cyan-950/60 border border-cyan-800/50 px-2 py-1 rounded hud-btn">
+                <span class="text-[10px] font-mono text-cyan-300 desktop-label">Stage:</span>
+                <select id="stage-selector" onchange="switchStage(this.value)" class="bg-transparent text-cyan-200 text-xs font-mono border-none outline-none cursor-pointer">
+                    <option value="stage1">1</option>
+                    <option value="stage2">2</option>
+                    <option value="stage3">3</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <div id="media-library" class="absolute top-[60px] left-0 w-full bg-[#05070a]/95 backdrop-blur-2xl border-b border-cyan-900/60 z-30 p-4 shadow-2xl flex flex-col gap-3">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-cyan-900/40 pb-2">
+            <div class="flex items-center gap-3 flex-wrap">
+                <span class="text-cyan-400 text-xs font-mono tracking-widest uppercase font-bold">📁 Media Vault</span>
+                <div class="flex gap-1.5 text-xs font-mono overflow-x-auto" id="tag-filters">
+                    <button onclick="filterLibrary('ALL')" class="tag-filter-btn px-2.5 py-0.5 rounded bg-cyan-900/60 text-cyan-200 border border-cyan-500/40">ALL</button>
+                    <button onclick="filterLibrary('IMAGE')" class="tag-filter-btn px-2.5 py-0.5 rounded bg-black/40 text-cyan-500 border border-cyan-900">🖼️</button>
+                    <button onclick="filterLibrary('VIDEO')" class="tag-filter-btn px-2.5 py-0.5 rounded bg-black/40 text-cyan-500 border border-cyan-900">🎬</button>
+                    <button onclick="filterLibrary('AUDIO')" class="tag-filter-btn px-2.5 py-0.5 rounded bg-black/40 text-cyan-500 border border-cyan-900">🎵</button>
+                    <button onclick="filterLibrary('MODEL3D')" class="tag-filter-btn px-2.5 py-0.5 rounded bg-black/40 text-cyan-500 border border-cyan-900">🧊</button>
+                    <button onclick="filterLibrary('DOC')" class="tag-filter-btn px-2.5 py-0.5 rounded bg-black/40 text-cyan-500 border border-cyan-900">📄</button>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-1.5 bg-cyan-950/60 border border-cyan-800/50 px-2.5 py-1 rounded">
+                    <span class="text-[10px] font-mono text-cyan-300">🔁 Auto-Loop:</span>
+                    <input type="checkbox" id="global-loop-toggle" checked onchange="toggleGlobalLoop(this.checked)" class="w-3.5 h-3.5 accent-cyan-400 cursor-pointer">
+                </div>
+                <button onclick="document.getElementById('file-upload').click()" class="bg-cyan-500 hover:bg-cyan-400 text-black px-3 py-1 rounded text-xs font-bold tracking-wider uppercase transition-all shadow-[0_0_15px_rgba(102,252,241,0.3)]">⬆️ Upload</button>
+                <input type="file" id="file-upload" multiple accept="image/*,video/mp4,video/*,audio/*,.glb,.gltf,.obj,.html,.txt,.pdf" class="hidden" onchange="handleFileUpload(event)">
+            </div>
+        </div>
+        <!-- Folder bar -->
+        <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs font-mono text-cyan-400">🗂️ Folders:</span>
+            <div id="folder-buttons" class="flex gap-1.5 flex-wrap"></div>
+            <button onclick="createNewFolder()" class="text-xs bg-cyan-900/40 border border-cyan-500/40 px-2 py-0.5 rounded text-cyan-200">➕ New Folder</button>
+        </div>
+        <div id="library-grid" class="flex gap-4 overflow-x-auto pb-2 min-h-[90px] items-center">
+            <div class="text-cyan-800 text-sm italic w-full text-center" id="empty-lib-msg">Vault is empty. Upload MP4 videos, MP3 music, 3D .glb models, HTML, PDFs, or Images.</div>
+        </div>
+    </div>
+
+    <main class="flex-1 relative overflow-hidden bg-grid">
+        <div class="absolute left-4 top-1/2 -translate-y-1/2 glass-panel rounded-2xl flex flex-col gap-3 p-3 z-20 tool-sidebar">
+            <button onclick="setMode('drag')" id="tool-drag" data-emoji="✋" class="tool-btn text-cyan-400 bg-cyan-900/30 p-2.5 rounded-xl hover:bg-cyan-800/50 transition-colors" title="Select / Drag"><span class="desktop-label">Drag</span></button>
+            <button onclick="spawnElement('node')" data-emoji="📝" class="tool-btn text-cyan-600 p-2.5 rounded-xl hover:bg-cyan-900/30 transition-colors" title="Add Note Node"><span class="desktop-label">Note</span></button>
+            <button onclick="spawnElement('bubble')" data-emoji="💬" class="tool-btn text-cyan-600 p-2.5 rounded-xl hover:bg-cyan-900/30 transition-colors" title="Add Speech Bubble"><span class="desktop-label">Bubble</span></button>
+            <button onclick="setMode('link')" id="tool-link" data-emoji="🔗" class="tool-btn text-cyan-600 p-2.5 rounded-xl hover:bg-cyan-900/30 transition-colors" title="Link Nodes"><span class="desktop-label">Link</span></button>
+        </div>
+
+        <svg id="connection-lines" class="absolute inset-0 w-full h-full pointer-events-none z-0"></svg>
+
+        <div id="canvas-1" class="canvas-container canvas-grid active z-10 relative"></div>
+
+        <div id="canvas-2" class="canvas-container z-10 relative flex flex-col items-center justify-center">
+            <div class="absolute top-4 left-4 z-20 glass-panel px-4 py-2 rounded-xl flex items-center gap-4 text-xs font-mono text-cyan-300">
+                <span>2.5D XYZ Topological Map</span>
+                <div class="flex items-center gap-2">
+                    <span>Viewer Focus Dots:</span>
+                    <input type="checkbox" id="viewer-dots-toggle" checked onchange="toggleViewerDots(this.checked)" class="accent-cyan-400">
+                </div>
+            </div>
+            <canvas id="isometric-canvas" class="w-full h-full"></canvas>
+        </div>
+
+        <div id="canvas-3" class="canvas-container canvas-grid z-10 relative">
+            <div id="three-container" class="w-full h-full"></div>
+            <div class="absolute top-4 left-4 glass-panel px-4 py-2 rounded-xl text-xs font-mono text-cyan-300 pointer-events-none">
+                3D GLB Model Viewer (Drag to Rotate | Scroll to Zoom)
+            </div>
+        </div>
+    </main>
+
+    <section class="glass-panel h-[140px] md:h-[160px] shrink-0 z-40 border-t border-cyan-900/50 flex flex-col justify-between p-4 timeline-section">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-cyan-400 font-mono text-xs uppercase tracking-widest font-bold hidden sm:inline">Timeline Playback</span>
+                <button onclick="togglePlayback()" id="play-pause-btn" class="w-9 h-9 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black flex items-center justify-center shadow-[0_0_15px_rgba(102,252,241,0.4)] transition-all">
+                    <svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <button onclick="stopPlayback()" class="w-9 h-9 rounded-full bg-cyan-900/40 border border-cyan-700/50 hover:bg-cyan-800 text-cyan-300 flex items-center justify-center transition-all">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
+                </button>
+                <span id="time-display" class="font-mono text-xs text-cyan-300">00:00 / 00:30</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="hidden md:flex items-center gap-2">
+                    <span class="text-xs font-mono text-cyan-400">Duration:</span>
+                    <input type="range" id="timeline-duration" min="10" max="120" value="30" oninput="updateDuration(this.value)" class="accent-cyan-400 cursor-pointer">
+                    <span id="duration-val" class="text-xs font-mono text-cyan-200">30s</span>
+                </div>
+                <button onclick="addCurrentItemToTimeline()" class="bg-cyan-900/40 border border-cyan-500/40 px-3 py-1.5 rounded text-cyan-200 text-xs font-mono hover:bg-cyan-800 transition-all">Add Selected to Timeline</button>
+            </div>
+        </div>
+
+        <div class="relative w-full h-10 md:h-12 bg-black/60 border border-cyan-900/50 rounded-lg overflow-hidden cursor-pointer timeline-track" id="timeline-track" onclick="seekTimeline(event)">
+            <div id="timeline-progress" class="absolute top-0 bottom-0 left-0 bg-cyan-500/20 border-r-2 border-cyan-400 pointer-events-none" style="width: 0%;"></div>
+            <div id="timeline-items-container" class="absolute inset-0 flex items-center px-2"></div>
+        </div>
+    </section>
+
+    <script>
+        let activeTab = 'canvas-1';
+        let currentMode = 'drag';
+        let elementCounter = 0;
+        let connections = [];
+        let linkingFrom = null;
+        let mediaVault = [];
+        let activeFilter = 'ALL';
+        let activeFolder = null;
+        let folders = [];
+        let selectedElement = null;
+        let globalLoopEnabled = true;
+        let showViewerDots = true;
+        let proSpecsEnabled = false;
+        let isNightMode = false;
+        let currentStage = 'stage1';
+
+        let isPlaying = false;
+        let currentTime = 0;
+        let maxDuration = 30;
+        let timelineInterval = null;
+        let timelineClips = [];
+
+        const svgLayer = document.getElementById('connection-lines');
+        const mediaLibrary = document.getElementById('media-library');
+        const libraryGrid = document.getElementById('library-grid');
+        const emptyMsg = document.getElementById('empty-lib-msg');
+
+        let scene, camera, renderer, currentMesh;
+        let activeGLBData = null;
+
+        function init3D() {
+            const container = document.getElementById('three-container');
+            if (!container) return;
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 2, 5);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0x66fcf1, 1.5);
+            dirLight.position.set(5, 10, 7);
+            scene.add(dirLight);
+
+            const geometry = new THREE.TorusKnotGeometry(1, 0.3, 128, 32);
+            const material = new THREE.MeshStandardMaterial({ color: 0x66fcf1, roughness: 0.2, metalness: 0.8 });
+            currentMesh = new THREE.Mesh(geometry, material);
+            scene.add(currentMesh);
+
+            let isDragging3D = false;
+            let prevMouseX = 0,
+                prevMouseY = 0;
+            container.addEventListener('mousedown', (e) => { isDragging3D = true;
+                prevMouseX = e.clientX;
+                prevMouseY = e.clientY; });
+            container.addEventListener('touchstart', (e) => { isDragging3D = true;
+                prevMouseX = e.touches[0].clientX;
+                prevMouseY = e.touches[0].clientY; });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging3D || activeTab !== 'canvas-3') return;
+                const dx = e.clientX - prevMouseX;
+                const dy = e.clientY - prevMouseY;
+                if (currentMesh) {
+                    currentMesh.rotation.y += dx * 0.01;
+                    currentMesh.rotation.x += dy * 0.01;
+                }
+                prevMouseX = e.clientX;
+                prevMouseY = e.clientY;
+            });
+            window.addEventListener('touchmove', (e) => {
+                if (!isDragging3D || activeTab !== 'canvas-3') return;
+                const dx = e.touches[0].clientX - prevMouseX;
+                const dy = e.touches[0].clientY - prevMouseY;
+                if (currentMesh) {
+                    currentMesh.rotation.y += dx * 0.01;
+                    currentMesh.rotation.x += dy * 0.01;
+                }
+                prevMouseX = e.touches[0].clientX;
+                prevMouseY = e.touches[0].clientY;
+            });
+            window.addEventListener('mouseup', () => { isDragging3D = false; });
+            window.addEventListener('touchend', () => { isDragging3D = false; });
+
+            function animate3D() {
+                requestAnimationFrame(animate3D);
+                if (currentMesh && activeTab === 'canvas-3') {
+                    currentMesh.rotation.y += 0.005;
+                }
+                renderer.render(scene, camera);
+            }
+            animate3D();
+
+            window.addEventListener('resize', () => {
+                if (!container.clientWidth) return;
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+        window.addEventListener('load', init3D);
+
+        function loadGLBInto3DViewer(dataUrl, fileName) {
+            if (!scene || !renderer) return;
+            const loader = new THREE.GLTFLoader();
+            loader.load(dataUrl, (gltf) => {
+                if (currentMesh) {
+                    scene.remove(currentMesh);
+                    currentMesh.geometry.dispose();
+                    currentMesh.material.dispose();
+                }
+                currentMesh = gltf.scene;
+                const box = new THREE.Box3().setFromObject(currentMesh);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const scale = 3 / maxDim;
+                currentMesh.scale.setScalar(scale);
+                currentMesh.position.sub(center.multiplyScalar(scale));
+                currentMesh.position.y += 0.5;
+                scene.add(currentMesh);
+                activeGLBData = { dataUrl, fileName };
+                switchTab('canvas-3');
+            }, undefined, (err) => {
+                console.warn('GLB load error:', err);
+                alert('Could not load GLB model. It may be corrupted or in an unsupported format.');
+            });
+        }
+
+        function initIsometricMap() {
+            const canvas = document.getElementById('isometric-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            function resizeIso() {
+                canvas.width = canvas.parentElement.clientWidth;
+                canvas.height = canvas.parentElement.clientHeight;
+            }
+            resizeIso();
+            window.addEventListener('resize', resizeIso);
+
+            function renderIso() {
+                requestAnimationFrame(renderIso);
+                if (activeTab !== 'canvas-2') return;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2 + 50;
+
+                ctx.strokeStyle = isNightMode ? 'rgba(102, 252, 241, 0.2)' : 'rgba(102, 252, 241, 0.1)';
+                ctx.lineWidth = 1;
+                for (let i = -5; i <= 5; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + i * 60, centerY - 150);
+                    ctx.lineTo(centerX + i * 60 + 150, centerY + 150);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - 200 + i * 40, centerY + i * 20);
+                    ctx.lineTo(centerX + 200 + i * 40, centerY + i * 20);
+                    ctx.stroke();
+                }
+
+                const canvasItems = document.querySelectorAll('#canvas-1 .canvas-item');
+                canvasItems.forEach((item, index) => {
+                    const x = parseFloat(item.dataset.x || item.style.left) || 0;
+                    const y = parseFloat(item.dataset.y || item.style.top) || 0;
+                    const z = parseFloat(item.dataset.z || 0);
+                    const isoX = centerX - 150 + x * 0.6;
+                    const isoY = centerY - 100 + y * 0.4 - z * 15;
+                    const depth = z * 10;
+
+                    ctx.fillStyle = isNightMode ? 'rgba(0, 0, 0, 0.9)' : 'rgba(10, 20, 35, 0.85)';
+                    ctx.strokeStyle = '#66fcf1';
+                    ctx.lineWidth = 1.5;
+                    ctx.fillRect(isoX, isoY, 80, 40);
+                    ctx.strokeRect(isoX, isoY, 80, 40);
+
+                    ctx.fillStyle = isNightMode ? '#ffffff' : '#66fcf1';
+                    ctx.font = '10px monospace';
+                    ctx.fillText(`#${index+1} X:${x.toFixed(0)} Y:${y.toFixed(0)} Z:${z.toFixed(0)}`, isoX + 6, isoY + 24);
+
+                    if (showViewerDots) {
+                        const dotX = isoX + 40;
+                        const dotY = isoY - 25 - depth;
+                        ctx.beginPath();
+                        ctx.arc(dotX, dotY, 6, 0, Math.PI * 2);
+                        ctx.fillStyle = '#ff00ff';
+                        ctx.fill();
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(dotX, dotY);
+                        ctx.lineTo(centerX, canvas.height - 20);
+                        ctx.strokeStyle = 'rgba(255, 0, 255, 0.4)';
+                        ctx.setLineDash([2, 2]);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+                });
+            }
+            renderIso();
+        }
+        window.addEventListener('load', initIsometricMap);
+
+        function toggleViewerDots(val) { showViewerDots = val; }
+
+        function toggleProSpecs(val) {
+            proSpecsEnabled = val;
+            document.querySelectorAll('.pro-specs-overlay').forEach(el => {
+                el.style.display = val ? 'block' : 'none';
+            });
+        }
+
+        function toggleNightMode() {
+            isNightMode = !isNightMode;
+            document.body.classList.toggle('night-mode', isNightMode);
+            const btn = document.getElementById('night-mode-btn');
+            if (isNightMode) {
+                btn.style.borderColor = 'rgba(255,255,255,0.6)';
+                btn.style.background = 'rgba(0,0,0,0.8)';
+                btn.style.color = '#ffffff';
+                btn.innerHTML = '<span class="moon-icon text-lg leading-none">☀️</span>';
+            } else {
+                btn.style.borderColor = 'rgba(102,252,241,0.4)';
+                btn.style.background = 'rgba(8,25,40,0.4)';
+                btn.style.color = '#66fcf1';
+                btn.innerHTML = '<span class="moon-icon text-lg leading-none">🌙</span>';
+            }
+            document.body.style.backgroundColor = isNightMode ? '#000000' : '#05070a';
+            document.querySelector('main').style.backgroundColor = isNightMode ? '#000000' : '#05070a';
+            document.querySelector('header').style.backgroundColor = isNightMode ? 'rgba(0,0,0,0.95)' : 'rgba(10,15,25,0.92)';
+            document.querySelector('section').style.backgroundColor = isNightMode ? 'rgba(0,0,0,0.95)' : 'rgba(10,15,25,0.92)';
+            document.querySelectorAll('.canvas-item').forEach(el => {
+                if (el.classList.contains('note-node')) {
+                    el.style.background = isNightMode ? 'linear-gradient(135deg, rgba(0,0,0,0.98), rgba(5,10,20,0.98))' :
+                        'linear-gradient(135deg, rgba(20,30,50,0.95), rgba(10,15,25,0.95))';
+                    el.style.color = isNightMode ? '#ffffff' : '#e0f7fa';
+                }
+                if (el.classList.contains('speech-bubble')) {
+                    el.style.background = isNightMode ? 'rgba(0,0,0,0.98)' : 'rgba(10,20,35,0.95)';
+                    el.style.color = isNightMode ? '#ffffff' : '#e0f7fa';
+                }
+            });
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.canvas-container').forEach(c => c.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('text-cyan-400', 'border-b-2', 'border-cyan-400');
+                b.classList.add('text-cyan-700');
+            });
+            event.target.classList.remove('text-cyan-700');
+            event.target.classList.add('text-cyan-400', 'border-b-2', 'border-cyan-400');
+            activeTab = tabId;
+            updateConnectionsRender();
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.body.classList.toggle('link-mode', mode === 'link');
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.remove('text-cyan-400', 'bg-cyan-900/30');
+                btn.classList.add('text-cyan-600');
+            });
+            const activeBtn = document.getElementById(`tool-${mode}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-cyan-600');
+                activeBtn.classList.add('text-cyan-400', 'bg-cyan-900/30');
+            }
+            if (mode !== 'link' && linkingFrom) {
+                linkingFrom.classList.remove('linking-active');
+                linkingFrom = null;
+            }
+        }
+
+        function toggleMediaLibrary() { mediaLibrary.classList.toggle('open'); }
+
+        function toggleGlobalLoop(val) {
+            globalLoopEnabled = val;
+            document.querySelectorAll('video, audio').forEach(media => { media.loop = val; });
+        }
+
+        function toggleExportMenu() {
+            document.getElementById('export-menu').classList.toggle('open');
+        }
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('export-menu');
+            if (menu && menu.classList.contains('open') && !e.target.closest('.relative')) {
+                menu.classList.remove('open');
+            }
+        });
+
+        function handleFileUpload(event) {
+            const files = event.target.files;
+            if (!files.length) return;
+            for (let file of files) {
+                const reader = new FileReader();
+                let fileType = 'DOC';
+                let colorTag = 'border-cyan-500/50 bg-cyan-950/40 text-cyan-300';
+                const extension = file.name.split('.').pop().toLowerCase();
+
+                if (file.type.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(extension)) {
+                    fileType = 'IMAGE';
+                    colorTag = 'border-emerald-500/60 bg-emerald-950/50 text-emerald-200';
+                } else if (file.type.startsWith('video/') || ['mp4', 'webm', 'mov', 'm4v'].includes(extension)) {
+                    fileType = 'VIDEO';
+                    colorTag = 'border-purple-500/60 bg-purple-950/50 text-purple-200';
+                } else if (file.type.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'aac'].includes(extension)) {
+                    fileType = 'AUDIO';
+                    colorTag = 'border-amber-500/60 bg-amber-950/50 text-amber-200';
+                } else if (['glb', 'gltf', 'obj'].includes(extension)) {
+                    fileType = 'MODEL3D';
+                    colorTag = 'border-pink-500/60 bg-pink-950/50 text-pink-200';
+                } else {
+                    fileType = 'DOC';
+                    colorTag = 'border-cyan-400/60 bg-cyan-900/50 text-cyan-100';
+                }
+
+                reader.onload = function(e) {
+                    const sizeKB = (file.size / 1024).toFixed(1) + ' KB';
+                    const mediaItem = {
+                        id: 'media-' + Date.now() + Math.floor(Math.random() * 10000),
+                        name: file.name,
+                        ext: extension.toUpperCase(),
+                        size: sizeKB,
+                        type: fileType,
+                        data: e.target.result,
+                        colorTag: colorTag,
+                        rawData: e.target.result,
+                        folderId: null
+                    };
+                    mediaVault.push(mediaItem);
+                    renderLibrary();
+                    renderFolderButtons();
+                    mediaLibrary.classList.add('open');
+                };
+
+                if (file.type.startsWith('text/') || ['html', 'txt', 'md', 'json'].includes(extension)) {
+                    reader.readAsText(file);
+                } else {
+                    reader.readAsDataURL(file);
+                }
+            }
+            event.target.value = '';
+        }
+
+        function filterLibrary(tag) {
+            activeFilter = tag;
+            document.querySelectorAll('.tag-filter-btn').forEach(btn => {
+                btn.className = "tag-filter-btn px-2.5 py-0.5 rounded bg-black/40 text-cyan-500 border border-cyan-900";
+            });
+            event.target.className = "tag-filter-btn px-2.5 py-0.5 rounded bg-cyan-900/60 text-cyan-200 border border-cyan-500/40";
+            renderLibrary();
+        }
+
+        function renderFolderButtons() {
+            const container = document.getElementById('folder-buttons');
+            container.innerHTML = '';
+            folders.forEach(folder => {
+                const btn = document.createElement('button');
+                btn.className = `folder-btn ${activeFolder === folder.id ? 'active' : ''}`;
+                btn.textContent = folder.name;
+                btn.onclick = () => { activeFolder = folder.id; renderFolderButtons(); renderLibrary(); };
+                container.appendChild(btn);
+            });
+            if (folders.length > 0) {
+                const allBtn = document.createElement('button');
+                allBtn.className = `folder-btn ${activeFolder === null ? 'active' : ''}`;
+                allBtn.textContent = 'All';
+                allBtn.onclick = () => { activeFolder = null; renderFolderButtons(); renderLibrary(); };
+                container.prepend(allBtn);
+            }
+        }
+
+        function createNewFolder() {
+            const name = prompt('Folder name:');
+            if (name) {
+                folders.push({ id: 'folder-' + Date.now(), name: name });
+                renderFolderButtons();
+            }
+        }
+
+        function renderLibrary() {
+            libraryGrid.innerHTML = '';
+            let filtered = mediaVault;
+            if (activeFilter !== 'ALL') filtered = filtered.filter(m => m.type === activeFilter);
+            if (activeFolder !== null) filtered = filtered.filter(m => m.folderId === activeFolder);
+            if (filtered.length === 0) {
+                emptyMsg.style.display = 'block';
+                libraryGrid.appendChild(emptyMsg);
+                return;
+            }
+            emptyMsg.style.display = 'none';
+
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className =
+                    `w-32 h-28 shrink-0 rounded-xl border-2 ${item.colorTag} p-2 flex flex-col justify-between cursor-pointer hover:scale-105 transition-all relative group shadow-md`;
+
+                let previewHTML = '';
+                if (item.type === 'IMAGE') {
+                    previewHTML = `<img src="${item.data}" class="w-full h-14 object-cover rounded pointer-events-none">`;
+                } else if (item.type === 'VIDEO') {
+                    previewHTML =
+                        `<div class="w-full h-14 bg-purple-900/40 rounded flex items-center justify-center font-mono text-xs font-bold">🎬 ${item.ext}</div>`;
+                } else if (item.type === 'AUDIO') {
+                    previewHTML =
+                        `<div class="w-full h-14 bg-amber-900/40 rounded flex items-center justify-center font-mono text-xs font-bold">🎵 ${item.ext}</div>`;
+                } else if (item.type === 'MODEL3D') {
+                    previewHTML =
+                        `<div class="w-full h-14 bg-pink-900/40 rounded flex items-center justify-center font-mono text-xs font-bold">🧊 ${item.ext}</div>`;
+                } else {
+                    previewHTML =
+                        `<div class="w-full h-14 bg-cyan-950 rounded flex items-center justify-center font-mono text-xs font-bold">📄 ${item.ext}</div>`;
+                }
+
+                card.innerHTML = `
+                    ${previewHTML}
+                    <div class="text-[10px] font-mono truncate text-center">${item.name}</div>
+                    <div class="text-[9px] font-mono text-cyan-400 text-center">${item.size}</div>
+                    <div class="absolute inset-0 bg-cyan-950/90 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl z-20 gap-2">
+                        <span class="text-cyan-200 text-xs font-bold font-mono tracking-wider underline">SELECT</span>
+                        <button onclick="event.stopPropagation(); assignFolder('${item.id}')" class="text-yellow-300 text-xs font-bold" title="Assign folder">🗂️</button>
+                    </div>
+                `;
+                card.onclick = (e) => {
+                    e.stopPropagation();
+                    spawnMediaOnCanvas(item);
+                };
+                libraryGrid.appendChild(card);
+            });
+        }
+
+        function assignFolder(mediaId) {
+            const folderName = prompt('Enter folder name (existing or new):');
+            if (!folderName) return;
+            let folder = folders.find(f => f.name === folderName);
+            if (!folder) {
+                folder = { id: 'folder-' + Date.now(), name: folderName };
+                folders.push(folder);
+            }
+            const item = mediaVault.find(m => m.id === mediaId);
+            if (item) {
+                item.folderId = folder.id;
+                renderLibrary();
+                renderFolderButtons();
+            }
+        }
+
+        function spawnMediaOnCanvas(item) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `canvas-item animate-spawn p-3 rounded-xl border-2 ${item.colorTag} backdrop-blur-md shadow-xl max-w-sm colorful-border ${item.type}`;
+            wrapper.dataset.mediaId = item.id;
+            wrapper.dataset.mediaName = item.name;
+            wrapper.dataset.mediaType = item.type;
+            wrapper.dataset.x = 0;
+            wrapper.dataset.y = 0;
+            wrapper.dataset.z = 0;
+
+            let specsDisplay = proSpecsEnabled ? 'block' : 'none';
+            let inner = `
+                <div class="flex justify-between items-center mb-2 text-[10px] font-mono gap-4">
+                    <span class="font-bold truncate" style="color: ${isNightMode ? '#ffffff' : '#e0f7fa'}">${item.name}</span>
+                    <div class="flex items-center gap-1">
+                        <button onclick="event.stopPropagation(); this.closest('.canvas-item').remove(); updateConnectionsRender();" class="text-red-400 hover:text-red-300 font-bold px-1 text-sm">×</button>
+                    </div>
+                </div>
+                <div class="pro-specs-overlay text-[9px] font-mono text-cyan-300 bg-black/60 p-1.5 rounded mb-2 border border-cyan-500/30" style="display: ${specsDisplay};">
+                    TYPE: ${item.type} | EXT: ${item.ext} | SIZE: ${item.size}
+                </div>
+                <div class="coords-display text-[9px] font-mono text-cyan-300 mb-1">X:0 Y:0 Z:0</div>
+            `;
+
+            if (item.type === 'IMAGE') {
+                inner += `<img src="${item.data}" class="w-48 h-auto rounded pointer-events-none" style="border: 1px solid rgba(16,185,129,0.4)">`;
+            } else if (item.type === 'VIDEO') {
+                inner +=
+                    `<video src="${item.data}" class="w-64 h-auto rounded pointer-events-auto" autoplay muted loop playsinline controls style="border: 2px solid rgba(168,85,247,0.5)"></video>`;
+            } else if (item.type === 'AUDIO') {
+                inner +=
+                    `<audio src="${item.data}" class="w-full mt-2 pointer-events-auto" autoplay loop controls style="border: 2px solid rgba(245,158,11,0.5)"></audio>`;
+            } else if (item.type === 'MODEL3D') {
+                inner += `
+                    <div class="flex flex-col items-center gap-2">
+                        <div class="w-48 h-32 bg-black/70 rounded border-2 border-pink-500/50 flex flex-col items-center justify-center cursor-pointer hover:bg-pink-950/40 transition-all" 
+                             onclick="loadGLBInto3DViewer('${item.data}', '${item.name}')" title="Click to open in 3D Lab">
+                            <span class="text-4xl">🧊</span>
+                            <span class="text-[10px] font-mono text-pink-300 mt-1">3D GLB Model</span>
+                            <span class="text-[8px] font-mono text-pink-400">Click for Full 3D View</span>
+                        </div>
+                    </div>
+                `;
+            } else if (item.type === 'DOC') {
+                const ext = item.ext.toLowerCase();
+                if (ext === 'html' || ext === 'htm' || ext === 'txt' || ext === 'md' || ext === 'json') {
+                    inner += `
+                        <iframe class="html-embed-frame pointer-events-auto" srcdoc="${item.data.replace(/"/g, '&quot;')}" 
+                                sandbox="allow-same-origin allow-scripts" title="${item.name}"></iframe>
+                    `;
+                } else if (ext === 'pdf') {
+                    inner += `
+                        <iframe class="pdf-embed-frame pointer-events-auto" src="${item.data}" title="${item.name}"></iframe>
+                    `;
+                } else {
+                    inner += `
+                        <div class="w-64 h-32 bg-black/80 rounded p-2 text-xs font-mono text-cyan-200 overflow-y-auto border border-cyan-500/30 pointer-events-auto">
+                            <pre>${typeof item.data === 'string' ? item.data.substring(0, 500) : 'Binary Document'}</pre>
+                        </div>
+                    `;
+                }
+            }
+
+            inner += `
+                <button class="edit-indicator" onclick="event.stopPropagation(); focusEdit(this)" title="Edit Text">✎</button>
+                <button class="coord-indicator" onclick="event.stopPropagation(); openCoordEditor(this)" style="position:absolute;bottom:-12px;right:-12px;width:24px;height:24px;border-radius:50%;background:#ffcc00;color:#000;border:2px solid #000;font-size:12px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:11;" title="Edit XYZ">📐</button>
+            `;
+
+            wrapper.innerHTML = inner;
+            addToActiveCanvas(wrapper);
+            toggleMediaLibrary();
+        }
+
+        function focusEdit(btn) {
+            const wrapper = btn.closest('.canvas-item');
+            const editable = wrapper.querySelector('[contenteditable="true"]');
+            if (editable) {
+                editable.focus();
+                const range = document.createRange();
+                range.selectNodeContents(editable);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+
+        function openCoordEditor(btn) {
+            const wrapper = btn.closest('.canvas-item');
+            const existing = wrapper.querySelector('.coord-editor');
+            if (existing) {
+                existing.classList.toggle('show');
+                return;
+            }
+            const editor = document.createElement('div');
+            editor.className = 'coord-editor';
+            editor.innerHTML = `
+                <div class="text-[10px] font-mono mb-1">XYZ Coordinates</div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-[10px]">X:</span><input type="number" value="${wrapper.dataset.x || 0}" step="10" class="coord-x">
+                    <span class="text-[10px]">Y:</span><input type="number" value="${wrapper.dataset.y || 0}" step="10" class="coord-y">
+                    <span class="text-[10px]">Z:</span><input type="number" value="${wrapper.dataset.z || 0}" step="10" class="coord-z">
+                </div>
+                <button onclick="applyCoords(this)" class="text-xs bg-cyan-500 text-black px-2 py-1 rounded">Apply</button>
+            `;
+            wrapper.appendChild(editor);
+            editor.classList.add('show');
+            editor.querySelector('.coord-x').focus();
+        }
+
+        function applyCoords(btn) {
+            const editor = btn.closest('.coord-editor');
+            const wrapper = editor.closest('.canvas-item');
+            const x = parseFloat(editor.querySelector('.coord-x').value) || 0;
+            const y = parseFloat(editor.querySelector('.coord-y').value) || 0;
+            const z = parseFloat(editor.querySelector('.coord-z').value) || 0;
+            wrapper.dataset.x = x;
+            wrapper.dataset.y = y;
+            wrapper.dataset.z = z;
+            wrapper.style.left = x + 'px';
+            wrapper.style.top = y + 'px';
+            const coordDisplay = wrapper.querySelector('.coords-display');
+            if (coordDisplay) coordDisplay.textContent = `X:${x} Y:${y} Z:${z}`;
+            editor.remove();
+            updateConnectionsRender();
+        }
+
+        function spawnElement(type, textContent = "") {
+            const el = document.createElement('div');
+            el.className = 'canvas-item animate-spawn';
+            let specsDisplay = proSpecsEnabled ? 'block' : 'none';
+
+            if (type === 'node') {
+                el.className += ' note-node shadow-lg colorful-border NODE';
+                el.innerHTML = `
+                    <div class="pro-specs-overlay text-[9px] font-mono text-cyan-300 bg-black/60 p-1 rounded mb-1 border border-cyan-500/30" style="display: ${specsDisplay};">NODE ID: #${++elementCounter}</div>
+                    <div class="font-mono text-xs text-cyan-400 mb-1" style="color:${isNightMode?'#ffffff':'#66fcf1'}">NODE #${elementCounter}</div>
+                    <div class="text-sm outline-none font-sans" contenteditable="true" style="font-size:16px;color:${isNightMode?'#ffffff':'#e0f7fa'};min-height:30px;min-width:120px;">Click to edit text...</div>
+                    <div class="coords-display text-[9px] font-mono text-cyan-300 mt-1">X:0 Y:0 Z:0</div>
+                    <button class="edit-indicator" onclick="event.stopPropagation(); focusEdit(this)">✎</button>
+                    <button class="coord-indicator" onclick="event.stopPropagation(); openCoordEditor(this)" style="position:absolute;bottom:-12px;right:-12px;width:24px;height:24px;border-radius:50%;background:#ffcc00;color:#000;border:2px solid #000;font-size:12px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:11;">📐</button>
+                `;
+            } else {
+                el.className += ' speech-bubble shadow-lg colorful-border BUBBLE';
+                el.innerHTML = `
+                    <div class="pro-specs-overlay text-[9px] font-mono text-cyan-300 bg-black/60 p-1 rounded mb-1 border border-cyan-500/30" style="display: ${specsDisplay};">BUBBLE INSIGHT</div>
+                    <div class="text-sm outline-none font-sans" contenteditable="true" style="font-size:16px;color:${isNightMode?'#ffffff':'#e0f7fa'};min-height:30px;min-width:100px;">Speech insight bubble...</div>
+                    <div class="coords-display text-[9px] font-mono text-cyan-300 mt-1">X:0 Y:0 Z:0</div>
+                    <button class="edit-indicator" onclick="event.stopPropagation(); focusEdit(this)">✎</button>
+                    <button class="coord-indicator" onclick="event.stopPropagation(); openCoordEditor(this)" style="position:absolute;bottom:-12px;right:-12px;width:24px;height:24px;border-radius:50%;background:#ffcc00;color:#000;border:2px solid #000;font-size:12px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:11;">📐</button>
+                `;
+            }
+            el.dataset.mediaType = type === 'node' ? 'NODE' : 'BUBBLE';
+            el.dataset.mediaName = type === 'node' ? 'Note Node' : 'Speech Bubble';
+            el.dataset.x = 0;
+            el.dataset.y = 0;
+            el.dataset.z = 0;
+            addToActiveCanvas(el);
+        }
+
+        function addToActiveCanvas(el) {
+            const canvas = document.getElementById(activeTab);
+            const startX = (canvas.clientWidth / 2) - 80 + (Math.random() * 80 - 40);
+            const startY = (canvas.clientHeight / 2) - 60 + (Math.random() * 80 - 40);
+            el.style.left = `${Math.max(20, startX)}px`;
+            el.style.top = `${Math.max(20, startY)}px`;
+            el.dataset.x = Math.max(20, startX);
+            el.dataset.y = Math.max(20, startY);
+            el.dataset.z = 0;
+            el.querySelector('.coords-display').textContent = `X:${el.dataset.x.toFixed(0)} Y:${el.dataset.y.toFixed(0)} Z:0`;
+            canvas.appendChild(el);
+            makeInteractive(el);
+        }
+
+        let activeDragElement = null;
+        let isDragging = false;
+        let startX, startY, initialLeft, initialTop;
+
+        function makeInteractive(el) {
+            el.addEventListener('mousedown', handleInteractionStart);
+            el.addEventListener('touchstart', handleInteractionStart, { passive: false });
+        }
+
+        function handleInteractionStart(e) {
+            if (currentMode === 'link') {
+                handleLinking(e);
+                return;
+            }
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'VIDEO' || e.target.tagName === 'AUDIO' ||
+                e.target.tagName === 'IFRAME' || e.target.isContentEditable || e.target.closest('.edit-indicator') ||
+                e.target.closest('.coord-indicator') || e.target.closest('[onclick]')) return;
+            if (e.type === 'touchstart') e.preventDefault();
+
+            activeDragElement = e.target.closest('.canvas-item');
+            if (!activeDragElement) return;
+
+            isDragging = true;
+            document.querySelectorAll('.canvas-item').forEach(item => item.classList.remove('selected'));
+            activeDragElement.classList.add('selected');
+            selectedElement = activeDragElement;
+
+            let clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+            let clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+            startX = clientX;
+            startY = clientY;
+            initialLeft = parseFloat(activeDragElement.style.left) || 0;
+            initialTop = parseFloat(activeDragElement.style.top) || 0;
+        }
+
+        function handleLinking(e) {
+            const targetEl = e.target.closest('.canvas-item');
+            if (!targetEl) return;
+            if (!linkingFrom) {
+                linkingFrom = targetEl;
+                linkingFrom.classList.add('linking-active');
+            } else {
+                if (linkingFrom !== targetEl) createConnection(linkingFrom, targetEl);
+                linkingFrom.classList.remove('linking-active');
+                linkingFrom = null;
+            }
+        }
+
+        window.addEventListener('mousemove', dragMove);
+        window.addEventListener('touchmove', dragMove, { passive: false });
+        window.addEventListener('mouseup', dragEnd);
+        window.addEventListener('touchend', dragEnd);
+
+        function dragMove(e) {
+            if (!isDragging || !activeDragElement) return;
+            if (e.type === 'touchmove') e.preventDefault();
+            let clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+            let clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+            const dx = clientX - startX;
+            const dy = clientY - startY;
+            const newLeft = initialLeft + dx;
+            const newTop = initialTop + dy;
+            activeDragElement.style.left = `${newLeft}px`;
+            activeDragElement.style.top = `${newTop}px`;
+            activeDragElement.dataset.x = newLeft;
+            activeDragElement.dataset.y = newTop;
+            const coordDisplay = activeDragElement.querySelector('.coords-display');
+            if (coordDisplay) coordDisplay.textContent = `X:${newLeft.toFixed(0)} Y:${newTop.toFixed(0)} Z:${activeDragElement.dataset.z || 0}`;
+            updateConnectionsRender();
+        }
+
+        function dragEnd() { isDragging = false;
+            activeDragElement = null; }
+
+        function createConnection(el1, el2) {
+            if (!el1.id) el1.id = 'el-' + Date.now() + Math.floor(Math.random() * 10000);
+            if (!el2.id) el2.id = 'el-' + Date.now() + Math.floor(Math.random() * 10000) + 1;
+            const exists = connections.find(c => (c.fromId === el1.id && c.toId === el2.id) || (c.fromId === el2.id &&
+                c.toId === el1.id));
+            if (exists) return;
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('stroke', 'rgba(255, 0, 255, 0.6)');
+            line.setAttribute('stroke-width', '3');
+            line.setAttribute('stroke-dasharray', '5,5');
+            svgLayer.appendChild(line);
+            connections.push({ fromId: el1.id, toId: el2.id, lineEl: line, tabId: activeTab });
+            updateConnectionsRender();
+        }
+
+        function updateConnectionsRender() {
+            connections.forEach(conn => {
+                const el1 = document.getElementById(conn.fromId);
+                const el2 = document.getElementById(conn.toId);
+                if (conn.tabId === activeTab && el1 && el2 && el1.isConnected && el2.isConnected) {
+                    conn.lineEl.style.display = 'block';
+                    const rect1 = el1.getBoundingClientRect();
+                    const rect2 = el2.getBoundingClientRect();
+                    const yOffset = document.querySelector('main').getBoundingClientRect().top;
+                    conn.lineEl.setAttribute('x1', rect1.left + rect1.width / 2);
+                    conn.lineEl.setAttribute('y1', rect1.top + rect1.height / 2 - yOffset);
+                    conn.lineEl.setAttribute('x2', rect2.left + rect2.width / 2);
+                    conn.lineEl.setAttribute('y2', rect2.top + rect2.height / 2 - yOffset);
+                } else {
+                    conn.lineEl.style.display = 'none';
+                }
+            });
+        }
+
+        // ===== STAGE MANAGEMENT =====
+        function saveStage(stageId) {
+            const canvas = document.getElementById('canvas-1');
+            const items = [];
+            canvas.querySelectorAll('.canvas-item').forEach(item => {
+                items.push({
+                    html: item.outerHTML,
+                    left: item.style.left,
+                    top: item.style.top,
+                    x: item.dataset.x,
+                    y: item.dataset.y,
+                    z: item.dataset.z,
+                    mediaId: item.dataset.mediaId,
+                    mediaType: item.dataset.mediaType,
+                    mediaName: item.dataset.mediaName
+                });
+            });
+            localStorage.setItem(`stage_${stageId}`, JSON.stringify(items));
+        }
+
+        function loadStage(stageId) {
+            const canvas = document.getElementById('canvas-1');
+            canvas.innerHTML = '';
+            const saved = localStorage.getItem(`stage_${stageId}`);
+            if (saved) {
+                const items = JSON.parse(saved);
+                items.forEach(itemData => {
+                    const wrapper = document.createElement('div');
+                    wrapper.innerHTML = itemData.html;
+                    const el = wrapper.firstElementChild;
+                    el.style.left = itemData.left;
+                    el.style.top = itemData.top;
+                    el.dataset.x = itemData.x;
+                    el.dataset.y = itemData.y;
+                    el.dataset.z = itemData.z;
+                    if (itemData.mediaId) el.dataset.mediaId = itemData.mediaId;
+                    if (itemData.mediaType) el.dataset.mediaType = itemData.mediaType;
+                    if (itemData.mediaName) el.dataset.mediaName = itemData.mediaName;
+                    canvas.appendChild(el);
+                    makeInteractive(el);
+                });
+            }
+            updateConnectionsRender();
+        }
+
+        function switchStage(stageId) {
+            saveStage(currentStage);
+            currentStage = stageId;
+            loadStage(stageId);
+            document.getElementById('stage-selector').value = stageId;
+        }
+
+        // Auto-save on changes
+        function autoSaveCurrentStage() {
+            if (currentStage) saveStage(currentStage);
+        }
+
+        // Observe changes to canvas items
+        const observer = new MutationObserver(() => {
+            updateConnectionsRender();
+            autoSaveCurrentStage();
+        });
+        observer.observe(document.getElementById('canvas-1'), { childList: true, subtree: true, attributes: true });
+
+        // Initialize stage selector
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStage('stage1');
+            renderFolderButtons();
+            renderLibrary();
+        });
+
+        function updateDuration(val) {
+            maxDuration = parseInt(val);
+            document.getElementById('duration-val').innerText = maxDuration + 's';
+            updateTimeDisplay();
+        }
+
+        function addCurrentItemToTimeline() {
+            if (!selectedElement) return;
+            const name = selectedElement.dataset.mediaName || selectedElement.innerText.substring(0, 15) || 'Canvas Node';
+            const clip = {
+                id: 'clip-' + Date.now(),
+                name: name,
+                start: currentTime,
+                duration: 10,
+                type: selectedElement.dataset.mediaType || 'NODE'
+            };
+            timelineClips.push(clip);
+            renderTimelineClips();
+        }
+
+        function renderTimelineClips() {
+            const container = document.getElementById('timeline-items-container');
+            container.innerHTML = '';
+            timelineClips.forEach(clip => {
+                const leftPercent = (clip.start / maxDuration) * 100;
+                const widthPercent = (clip.duration / maxDuration) * 100;
+                const el = document.createElement('div');
+                el.className =
+                    'absolute bg-cyan-500/30 border border-cyan-400 rounded px-2 py-1 text-[10px] font-mono text-cyan-200 truncate flex items-center justify-between cursor-pointer';
+                el.style.left = `${leftPercent}%`;
+                el.style.width = `${Math.max(10, widthPercent)}%`;
+                el.innerHTML =
+                    `<span>${clip.name}</span><button onclick="event.stopPropagation(); removeClip('${clip.id}')" class="text-red-400 ml-1">×</button>`;
+                container.appendChild(el);
+            });
+        }
+
+        function removeClip(id) {
+            timelineClips = timelineClips.filter(c => c.id !== id);
+            renderTimelineClips();
+        }
+
+        function togglePlayback() {
+            isPlaying = !isPlaying;
+            const btn = document.getElementById('play-pause-btn');
+            if (isPlaying) {
+                btn.innerHTML =
+                    `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+                timelineInterval = setInterval(() => {
+                    currentTime += 0.2;
+                    if (currentTime >= maxDuration) { currentTime = 0;
+                        isPlaying = false;
+                        clearInterval(timelineInterval);
+                        btn.innerHTML =
+                            `<svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`; }
+                    updateTimeDisplay();
+                }, 200);
+            } else {
+                btn.innerHTML =
+                    `<svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+                clearInterval(timelineInterval);
+            }
+        }
+
+        function stopPlayback() {
+            isPlaying = false;
+            clearInterval(timelineInterval);
+            currentTime = 0;
+            document.getElementById('play-pause-btn').innerHTML =
+                `<svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+            updateTimeDisplay();
+        }
+
+        function seekTimeline(e) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const pct = clickX / rect.width;
+            currentTime = pct * maxDuration;
+            updateTimeDisplay();
+        }
+
+        function updateTimeDisplay() {
+            const progress = (currentTime / maxDuration) * 100;
+            document.getElementById('timeline-progress').style.width = `${progress}%`;
+            const format = (t) => {
+                const m = Math.floor(t / 60).toString().padStart(2, '0');
+                const s = Math.floor(t % 60).toString().padStart(2, '0');
+                return `${m}:${s}`;
+            };
+            document.getElementById('time-display').innerText = `${format(currentTime)} / ${format(maxDuration)}`;
+        }
+
+        // ===== EXPORT FUNCTIONS =====
+        function exportAsPNG(format, transparent) {
+            const canvasEl = document.getElementById('canvas-1');
+            if (!canvasEl) return;
+
+            const options = {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: transparent ? null : (isNightMode ? '#000000' : '#05070a'),
+                logging: false
+            };
+
+            if (format === 'jpeg') {
+                options.type = 'image/jpeg';
+                options.quality = 0.92;
+                options.backgroundColor = '#05070a';
+            } else if (format === 'webp') {
+                options.type = 'image/webp';
+                options.quality = 0.92;
+                options.backgroundColor = isNightMode ? '#000000' : '#05070a';
+            } else {
+                options.type = 'image/png';
+                if (!transparent) options.backgroundColor = isNightMode ? '#000000' : '#05070a';
+            }
+
+            html2canvas(canvasEl, options).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `canvas-${format}-${Date.now()}.${format === 'jpeg' ? 'jpg' : format}`;
+                link.href = canvas.toDataURL(options.type, options.quality || 1.0);
+                link.click();
+                document.getElementById('export-menu').classList.remove('open');
+            }).catch(err => {
+                console.error('Export failed:', err);
+                alert('PNG export failed. Please try again.');
+            });
+        }
+
+        function exportAsHTML() {
+            const canvasItems = [];
+            document.querySelectorAll('#canvas-1 .canvas-item').forEach(item => {
+                canvasItems.push({
+                    html: item.outerHTML,
+                    left: parseFloat(item.style.left) || 0,
+                    top: parseFloat(item.style.top) || 0,
+                    type: item.dataset.mediaType || 'NODE',
+                    name: item.dataset.mediaName || 'Canvas Item',
+                    mediaId: item.dataset.mediaId || null,
+                    x: item.dataset.x,
+                    y: item.dataset.y,
+                    z: item.dataset.z
+                });
+            });
+
+            const htmlContent = `<!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Utopian Canvas Export</title>
+            <script src="https://cdn.tailwindcss.com"><\/script>
+            <style>
+                body { background: ${isNightMode ? '#000000' : '#05070a'}; color: #e0f7fa; font-family: monospace; overflow: auto; min-height: 100vh; }
+                .canvas-export-item { position: absolute; cursor: move; user-select: none; }
+                .export-grid { background-size: 50px 50px; background-image: linear-gradient(to right, rgba(102,252,241,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(102,252,241,0.03) 1px, transparent 1px); }
+            </style>
+        </head>
+        <body class="export-grid min-h-screen p-8">
+            <h1 class="text-2xl font-bold mb-4 text-cyan-400 glow-text">Utopian Canvas Export</h1>
+            <p class="text-xs text-cyan-300 mb-6">Exported: ${new Date().toLocaleString()} | Items: ${canvasItems.length}</p>
+            <div class="relative w-full h-[800px] border border-cyan-800/50 rounded-xl">
+                ${canvasItems.map((item, i) => `
+                <div class="canvas-export-item" style="left:${item.left}px;top:${item.top}px;" data-index="${i}">
+                    ${item.html}
+                </div>`).join('\n')}
+            </div>
+            <script>
+                document.querySelectorAll('.canvas-export-item').forEach(el => {
+                    let isDragging = false;
+                    let startX, startY, initialLeft, initialTop;
+                    el.addEventListener('mousedown', (e) => {
+                        if(e.target.tagName === 'VIDEO' || e.target.tagName === 'AUDIO' || e.target.tagName === 'IFRAME' || e.target.isContentEditable) return;
+                        isDragging = true;
+                        el.classList.add('selected');
+                        startX = e.clientX; startY = e.clientY;
+                        initialLeft = parseFloat(el.style.left) || 0;
+                        initialTop = parseFloat(el.style.top) || 0;
+                    });
+                    window.addEventListener('mousemove', (e) => {
+                        if(!isDragging) return;
+                        el.style.left = (initialLeft + e.clientX - startX) + 'px';
+                        el.style.top = (initialTop + e.clientY - startY) + 'px';
+                    });
+                    window.addEventListener('mouseup', () => { isDragging = false; });
+                });
+            <\/script>
+        </body>
+        </html>`;
+
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = `utopian-canvas-${Date.now()}.html`;
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+            document.getElementById('export-menu').classList.remove('open');
+        }
+
+        function exportAsHTMLWithPNG() {
+            const canvasEl = document.getElementById('canvas-1');
+            html2canvas(canvasEl, { scale: 1.5, backgroundColor: isNightMode ? '#000000' : '#05070a', useCORS: true })
+                .then(canvas => {
+                    const pngDataUrl = canvas.toDataURL('image/png');
+                    const canvasItems = [];
+                    document.querySelectorAll('#canvas-1 .canvas-item').forEach(item => {
+                        canvasItems.push({
+                            html: item.outerHTML,
+                            left: parseFloat(item.style.left) || 0,
+                            top: parseFloat(item.style.top) || 0,
+                            type: item.dataset.mediaType || 'NODE',
+                            name: item.dataset.mediaName || 'Canvas Item'
+                        });
+                    });
+
+                    const htmlContent = `<!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>Utopian Export + PNG</title>
+        <script src="https://cdn.tailwindcss.com"><\/script>
+        </head>
+        <body style="background:#05070a;color:#e0f7fa;font-family:monospace;padding:20px;">
+            <h1 style="color:#66fcf1;text-shadow:0 0 10px rgba(102,252,241,0.6);">Utopian Canvas Export</h1>
+            <p style="font-size:12px;color:#a0b4c8;">Exported: ${new Date().toLocaleString()}</p>
+            <h2 style="color:#66fcf1;margin-top:20px;">PNG Snapshot:</h2>
+            <img src="${pngDataUrl}" style="max-width:100%;border:2px solid rgba(102,252,241,0.3);border-radius:8px;">
+            <h2 style="color:#66fcf1;margin-top:20px;">Canvas Items (${canvasItems.length}):</h2>
+            <div style="position:relative;width:100%;height:600px;border:1px solid rgba(102,252,241,0.3);border-radius:8px;background:rgba(102,252,241,0.02);">
+                ${canvasItems.map((item, i) => `
+                <div style="position:absolute;left:${item.left}px;top:${item.top}px;cursor:move;">
+                    ${item.html}
+                </div>`).join('\n')}
+            </div>
+        </body></html>`;
+
+                    const blob = new Blob([htmlContent], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.download = `utopian-export-${Date.now()}.html`;
+                    link.href = url;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                    document.getElementById('export-menu').classList.remove('open');
+                }).catch(err => {
+                    console.error('Export failed:', err);
+                    alert('Export failed. Please try again.');
+                });
+        }
+
+        // Expose functions globally
+        window.switchTab = switchTab;
+        window.setMode = setMode;
+        window.toggleMediaLibrary = toggleMediaLibrary;
+        window.toggleGlobalLoop = toggleGlobalLoop;
+        window.handleFileUpload = handleFileUpload;
+        window.filterLibrary = filterLibrary;
+        window.spawnElement = spawnElement;
+        window.toggleViewerDots = toggleViewerDots;
+        window.toggleProSpecs = toggleProSpecs;
+        window.toggleNightMode = toggleNightMode;
+        window.toggleExportMenu = toggleExportMenu;
+        window.exportAsPNG = exportAsPNG;
+        window.exportAsHTML = exportAsHTML;
+        window.exportAsHTMLWithPNG = exportAsHTMLWithPNG;
+        window.focusEdit = focusEdit;
+        window.openCoordEditor = openCoordEditor;
+        window.applyCoords = applyCoords;
+        window.loadGLBInto3DViewer = loadGLBInto3DViewer;
+        window.updateDuration = updateDuration;
+        window.addCurrentItemToTimeline = addCurrentItemToTimeline;
+        window.togglePlayback = togglePlayback;
+        window.stopPlayback = stopPlayback;
+        window.seekTimeline = seekTimeline;
+        window.removeClip = removeClip;
+        window.spawnMediaOnCanvas = spawnMediaOnCanvas;
+        window.updateConnectionsRender = updateConnectionsRender;
+        window.assignFolder = assignFolder;
+        window.createNewFolder = createNewFolder;
+        window.switchStage = switchStage;
+
+        // Initial render
+        updateTimeDisplay();
+        updateConnectionsRender();
+        renderFolderButtons();
+        renderLibrary();
+    </script>
+</body>
+</html>
