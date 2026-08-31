@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GlassHUD Desktop Overlay Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .font-mono-custom { font-family: 'JetBrains Mono', monospace; }
+        .glass-panel {
+            background: rgba(10, 15, 30, 0.45);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.3);
+        }
+        ::-webkit-scrollbar { width: 3px; height: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
+    </style>
+</head>
+<body class="h-full overflow-hidden text-slate-100 bg-transparent select-none relative" id="app-container">
+
+    <!-- Ambient Canvas Particle Layer -->
+    <canvas id="hud-canvas" class="absolute inset-0 pointer-events-none z-1"></canvas>
+
+    <!-- Top Compact Navigation & View Switcher Bar -->
+    <header class="absolute top-3 left-3 right-3 z-50 flex items-center justify-between pointer-events-auto">
+        <div class="glass-panel px-3 py-1.5 rounded-xl flex items-center gap-2">
+            <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
+            <span class="font-semibold text-xs tracking-wide text-emerald-300">GlassHUD v3.1</span>
+        </div>
+
+        <div class="glass-panel px-2.5 py-1 rounded-xl flex items-center gap-1.5 text-xs">
+            <button onclick="switchView('hud')" id="nav-hud-btn" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium transition">HUD</button>
+            <button onclick="switchView('timeline')" id="nav-timeline-btn" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-slate-300 font-medium transition">Timeline</button>
+            <button onclick="openInfoModal()" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-indigo-300 transition" title="Install Guide"><i class="fa-solid fa-download"></i></button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main id="widgets-workspace" class="absolute inset-0 pt-16 pb-4 px-3 z-20 pointer-events-none overflow-hidden">
+
+        <!-- VIEW 1: HUD Widgets -->
+        <div id="view-hud" class="absolute inset-0 pt-16 pb-4 px-3">
+            <!-- Compact Widget 1: System Monitor & Clock -->
+            <div class="glass-panel rounded-xl p-3 w-60 pointer-events-auto absolute cursor-move transition-shadow widget" style="top: 70px; left: 20px;" data-id="clock">
+                <div class="flex items-center justify-between pb-2 border-b border-white/10 handle">
+                    <div class="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-300 uppercase tracking-wider">
+                        <i class="fa-solid fa-microchip"></i> System HUD
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="minimizeWidget(this)" class="text-slate-400 hover:text-white text-[10px] px-1"><i class="fa-solid fa-minus"></i></button>
+                        <button onclick="closeWidget(this)" class="text-slate-400 hover:text-red-400 text-[10px] px-1"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+                <div class="pt-2 space-y-2 widget-body">
+                    <div class="text-center py-1">
+                        <div id="live-clock" class="text-2xl font-bold font-mono-custom text-white tracking-tight">00:00:00</div>
+                        <div id="live-date" class="text-[10px] text-slate-400">Loading date...</div>
+                    </div>
+                    <div class="space-y-1.5 pt-1 border-t border-white/10 text-[11px]">
+                        <div>
+                            <div class="flex justify-between text-slate-300 mb-0.5">
+                                <span>CPU</span>
+                                <span id="cpu-val" class="font-mono-custom text-indigo-300">14%</span>
+                            </div>
+                            <div class="w-full bg-slate-800/50 rounded-full h-1 overflow-hidden">
+                                <div id="cpu-bar" class="bg-indigo-500 h-full rounded-full transition-all duration-300" style="width: 14%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compact Widget 2: Nexus Scratchpad & Holoprojection Note -->
+            <div class="glass-panel rounded-xl p-3 w-64 pointer-events-auto absolute cursor-move transition-shadow widget" style="top: 70px; right: 20px;" data-id="notes">
+                <div class="flex items-center justify-between pb-2 border-b border-white/10 handle">
+                    <div class="flex items-center gap-1.5 text-[11px] font-semibold text-amber-300 uppercase tracking-wider">
+                        <i class="fa-solid fa-note-sticky"></i> Holo Scratchpad
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="minimizeWidget(this)" class="text-slate-400 hover:text-white text-[10px] px-1"><i class="fa-solid fa-minus"></i></button>
+                        <button onclick="closeWidget(this)" class="text-slate-400 hover:text-red-400 text-[10px] px-1"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+                <div class="pt-2 widget-body space-y-2">
+                    <textarea class="w-full h-20 bg-transparent border border-white/10 rounded-lg p-2 text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none font-mono-custom" placeholder="Type notes here..."></textarea>
+                    <!-- Appealing text under holoprojection png -->
+                    <div class="text-[10px] text-indigo-300/90 font-medium italic text-center bg-indigo-950/40 py-1.5 px-2 rounded-lg border border-indigo-500/30 shadow-inner">
+                        Nexus Active: Holoprojection stream locked & transparent.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: Timeline Editing System -->
+        <div id="view-timeline" class="absolute inset-0 pt-16 pb-4 px-3 hidden pointer-events-auto">
+            <div class="glass-panel rounded-2xl p-4 max-w-2xl mx-auto space-y-3">
+                <div class="flex items-center justify-between pb-2 border-b border-white/10">
+                    <h3 class="text-xs font-semibold text-emerald-300 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-timeline"></i> Live Timeline & Keyframe Editor
+                    </h3>
+                    <button onclick="switchView('hud')" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                
+                <div class="space-y-3 text-xs">
+                    <div class="flex items-center justify-between text-slate-300">
+                        <span>Current Frame: <strong class="font-mono-custom text-white" id="frame-counter">045 / 300</strong></span>
+                        <div class="space-x-2">
+                            <button onclick="stepFrame(-1)" class="px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-700"><i class="fa-solid fa-backward-step"></i></button>
+                            <button onclick="toggleTimelinePlay(this)" class="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 font-medium text-white"><i class="fa-solid fa-play"></i></button>
+                            <button onclick="stepFrame(1)" class="px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-700"><i class="fa-solid fa-forward-step"></i></button>
+                        </div>
+                    </div>
+                    
+                    <!-- Timeline Track -->
+                    <div class="relative bg-slate-900/50 rounded-xl p-3 border border-white/10 space-y-2">
+                        <div class="flex justify-between text-[10px] text-slate-400 font-mono-custom">
+                            <span>00:00</span>
+                            <span>00:05</span>
+                            <span>00:10</span>
+                        </div>
+                        <input type="range" min="0" max="300" value="45" oninput="updateTimelinePos(this.value)" class="w-full accent-indigo-500 cursor-pointer">
+                        <div class="flex gap-1 pt-1">
+                            <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px] border border-indigo-500/30">Visual Track</span>
+                            <span class="px-2 py-0.5 rounded bg-pink-500/20 text-pink-300 text-[10px] border border-pink-500/30">Audio Stream</span>
+                            <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] border border-amber-500/30">Nexus Markers</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Info & iOS PWA / Download Modal (Visible immediately on iOS Safari to guide installation) -->
+    <div id="info-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+        <div class="glass-panel rounded-2xl max-w-md w-full p-5 space-y-4 border border-white/20 shadow-2xl relative">
+            <div class="flex items-center justify-between pb-2 border-b border-white/10">
+                <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-mobile-screen text-indigo-400"></i> iPhone & Desktop Setup Guide
+                </h3>
+                <button onclick="closeInfoModal()" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="text-[11px] text-slate-300 space-y-3 leading-relaxed">
+                <div class="bg-indigo-950/50 p-3 rounded-xl border border-indigo-500/30 space-y-1.5">
+                    <div class="font-semibold text-white flex items-center gap-1.5">
+                        <i class="fa-brands fa-apple text-indigo-400"></i> Installing on iPhone (Safari):
+                    </div>
+                    <ol class="list-decimal list-inside space-y-1 text-slate-300">
+                        <li>Tap the <strong class="text-white">Share</strong> button at the bottom of Safari.</li>
+                        <li>Scroll down and tap <strong class="text-white">"Add to Home Screen"</strong>.</li>
+                        <li>Open the app from your home screen for a standalone immersive overlay view!</li>
+                    </ol>
+                </div>
+
+                <div class="bg-slate-900/60 p-3 rounded-xl border border-white/10 space-y-1.5">
+                    <div class="font-semibold text-white flex items-center gap-1.5">
+                        <i class="fa-solid fa-download text-emerald-400"></i> Download Standalone File:
+                    </div>
+                    <p class="text-slate-400">Click below to download this entire app as a single runnable <code class="text-emerald-300">index.html</code> file to your device.</p>
+                    <button onclick="downloadAppFile()" class="w-full mt-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold text-xs transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-arrow-down"></i> Download index.html
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-1">
+                <button onclick="closeInfoModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition shadow-lg">Got it, Launch HUD!</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // View Switcher logic for HUD vs Timeline
+        function switchView(viewName) {
+            const hudView = document.getElementById('view-hud');
+            const timelineView = document.getElementById('view-timeline');
+            const hudBtn = document.getElementById('nav-hud-btn');
+            const timelineBtn = document.getElementById('nav-timeline-btn');
+
+            if (!hudView || !timelineView) return;
+
+            if (viewName === 'timeline') {
+                hudView.classList.add('hidden');
+                timelineView.classList.remove('hidden');
+                if (timelineBtn) { timelineBtn.className = 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium transition'; }
+                if (hudBtn) { hudBtn.className = 'px-2.5 py-1 rounded-lg hover:bg-white/10 text-slate-300 font-medium transition'; }
+            } else {
+                timelineView.classList.add('hidden');
+                hudView.classList.remove('hidden');
+                if (hudBtn) { hudBtn.className = 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium transition'; }
+                if (timelineBtn) { timelineBtn.className = 'px-2.5 py-1 rounded-lg hover:bg-white/10 text-slate-300 font-medium transition'; }
+            }
+        }
+
+        // Live Clock
+        function updateClock() {
+            const clockEl = document.getElementById('live-clock');
+            const dateEl = document.getElementById('live-date');
+            if (!clockEl || !dateEl) return;
+            const now = new Date();
+            clockEl.innerText = now.toLocaleTimeString();
+            dateEl.innerText = now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // CPU Simulation
+        setInterval(() => {
+            const cpuVal = document.getElementById('cpu-val');
+            const cpuBar = document.getElementById('cpu-bar');
+            if (!cpuVal || !cpuBar) return;
+            const cpu = Math.floor(Math.random() * 20) + 10;
+            cpuVal.innerText = cpu + '%';
+            cpuBar.style.width = cpu + '%';
+        }, 2000);
+
+        // Timeline controls
+        let currentFrame = 45;
+        function updateTimelinePos(val) {
+            currentFrame = parseInt(val);
+            const counter = document.getElementById('frame-counter');
+            if (counter) counter.innerText = String(currentFrame).padStart(3, '0') + ' / 300';
+        }
+        function stepFrame(dir) {
+            currentFrame = Math.max(0, Math.min(300, currentFrame + dir));
+            const counter = document.getElementById('frame-counter');
+            if (counter) counter.innerText = String(currentFrame).padStart(3, '0') + ' / 300';
+        }
+        function toggleTimelinePlay(btn) {
+            const icon = btn.querySelector('i');
+            if (!icon) return;
+            icon.classList.toggle('fa-play');
+            icon.classList.toggle('fa-pause');
+        }
+
+        // Modal Controls
+        function openInfoModal() {
+            const modal = document.getElementById('info-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+        function closeInfoModal() {
+            const modal = document.getElementById('info-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        // Download runnable file feature
+        function downloadAppFile() {
+            const htmlContent = document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'GlassHUD-Overlay.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Widget Controls
+        function minimizeWidget(btn) {
+            const widget = btn.closest('.widget');
+            if (!widget) return;
+            const body = widget.querySelector('.widget-body');
+            if (body) body.classList.toggle('hidden');
+        }
+        function closeWidget(btn) {
+            const widget = btn.closest('.widget');
+            if (widget) widget.remove();
+        }
+
+        // Dragging widgets (Mouse + Touch Support)
+        document.addEventListener('mousedown', (e) => {
+            const handle = e.target.closest('.handle');
+            if (!handle) return;
+            const widget = handle.closest('.widget');
+            if (!widget) return;
+            let shiftX = e.clientX - widget.getBoundingClientRect().left;
+            let shiftY = e.clientY - widget.getBoundingClientRect().top;
+
+            function moveAt(pageX, pageY) {
+                widget.style.left = pageX - shiftX + 'px';
+                widget.style.top = pageY - shiftY + 'px';
+            }
+            function onMouseMove(event) {
+                moveAt(event.pageX, event.pageY);
+            }
+            document.addEventListener('mousemove', onMouseMove);
+            document.onmouseup = function() {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.onmouseup = null;
+            };
+        });
+
+        document.addEventListener('touchstart', (e) => {
+            const handle = e.target.closest('.handle');
+            if (!handle) return;
+            const widget = handle.closest('.widget');
+            if (!widget) return;
+            const touch = e.touches[0];
+            let shiftX = touch.clientX - widget.getBoundingClientRect().left;
+            let shiftY = touch.clientY - widget.getBoundingClientRect().top;
+
+            function moveAt(clientX, clientY) {
+                widget.style.left = clientX - shiftX + 'px';
+                widget.style.top = clientY - shiftY + 'px';
+            }
+            function onTouchMove(event) {
+                const t = event.touches[0];
+                moveAt(t.clientX, t.clientY);
+            }
+            document.addEventListener('touchmove', onTouchMove);
+            document.ontouchend = function() {
+                document.removeEventListener('touchmove', onTouchMove);
+                document.ontouchend = null;
+            };
+        });
+
+        // Ambient particles
+        const canvas = document.getElementById('hud-canvas');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            for (let i = 0; i < 20; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 1.2 + 0.3,
+                    vx: (Math.random() - 0.5) * 0.15,
+                    vy: (Math.random() - 0.5) * 0.15,
+                    alpha: Math.random() * 0.4 + 0.1
+                });
+            }
+            function animateCanvas() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    if (p.x < 0) p.x = canvas.width;
+                    if (p.x > canvas.width) p.x = 0;
+                    if (p.y < 0) p.y = canvas.height;
+                    if (p.y > canvas.height) p.y = 0;
+
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.globalAlpha = p.alpha;
+                    ctx.fill();
+                });
+                requestAnimationFrame(animateCanvas);
+            }
+            animateCanvas();
+        }
+    </script>
+</body>
+</html>
