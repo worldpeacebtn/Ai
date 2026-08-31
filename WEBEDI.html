@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>GlassHUD Pro - Eyeball Lupe & Precision HUD Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: var(--bg-primary, #05070b); color: var(--text-primary, #e6edf3); transition: background 0.3s; }
+        .font-mono-custom { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Holographic 3D Layer Stack View */
+        .holo-stage { perspective: 1200px; transform-style: preserve-3d; }
+        .holo-layer {
+            background: rgba(18, 22, 32, 0.95);
+            border: 1px solid var(--accent-color, #58a6ff);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+            transform: translateZ(var(--layer-z, 0px));
+        }
+
+        /* GitHub Syntax Highlighting */
+        .syntax-tag { color: #7ee787; font-weight: 600; }
+        .syntax-attr { color: #79c0ff; }
+        .syntax-string { color: #a5d6ff; }
+
+        /* Spheric Precision Dial */
+        .spheric-joystick {
+            width: 72px;
+            height: 72px;
+            background: radial-gradient(circle at 30% 30%, #38bdf8, #0369a1 70%, #0c4a6e 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.6), inset 0 0 12px rgba(255,255,255,0.4);
+            cursor: grab;
+            touch-action: none;
+            user-select: none;
+        }
+        .spheric-joystick:active { cursor: grabbing; transform: scale(0.96); }
+
+        /* Moveable Eyeball Lupe Lens */
+        .eyeball-lupe {
+            position: absolute;
+            width: 140px;
+            height: 140px;
+            border: 3px solid #38bdf8;
+            border-radius: 50%;
+            box-shadow: 0 0 35px rgba(56, 189, 248, 0.9), inset 0 0 20px rgba(56, 189, 248, 0.5);
+            pointer-events: auto;
+            cursor: move;
+            display: none;
+            z-index: 100;
+            background: radial-gradient(circle, rgba(56,189,248,0.15) 0%, rgba(3,105,161,0.4) 100%);
+        }
+
+        /* Inline Code HUD Trigger Pill */
+        .code-hud-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            background: rgba(56, 189, 248, 0.2);
+            border: 1px solid rgba(56, 189, 248, 0.5);
+            border-radius: 4px;
+            padding: 1px 4px;
+            font-size: 10px;
+            color: #38bdf8;
+            cursor: pointer;
+            margin: 0 2px;
+        }
+        .code-hud-pill:hover { background: rgba(56, 189, 248, 0.4); }
+
+        ::-webkit-scrollbar { width: 3px; height: 3px; }
+        ::-webkit-scrollbar-track { background: #05070b; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+    </style>
+</head>
+<body class="h-full overflow-hidden flex flex-col select-none" style="--bg-primary: #05070b; --accent-color: #58a6ff;">
+
+    <!-- Top Navigation Header -->
+    <header class="h-10 border-b border-[#30363d] bg-[#0d1117] px-2.5 flex items-center justify-between z-50 shrink-0 text-xs">
+        <div class="flex items-center gap-2">
+            <span class="font-bold text-sky-400">🔮 GlassHUD Pro</span>
+            <div class="h-3 w-[1px] bg-[#30363d]"></div>
+            <button onclick="switchViewMode('split')" id="btn-mode-split" class="px-2.5 py-0.5 rounded bg-sky-600 text-white font-medium">💻 Split</button>
+            <button onclick="switchViewMode('holo')" id="btn-mode-holo" class="px-2.5 py-0.5 rounded text-slate-400 hover:text-white">🎴 3D Holo</button>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+            <select id="template-select" onchange="loadTemplate(this.value)" class="bg-[#161b22] border border-[#30363d] rounded px-2 py-0.5 text-slate-200 text-[11px] focus:outline-none">
+                <option value="">📂 Template...</option>
+                <option value="cyber">🤖 Cyberpunk HUD</option>
+                <option value="streamer">🎮 Gamer Streamer</option>
+                <option value="minimal">✨ Minimalist Portfolio</option>
+                <option value="terminal">💻 Sci-Fi Terminal</option>
+                <option value="glass">🔮 Glassmorphic</option>
+            </select>
+            <button onclick="toggleSidebar()" class="px-2.5 py-0.5 rounded bg-[#21262d] text-sky-400 border border-[#30363d]" title="Webdesigner Sidebar">🎛️ HUD</button>
+            <button onclick="toggleScanMode()" id="btn-scan" class="px-2.5 py-0.5 rounded bg-[#21262d] text-slate-300 border border-[#30363d]" title="Eyeball Lupe">👁️ Lupe</button>
+            <button onclick="toggleSnippetLibrary()" class="px-2.5 py-0.5 rounded bg-amber-600/30 text-amber-300 border border-amber-500/30">📚</button>
+            <button onclick="downloadCode()" class="px-2.5 py-0.5 rounded bg-sky-600 text-white">💾</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 relative overflow-hidden bg-[var(--bg-primary)] p-2 flex flex-col">
+
+        <!-- VIEW MODE 1: Split Editor & Live Preview -->
+        <div id="view-split" class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-2 overflow-hidden relative">
+            
+            <!-- Expandable Webdesigner Sidebar (Grid HUD style) -->
+            <div id="webdesigner-sidebar" class="absolute left-0 top-0 bottom-0 w-72 bg-[#0d1117]/95 border-r border-[#30363d] z-40 p-3 space-y-3 transform -translate-x-full transition-transform duration-300 overflow-y-auto backdrop-blur-md">
+                <div class="flex items-center justify-between pb-2 border-b border-[#30363d]">
+                    <h3 class="text-xs font-semibold text-sky-400">🎛️ Webdesigner HUD Panel</h3>
+                    <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white text-xs">✕</button>
+                </div>
+                
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <label class="text-[11px] text-slate-400 block mb-1">Active Property</label>
+                        <select id="prop-selector" class="w-full bg-[#161b22] border border-[#30363d] rounded p-1.5 text-xs text-slate-200">
+                            <option value="padding">📏 Padding (px)</option>
+                            <option value="radius">⭕ Border Radius</option>
+                            <option value="opacity">👻 Opacity</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="adjustPropVal(-2)" class="p-2 bg-[#21262d] hover:bg-[#30363d] rounded text-center text-slate-200 font-mono-custom">- 2px</button>
+                        <button onclick="adjustPropVal(2)" class="p-2 bg-[#21262d] hover:bg-[#30363d] rounded text-center text-slate-200 font-mono-custom">+ 2px</button>
+                    </div>
+
+                    <div class="pt-2 border-t border-[#30363d]">
+                        <label class="text-[11px] text-slate-400 block mb-2">Color Palette Hub</label>
+                        <div class="grid grid-cols-5 gap-2">
+                            <div class="w-8 h-8 rounded-full bg-[#38bdf8] cursor-pointer border border-white/20" onclick="applyColorTheme('#38bdf8')"></div>
+                            <div class="w-8 h-8 rounded-full bg-[#3fb950] cursor-pointer border border-white/20" onclick="applyColorTheme('#3fb950')"></div>
+                            <div class="w-8 h-8 rounded-full bg-[#bc8cff] cursor-pointer border border-white/20" onclick="applyColorTheme('#bc8cff')"></div>
+                            <div class="w-8 h-8 rounded-full bg-[#d29922] cursor-pointer border border-white/20" onclick="applyColorTheme('#d29922')"></div>
+                            <div class="w-8 h-8 rounded-full bg-[#ff7b72] cursor-pointer border border-white/20" onclick="applyColorTheme('#ff7b72')"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Syntax Code Editor (Span 6) -->
+            <div class="lg:col-span-6 bg-[#0d1117] border border-[#30363d] rounded-lg flex flex-col overflow-hidden">
+                <div class="px-3 py-1.5 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between text-xs">
+                    <div class="flex gap-1">
+                        <button onclick="switchTab('html')" id="tab-html" class="px-2 py-0.5 rounded bg-sky-600 text-white text-[11px]">HTML</button>
+                        <button onclick="switchTab('css')" id="tab-css" class="px-2 py-0.5 rounded text-slate-400 text-[11px]">CSS</button>
+                        <button onclick="switchTab('js')" id="tab-js" class="px-2 py-0.5 rounded text-slate-400 text-[11px]">JS</button>
+                    </div>
+                    <span class="text-sky-400 text-[11px]">⚡ Realtime Sync</span>
+                </div>
+                <div class="relative flex-1 font-mono-custom text-xs bg-[#05070b] overflow-auto">
+                    <textarea id="editor-html" oninput="compileCode(); updateSyntaxHighlight();" class="absolute inset-0 w-full h-full bg-transparent p-3 text-transparent caret-white placeholder-slate-600 focus:outline-none resize-none leading-relaxed z-10" placeholder="HTML..."><div>
+    <h1 style="color: #38bdf8;">🔮 GlassHUD Cinematic Engine</h1>
+    <p style="color: #c084fc;">Use the 👁️ Eyeball Lupe and 🔮 Spheric Joystick below to tweak values effortlessly.</p>
+    <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400" style="width: 160px; border-radius: 12px; margin-top: 10px;" />
+</div></textarea>
+                    <pre id="syntax-highlight-layer" class="absolute inset-0 w-full h-full p-3 m-0 pointer-events-none text-slate-200 leading-relaxed whitespace-pre-wrap z-0"></pre>
+
+                    <textarea id="editor-css" oninput="compileCode()" class="absolute inset-0 w-full h-full bg-transparent p-3 text-emerald-300 hidden z-10" placeholder="CSS...">body { background: #05070b; color: #e6edf3; font-family: sans-serif; padding: 20px; }</textarea>
+                    <textarea id="editor-js" oninput="compileCode()" class="absolute inset-0 w-full h-full bg-transparent p-3 text-amber-300 hidden z-10" placeholder="JS..."></textarea>
+                </div>
+            </div>
+
+            <!-- Live Preview Canvas (Span 6 = Cinematic 2/4 Desktop Width) -->
+            <div id="preview-wrapper" class="lg:col-span-6 bg-white rounded-lg flex flex-col overflow-hidden relative shadow-2xl transition-all duration-300">
+                <!-- Moveable Cinematic Eyeball Lupe Overlay Lens -->
+                <div id="eyeball-lupe" class="eyeball-lupe flex flex-col items-center justify-center text-center p-2">
+                    <div id="lupe-readout" class="bg-slate-950/90 text-sky-300 text-[10px] font-mono-custom px-2 py-1 rounded shadow border border-sky-500/50 pointer-events-none">
+                        Target: Body
+                    </div>
+                </div>
+
+                <div class="absolute top-2 right-2 z-20 flex gap-1.5">
+                    <button onclick="reloadPreview()" class="w-7 h-7 rounded-full bg-slate-900/80 text-white flex items-center justify-center text-xs shadow hover:bg-slate-800">🔄</button>
+                </div>
+                <iframe id="preview-iframe" class="w-full h-full border-0 pointer-events-auto"></iframe>
+            </div>
+        </div>
+
+        <!-- VIEW MODE 2: 3D Holographic Layer Stack -->
+        <div id="view-holo" class="flex-1 holo-stage rounded-lg p-3 overflow-y-auto hidden space-y-4">
+            <div class="flex items-center justify-between pb-2 border-b border-[#30363d] sticky top-0 bg-[#05070b]/90 backdrop-blur z-30">
+                <h3 class="text-xs font-semibold text-white flex items-center gap-1.5">
+                    🎴 3D Holographic Layer Inspector
+                </h3>
+                <span class="text-[10px] text-sky-400 font-mono-custom">Perspective Depth Stack</span>
+            </div>
+            <div id="holo-stack-container" class="space-y-3 pb-12 pt-2"></div>
+        </div>
+
+    </main>
+
+    <!-- Spheric Joystick & Property Tweaker Footer -->
+    <footer class="h-16 border-t border-[#30363d] bg-[#0d1117] px-3 flex items-center justify-between z-50 shrink-0 text-xs">
+        <div class="flex items-center gap-3">
+            <div>
+                <span id="dial-target" class="text-sky-400 font-mono-custom font-semibold text-xs">Padding: 20px</span>
+                <div class="text-[10px] text-slate-400">Precision Spheric Dial</div>
+            </div>
+        </div>
+
+        <!-- Spheric Joystick Control (Precision Delta Swiping) -->
+        <div class="flex items-center gap-4">
+            <div id="spheric-joystick" class="spheric-joystick flex items-center justify-center text-white font-bold text-[10px]" title="Drag to adjust">
+                🔮 360°
+            </div>
+        </div>
+
+        <div class="flex gap-1.5">
+            <button onclick="adjustPropVal(-1)" class="px-2.5 py-1.5 bg-[#21262d] hover:bg-[#30363d] text-white rounded border border-[#30363d]">➖</button>
+            <button onclick="adjustPropVal(1)" class="px-2.5 py-1.5 bg-[#21262d] hover:bg-[#30363d] text-white rounded border border-[#30363d]">➕</button>
+        </div>
+    </footer>
+
+    <!-- Snippet Library Modal (Grid Button Style) -->
+    <div id="snippet-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md hidden p-4">
+        <div class="bg-[#121620] rounded-xl max-w-lg w-full p-4 space-y-3 border border-white/20 shadow-2xl relative max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between pb-2 border-b border-[#30363d]">
+                <h3 class="text-xs font-semibold text-white">📚 Component Library Grid</h3>
+                <button onclick="toggleSnippetLibrary()" class="text-slate-400 hover:text-white text-xs">✕</button>
+            </div>
+            <div class="flex-1 overflow-y-auto grid grid-cols-2 gap-2.5 pr-1" id="snippet-list-container"></div>
+            <div class="pt-2 border-t border-[#30363d] flex justify-end">
+                <button onclick="toggleSnippetLibrary()" class="px-3 py-1 bg-sky-600 text-white rounded text-xs font-semibold">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanned Element Action Modal -->
+    <div id="scan-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md hidden p-4">
+        <div class="bg-[#121620] rounded-xl max-w-sm w-full p-4 space-y-3 border border-white/20 shadow-2xl text-xs">
+            <h3 class="font-semibold text-sky-400">👁️ Scanned Element Inspector</h3>
+            <div id="scan-details" class="bg-[#05070b] p-2.5 rounded font-mono-custom text-[11px] text-slate-300"></div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeScanModal()" class="px-3 py-1 bg-slate-800 text-white rounded">Close</button>
+                <button onclick="saveScannedToLibrary()" class="px-3 py-1 bg-sky-600 text-white rounded">Save to Library</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let snippetLibrary = [
+            { id: 1, name: 'Glass Card Div', type: 'div', html: '<div style="background:rgba(255,255,255,0.1); padding:16px; border-radius:10px; backdrop-filter:blur(8px);"><h3>Glass Card</h3><p>Sample component.</p></div>' },
+            { id: 2, name: 'Banner Pic', type: 'pic', html: '<img src="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=400" style="width:100%; border-radius:8px;" />' }
+        ];
+
+        let isScanMode = false;
+        let propValues = { padding: 20, radius: 12, opacity: 1.0 };
+        let activeScannedElementHTML = '';
+
+        window.addEventListener('DOMContentLoaded', () => {
+            compileCode();
+            updateSyntaxHighlight();
+            renderSnippetLibrary();
+            setupSphericJoystick();
+            setupMovableLupe();
+        });
+
+        function compileCode() {
+            const html = document.getElementById('editor-html').value;
+            const css = document.getElementById('editor-css').value;
+            const js = document.getElementById('editor-js').value;
+
+            const fullCode = `
+                <!DOCTYPE html>
+                <html>
+                <head><style>${css}</style></head>
+                <body>${html}<script>${js}<\/script></body>
+                </html>
+            `;
+
+            const iframe = document.getElementById('preview-iframe');
+            if (!iframe) return;
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            doc.open();
+            doc.write(fullCode);
+            doc.close();
+
+            if (isScanMode) {
+                attachEyeballLupe(iframe, doc);
+            }
+
+            buildHoloStack(html);
+        }
+
+        // GitHub Syntax Highlighting with Inline HUD triggers
+        function updateSyntaxHighlight() {
+            const val = document.getElementById('editor-html').value;
+            const highlightLayer = document.getElementById('syntax-highlight-layer');
+            if (!highlightLayer) return;
+
+            let escaped = val.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            
+            escaped = escaped.replace(/(&lt;\/?[a-z0-9\-]+)([^&]*&gt;)/gi, '<span class="syntax-tag">$1</span><span class="syntax-attr">$2</span>');
+            escaped = escaped.replace(/(#[0-9a-fA-F]{3,8})/g, '<span class="code-hud-pill" onclick="quickEditColor(\'$1\')">🎨 $1</span>');
+            escaped = escaped.replace(/(\d+px)/g, '<span class="code-hud-pill" onclick="quickEditSize(\'$1\')">📏 $1</span>');
+
+            highlightLayer.innerHTML = escaped + '\n';
+        }
+
+        function quickEditColor(color) {
+            const newCol = prompt("Edit color value:", color);
+            if (newCol) {
+                const ed = document.getElementById('editor-html');
+                ed.value = ed.value.replace(color, newCol);
+                compileCode();
+                updateSyntaxHighlight();
+            }
+        }
+
+        function quickEditSize(size) {
+            const newSize = prompt("Edit size value:", size);
+            if (newSize) {
+                const ed = document.getElementById('editor-html');
+                ed.value = ed.value.replace(size, newSize);
+                compileCode();
+                updateSyntaxHighlight();
+            }
+        }
+
+        function reloadPreview() { compileCode(); }
+
+        function switchViewMode(mode) {
+            const splitView = document.getElementById('view-split');
+            const holoView = document.getElementById('view-holo');
+            const btnSplit = document.getElementById('btn-mode-split');
+            const btnHolo = document.getElementById('btn-mode-holo');
+
+            if (mode === 'holo') {
+                splitView.classList.add('hidden');
+                holoView.classList.remove('hidden');
+                btnHolo.className = "px-2.5 py-0.5 rounded bg-sky-600 text-white font-medium";
+                btnSplit.className = "px-2.5 py-0.5 rounded text-slate-400 hover:text-white";
+                buildHoloStack(document.getElementById('editor-html').value);
+            } else {
+                holoView.classList.add('hidden');
+                splitView.classList.remove('hidden');
+                btnSplit.className = "px-2.5 py-0.5 rounded bg-sky-600 text-white font-medium";
+                btnHolo.className = "px-2.5 py-0.5 rounded text-slate-400 hover:text-white";
+            }
+        }
+
+        function switchTab(lang) {
+            ['html', 'css', 'js'].forEach(l => {
+                const ed = document.getElementById(`editor-${l}`);
+                const btn = document.getElementById(`tab-${l}`);
+                if (ed && btn) {
+                    if (l === lang) {
+                        ed.classList.remove('hidden');
+                        btn.className = "px-2.5 py-0.5 rounded bg-sky-600 text-white text-[11px]";
+                    } else {
+                        ed.classList.add('hidden');
+                        btn.className = "px-2.5 py-0.5 rounded text-slate-400 text-[11px]";
+                    }
+                }
+            });
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('webdesigner-sidebar');
+            if (sidebar) sidebar.classList.toggle('-translate-x-full');
+        }
+
+        // Movable Cinematic Eyeball Lupe Inspector
+        function toggleScanMode() {
+            isScanMode = !isScanMode;
+            const btn = document.getElementById('btn-scan');
+            const lupe = document.getElementById('eyeball-lupe');
+            if (isScanMode) {
+                btn.classList.add('bg-sky-600', 'text-white');
+                if (lupe) {
+                    lupe.style.display = 'flex';
+                    lupe.style.left = '40px';
+                    lupe.style.top = '40px';
+                }
+                alert("👁️ Eyeball Lupe Active: Drag the circular lupe lens over canvas elements to inspect & click to select!");
+                compileCode();
+            } else {
+                btn.classList.remove('bg-sky-600', 'text-white');
+                if (lupe) lupe.style.display = 'none';
+            }
+        }
+
+        function setupMovableLupe() {
+            const lupe = document.getElementById('eyeball-lupe');
+            if (!lupe) return;
+            let isDragging = false;
+            let startX, startY;
+
+            lupe.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX - lupe.offsetLeft;
+                startY = e.clientY - lupe.offsetTop;
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                lupe.style.left = (e.clientX - startX) + 'px';
+                lupe.style.top = (e.clientY - startY) + 'px';
+            });
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            // Touch support for lupe dragging
+            lupe.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                startX = e.touches[0].clientX - lupe.offsetLeft;
+                startY = e.touches[0].clientY - lupe.offsetTop;
+            }, {passive: true});
+            window.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                lupe.style.left = (e.touches[0].clientX - startX) + 'px';
+                lupe.style.top = (e.touches[0].clientY - startY) + 'px';
+            }, {passive: true});
+            window.addEventListener('touchend', () => { isDragging = false; });
+        }
+
+        function attachEyeballLupe(iframe, doc) {
+            const readout = document.getElementById('lupe-readout');
+
+            doc.querySelectorAll('*').forEach(el => {
+                if (!(el instanceof Element)) return;
+                el.addEventListener('mouseenter', () => {
+                    if (!isScanMode) return;
+                    const tag = el.tagName.toLowerCase();
+                    const computed = iframe.contentWindow.getComputedStyle(el);
+                    readout.innerHTML = `<${tag}> | ${Math.round(parseFloat(computed.width))}px`;
+                });
+                el.addEventListener('click', (e) => {
+                    if (!isScanMode) return;
+                    e.stopPropagation();
+                    activeScannedElementHTML = el.outerHTML;
+                    const computed = iframe.contentWindow.getComputedStyle(el);
+                    document.getElementById('scan-details').innerHTML = `Tag: &lt;${el.tagName.toLowerCase()}&gt;<br>Color: ${computed.color}<br>Background: ${computed.backgroundColor}`;
+                    document.getElementById('scan-modal').classList.remove('hidden');
+                });
+            });
+        }
+
+        function closeScanModal() {
+            document.getElementById('scan-modal').classList.add('hidden');
+        }
+
+        function saveScannedToLibrary() {
+            if (!activeScannedElementHTML) return;
+            snippetLibrary.push({ id: Date.now(), name: 'Scanned Component', type: 'div', html: activeScannedElementHTML });
+            renderSnippetLibrary();
+            closeScanModal();
+            alert("Scanned element saved to library!");
+        }
+
+        // Spheric Joystick (High Precision Delta Swiping)
+        function setupSphericJoystick() {
+            const joystick = document.getElementById('spheric-joystick');
+            if (!joystick) return;
+            let startX = 0;
+            let accumulator = 0;
+
+            joystick.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; accumulator = 0; }, {passive: true});
+            joystick.addEventListener('touchmove', (e) => {
+                const diff = e.touches[0].clientX - startX;
+                accumulator += diff;
+                if (Math.abs(accumulator) > 35) { // Fine-tuned threshold for smooth precision
+                    adjustPropVal(accumulator > 0 ? 1 : -1);
+                    accumulator = 0;
+                    startX = e.touches[0].clientX;
+                }
+            }, {passive: true});
+
+            joystick.addEventListener('mousedown', (e) => {
+                startX = e.clientX;
+                accumulator = 0;
+                const onMouseMove = (ev) => {
+                    const diff = ev.clientX - startX;
+                    accumulator += diff;
+                    if (Math.abs(accumulator) > 35) {
+                        adjustPropVal(accumulator > 0 ? 1 : -1);
+                        accumulator = 0;
+                        startX = ev.clientX;
+                    }
+                };
+                const onMouseUp = () => {
+                    window.removeEventListener('mousemove', onMouseMove);
+                    window.removeEventListener('mouseup', onMouseUp);
+                };
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onMouseUp);
+            });
+        }
+
+        function adjustPropVal(amount) {
+            const prop = document.getElementById('prop-selector').value;
+            propValues[prop] = Math.max(0, propValues[prop] + amount);
+            document.getElementById('dial-target').innerText = `${prop.toUpperCase()}: ${propValues[prop]}px`;
+            
+            const cssEd = document.getElementById('editor-css');
+            if (cssEd) {
+                cssEd.value = `body { background: #05070b; color: #e6edf3; font-family: sans-serif; padding: ${propValues.padding}px; border-radius: ${propValues.radius}px; opacity: ${propValues.opacity}; }`;
+                compileCode();
+            }
+        }
+
+        function applyColorTheme(hex) {
+            const cssEd = document.getElementById('editor-css');
+            if (cssEd) {
+                cssEd.value = `body { background: ${hex}; color: #ffffff; font-family: sans-serif; padding: ${propValues.padding}px; }`;
+                compileCode();
+                toggleSidebar();
+            }
+        }
+
+        function loadTemplate(type) {
+            const htmlEd = document.getElementById('editor-html');
+            const cssEd = document.getElementById('editor-css');
+            if (!htmlEd || !cssEd) return;
+
+            if (type === 'cyber') {
+                htmlEd.value = `<div style="border: 2px solid #38bdf8; padding: 20px; box-shadow: 0 0 20px rgba(56,189,248,0.5);"><h1 style="color:#38bdf8;">CYBERPUNK v2.077</h1><p style="color:#e2e8f0;">Neural net online.</p></div>`;
+                cssEd.value = `body { background: #030712; color: #38bdf8; font-family: monospace; padding: 25px; }`;
+            } else if (type === 'streamer') {
+                htmlEd.value = `<div style="background:rgba(0,0,0,0.8); padding:15px; border-left:4px solid #f43f5e;"><h2 style="color:#f43f5e;">🔴 LIVE STREAM HUD</h2><p style="color:white;">Subscribers: 14,820</p></div>`;
+                cssEd.value = `body { background: transparent; color: white; font-family: sans-serif; padding: 15px; }`;
+            } else if (type === 'minimal') {
+                htmlEd.value = `<div style="max-width:400px; margin:auto; text-align:center;"><h1 style="font-weight:300;">Alex Rivers</h1><p style="color:#64748b;">Designer & Developer</p></div>`;
+                cssEd.value = `body { background: #f8fafc; color: #0f172a; font-family: 'Inter', sans-serif; padding: 40px; }`;
+            } else if (type === 'terminal') {
+                htmlEd.value = `<div style="font-family:monospace;"><p style="color:#22c55e;">root@glasshud:~# ./init_hud.sh</p><p style="color:#22c55e;">[OK] Holographic matrix compiled.</p></div>`;
+                cssEd.value = `body { background: #000000; color: #22c55e; font-family: monospace; padding: 20px; }`;
+            } else if (type === 'glass') {
+                htmlEd.value = `<div style="background:rgba(255,255,255,0.1); backdrop-filter:blur(16px); padding:24px; border-radius:16px; border:1px solid rgba(255,255,255,0.2);"><h2>Glassmorphism</h2><p>Frosted UI panel.</p></div>`;
+                cssEd.value = `body { background: linear-gradient(135deg, #4f46e5, #9333ea); color: white; font-family: sans-serif; padding: 30px; }`;
+            }
+            compileCode();
+            updateSyntaxHighlight();
+        }
+
+        function buildHoloStack(htmlString) {
+            const container = document.getElementById('holo-stack-container');
+            if (!container) return;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlString, 'text/html');
+            const elements = Array.from(doc.querySelectorAll('body *'));
+            
+            let html = '';
+            elements.forEach((el, idx) => {
+                if (!(el instanceof Element)) return;
+                const tag = el.tagName.toLowerCase();
+                const zDepth = idx * 25;
+                html += `
+                    <div class="holo-layer rounded-xl p-3 flex flex-col gap-2 text-xs" style="--layer-z: ${zDepth}px;">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono-custom font-semibold bg-sky-500/20 text-sky-300">${tag.toUpperCase()}</span>
+                            <span class="text-[10px] text-slate-400 font-mono-custom">Depth Z: +${zDepth}px</span>
+                        </div>
+                        <div class="bg-[#05070b] p-2 rounded border border-[#30363d] font-mono-custom text-[11px] text-slate-300 truncate">
+                            ${el.outerHTML.substring(0, 65)}...
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function toggleSnippetLibrary() {
+            const modal = document.getElementById('snippet-modal');
+            if (modal) modal.classList.toggle('hidden');
+        }
+
+        function renderSnippetLibrary() {
+            const container = document.getElementById('snippet-list-container');
+            if (!container) return;
+            let html = '';
+            snippetLibrary.getEach = snippetLibrary.forEach; // safe wrapper
+            snippetLibrary.forEach(s => {
+                html += `
+                    <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 flex items-center justify-between text-xs">
+                        <span class="font-semibold text-white">${s.name}</span>
+                        <button onclick="respawnSnippet(${s.id})" class="px-2.5 py-1 rounded bg-sky-600 text-white font-medium text-[11px]">Respawn</button>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function respawnSnippet(id) {
+            const snippet = snippetLibrary.find(s => s.id === id);
+            if (!snippet) return;
+            const ed = document.getElementById('editor-html');
+            if (ed) {
+                ed.value += '\n' + snippet.html;
+                compileCode();
+                updateSyntaxHighlight();
+                toggleSnippetLibrary();
+            }
+        }
+
+        function downloadCode() {
+            const html = document.getElementById('editor-html').value;
+            const css = document.getElementById('editor-css').value;
+            const fullCode = `<!DOCTYPE html>\n<html>\n<head><style>${css}</style></head>\n<body>${html}</body>\n</html>`;
+            const blob = new Blob([fullCode], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'glasshud-webdesigner.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
