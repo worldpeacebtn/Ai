@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>⚡ Ai Desktop · v11 (Stable)</title>
+  <title>⚡ Ai Desktop · v12 (iOS‑style drag)</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
     body {
@@ -59,28 +59,28 @@
 
     #desktop {
       position: fixed; left: 0; top: 0; width: calc(100% - 56px); height: calc(100% - 40px);
-      overflow-y: auto; overflow-x: hidden; background: transparent; z-index: 1; padding: 10px;
+      overflow-y: auto; overflow-x: hidden; background: transparent; z-index: 1; padding: 8px;
     }
     #desktop::-webkit-scrollbar { width: 4px; }
     #desktop::-webkit-scrollbar-thumb { background: #4a3a7a; border-radius: 4px; }
 
     .desktop-icon {
-      position: absolute; width: 64px; height: 72px; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; cursor: pointer; border-radius: 12px; padding: 3px;
+      position: absolute; width: 60px; height: 68px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; cursor: pointer; border-radius: 12px; padding: 2px;
       transition: background 0.15s, transform 0.1s; touch-action: none; z-index: 5;
       background: rgba(20,20,50,0.2); backdrop-filter: blur(2px); border: 1px solid transparent;
     }
     .desktop-icon:hover, .desktop-icon:active { background: rgba(40,40,100,0.5); border-color: #5a4a9a; }
     .desktop-icon .icon-img {
-      width: 44px; height: 44px; background: #1a1a3a; border-radius: 12px;
-      display: flex; align-items: center; justify-content: center; font-size: 24px;
-      border: 1px solid #3a2a6a; box-shadow: 0 4px 12px rgba(0,0,0,0.6); margin-bottom: 3px;
+      width: 42px; height: 42px; background: #1a1a3a; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; font-size: 22px;
+      border: 1px solid #3a2a6a; box-shadow: 0 4px 12px rgba(0,0,0,0.6); margin-bottom: 2px;
       transition: transform 0.1s;
     }
     .desktop-icon:active .icon-img { transform: scale(0.92); }
     .desktop-icon .icon-label {
-      font-size: 0.5rem; text-align: center; color: #d0d0ff; text-shadow: 0 0 8px #000;
-      line-height: 1.1; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-size: 0.45rem; text-align: center; color: #d0d0ff; text-shadow: 0 0 8px #000;
+      line-height: 1.1; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .desktop-icon.folder .icon-img { background: #2a1a5a; border-color: #7a5aff; }
     .desktop-icon .folder-badge {
@@ -267,8 +267,8 @@
       #hud .hud-title { font-size: 0.6rem; }
       #desktop { left: 0; width: calc(100% - 48px); height: calc(100% - 36px); }
       #taskbar { left: 0; width: calc(100% - 48px); height: 36px; }
-      .desktop-icon { width: 56px; height: 64px; }
-      .desktop-icon .icon-img { width: 38px; height: 38px; font-size: 20px; }
+      .desktop-icon { width: 54px; height: 62px; }
+      .desktop-icon .icon-img { width: 38px; height: 38px; font-size: 18px; }
       .window { min-width: 180px; min-height: 140px; }
       .folder-window { min-width: 100px; min-height: 60px; }
       #cat-widget { font-size: 0.5rem; bottom: 42px; right: 56px; }
@@ -366,9 +366,9 @@
       let desktopIcons = [];
       let folders = [];
       let nextFolderId = 1;
-      const STORAGE_KEY = 'ai_desktop_state_v11';
+      const STORAGE_KEY = 'ai_desktop_state_v12';
       let listView = false;
-      let _isRendering = false; // recursion guard
+      let _isRendering = false;
 
       // DOM refs
       const desktop = document.getElementById('desktop');
@@ -509,16 +509,16 @@
       }
 
       // --------------------------------------------------------------
-      // AUTO-ARRANGE & HEIGHT
+      // AUTO-ARRANGE & HEIGHT (for scrolling)
       // --------------------------------------------------------------
       function arrangeIcons() {
         if (listView) return;
         const icons = desktopIcons.filter(icon => !icon.folderId);
         const deskRect = desktop.getBoundingClientRect();
-        const iconWidth = 64 + 12;
-        const iconHeight = 72 + 12;
-        const cols = Math.floor((deskRect.width - 20) / iconWidth);
-        const startX = 10, startY = 10;
+        const iconWidth = 60 + 8; // width + gap
+        const iconHeight = 68 + 8;
+        const cols = Math.floor((deskRect.width - 16) / iconWidth);
+        const startX = 8, startY = 8;
         icons.forEach((icon, index) => {
           const col = index % cols;
           const row = Math.floor(index / cols);
@@ -527,17 +527,24 @@
         });
         saveState();
         renderDesktopIcons();
-        applyFilterAndSort(); // refresh filter after arrange
+        applyFilterAndSort();
       }
 
       function adjustDesktopHeight() {
-        if (listView) { desktop.style.minHeight = 'auto'; return; }
+        if (listView) {
+          desktop.style.height = 'auto';
+          desktop.style.minHeight = '100%';
+          return;
+        }
         let maxY = 0;
         document.querySelectorAll('.desktop-icon').forEach(el => {
           const y = parseFloat(el.style.top);
           if (y > maxY) maxY = y;
         });
-        desktop.style.minHeight = (maxY + 80) + 'px';
+        // Add padding and one extra row for scrolling
+        const height = maxY + 80;
+        desktop.style.height = Math.max(height, window.innerHeight - 40) + 'px';
+        desktop.style.minHeight = '100%';
       }
 
       // --------------------------------------------------------------
@@ -551,11 +558,13 @@
           desktop.style.flexDirection = 'column';
           desktop.style.alignItems = 'stretch';
           desktop.style.padding = '4px';
+          desktop.style.height = 'auto';
+          desktop.style.minHeight = '100%';
         } else {
           desktop.style.display = '';
           desktop.style.flexDirection = '';
           desktop.style.alignItems = '';
-          desktop.style.padding = '10px';
+          desktop.style.padding = '8px';
           arrangeIcons();
         }
         renderDesktopIcons();
@@ -646,11 +655,12 @@
       }
 
       // --------------------------------------------------------------
-      // DRAGGABLE (with preview)
+      // DRAGGABLE (with iOS‑style swap reflow)
       // --------------------------------------------------------------
       function makeDraggable(element, iconData) {
         let startX, startY, origX, origY;
         let isDragging = false;
+        let swapTimer = null;
 
         function onStart(e) {
           const touch = e.touches ? e.touches[0] : e;
@@ -660,6 +670,8 @@
           origY = iconData.y;
           isDragging = false;
           e.preventDefault();
+          // Bring to front
+          element.style.zIndex = 50;
         }
 
         function onMove(e) {
@@ -677,6 +689,55 @@
             }
             iconData._tempX = newX;
             iconData._tempY = newY;
+
+            // --- iOS‑style swap detection ---
+            if (!listView && !iconData.folderId) {
+              // Check overlap with other top‑level icons
+              const allIcons = desktopIcons.filter(i => !i.folderId && i.id !== iconData.id);
+              const rect = element.getBoundingClientRect();
+              const centerX = rect.left + rect.width/2;
+              const centerY = rect.top + rect.height/2;
+              for (let other of allIcons) {
+                const otherEl = document.querySelector(`.desktop-icon[data-icon-id="${other.id}"]`);
+                if (!otherEl) continue;
+                const oRect = otherEl.getBoundingClientRect();
+                // Simple overlap check (center inside)
+                if (centerX > oRect.left && centerX < oRect.right && centerY > oRect.top && centerY < oRect.bottom) {
+                  // Swap positions in the array
+                  const idxA = desktopIcons.indexOf(iconData);
+                  const idxB = desktopIcons.indexOf(other);
+                  if (idxA !== -1 && idxB !== -1) {
+                    // Swap x,y
+                    const tmpX = iconData.x;
+                    const tmpY = iconData.y;
+                    iconData.x = other.x;
+                    iconData.y = other.y;
+                    other.x = tmpX;
+                    other.y = tmpY;
+                    // Swap in array (optional, but we already swapped coordinates)
+                    // Re-render icons without recursion
+                    _isRendering = true;
+                    try {
+                      // Update DOM positions quickly
+                      element.style.left = iconData.x + 'px';
+                      element.style.top = iconData.y + 'px';
+                      otherEl.style.left = other.x + 'px';
+                      otherEl.style.top = other.y + 'px';
+                      // Save state later
+                      saveState();
+                    } finally {
+                      _isRendering = false;
+                    }
+                    // Reset drag offset to avoid jump
+                    startX = touch.clientX;
+                    startY = touch.clientY;
+                    origX = iconData.x;
+                    origY = iconData.y;
+                    break;
+                  }
+                }
+              }
+            }
 
             // Preview near bottom
             const deskRect = desktop.getBoundingClientRect();
@@ -699,6 +760,7 @@
         function onEnd(e) {
           dockPreview.style.display = 'none';
           dockIframe.src = 'about:blank';
+          element.style.zIndex = 5;
           if (isDragging) {
             const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
             const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
@@ -720,11 +782,12 @@
               }
             }
             if (!moved) {
+              // Drop on desktop: finalize position
               const deskRect = desktop.getBoundingClientRect();
               let newX = (iconData._tempX !== undefined) ? iconData._tempX : origX;
               let newY = (iconData._tempY !== undefined) ? iconData._tempY : origY;
-              newX = Math.max(0, Math.min(newX, deskRect.width - 64));
-              newY = Math.max(0, Math.min(newY, deskRect.height - 72));
+              newX = Math.max(0, Math.min(newX, deskRect.width - 60));
+              newY = Math.max(0, Math.min(newY, deskRect.height - 68));
               iconData.x = newX;
               iconData.y = newY;
               if (iconData.folderId) {
@@ -739,9 +802,12 @@
                 refreshFolderWindows();
                 applyFilterAndSort();
               } else {
+                // Update DOM position
+                element.style.left = iconData.x + 'px';
+                element.style.top = iconData.y + 'px';
                 saveState();
                 adjustDesktopHeight();
-                applyFilterAndSort(); // ensure filter still applied
+                applyFilterAndSort();
               }
             }
             delete iconData._tempX;
@@ -817,7 +883,7 @@
       }
 
       // --------------------------------------------------------------
-      // FOLDER WINDOW
+      // FOLDER WINDOW (unchanged)
       // --------------------------------------------------------------
       let folderWindows = [];
 
@@ -1049,7 +1115,7 @@
       }
 
       // --------------------------------------------------------------
-      // REGULAR APP WINDOW
+      // REGULAR APP WINDOW (unchanged)
       // --------------------------------------------------------------
       function createWindow(file, title, x, y, w, h, notes = '', tags = '', minimized = false, maximized = false) {
         const id = nextId++;
@@ -1073,8 +1139,9 @@
         if (existing) existing.remove();
         if (win.minimized) { updateTaskbar(); return; }
 
-        // Browser special handling
         if (win.file === 'browser') {
+          // ... same as before (browser window) - omitted for brevity but included in final code
+          // I'll keep the same code as previous version
           const div = document.createElement('div');
           div.className = 'window';
           if (win.maximized) div.classList.add('maximized');
@@ -1133,7 +1200,7 @@
           function navigate() { let url = urlInput.value.trim(); if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url; iframe.src = url; }
           goBtn.addEventListener('click', navigate);
           urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') navigate(); });
-          // attach common events manually (simplified)
+          // ... (events same)
           header.querySelector('.btn-minimize').addEventListener('click', (e) => { e.stopPropagation(); win.minimized = true; div.remove(); updateTaskbar(); saveState(); });
           header.querySelector('.btn-maximize').addEventListener('click', (e) => { e.stopPropagation(); win.maximized = !win.maximized; div.classList.toggle('maximized'); if (win.maximized) { win._prevRect = { x: win.x, y: win.y, w: win.w, h: win.h }; div.style.left = '0'; div.style.top = '0'; div.style.width = '100%'; div.style.height = '100%'; } else { const prev = win._prevRect || { x: 100, y: 60, w: 420, h: 320 }; win.x = prev.x; win.y = prev.y; win.w = prev.w; win.h = prev.h; div.style.left = win.x + 'px'; div.style.top = win.y + 'px'; div.style.width = win.w + 'px'; div.style.height = win.h + 'px'; } saveState(); });
           header.querySelector('.btn-close').addEventListener('click', (e) => { e.stopPropagation(); closeWindow(win.id); });
@@ -1228,7 +1295,7 @@
           return;
         }
 
-        // regular app (non-browser)
+        // regular app window
         const div = document.createElement('div');
         div.className = 'window';
         if (win.maximized) div.classList.add('maximized');
@@ -1441,7 +1508,6 @@
           div.addEventListener('click', () => { launchApp(app.file); appModal.classList.remove('active'); });
           appGridContainer.appendChild(div);
         });
-        // also add social apps
         socialApps.forEach(social => {
           const div = document.createElement('div');
           div.className = 'app-grid-item';
@@ -1496,7 +1562,6 @@
       // --------------------------------------------------------------
       openAllBtn.addEventListener('click', () => {
         appList.forEach(app => { if (!windows.some(w => w.file === app.file)) launchApp(app.file); });
-        // social apps not auto-opened to avoid popups
       });
       closeAllBtn.addEventListener('click', () => { windows.slice().forEach(w => closeWindow(w.id)); });
 
@@ -1519,17 +1584,12 @@
       }
 
       // --------------------------------------------------------------
-      // FILTER & SORT (applies filter, then sorts)
+      // FILTER & SORT
       // --------------------------------------------------------------
       function applyFilterAndSort() {
         if (_isRendering) return;
         const filter = filterInput.value.trim().toLowerCase();
-        // We apply filter to windows and icons, then call sortIconsAndWindows for sorting.
-        // But sortIconsAndWindows already does sorting and calls renderDesktopIcons.
-        // We also need to show/hide based on filter.
-        // We'll handle filter in the DOM directly (show/hide) and then sort.
 
-        // Filter windows
         document.querySelectorAll('.window').forEach(el => {
           const id = parseInt(el.dataset.id);
           const win = windows.find(w => w.id === id);
@@ -1542,7 +1602,6 @@
           el.style.display = show ? 'flex' : 'none';
         });
 
-        // Filter desktop icons
         document.querySelectorAll('.desktop-icon').forEach(el => {
           const iconId = el.dataset.iconId;
           const icon = desktopIcons.find(i => i.id === iconId);
@@ -1556,16 +1615,14 @@
                 show = tags.some(t => t.includes(filter));
               } else show = false;
             } else if (icon.type === 'file') show = icon.label.toLowerCase().includes(filter);
-            else show = true; // folders always visible
+            else show = true;
           }
           el.style.display = show ? 'flex' : 'none';
         });
 
-        // Now sort (which also re-renders icons)
         sortIconsAndWindows();
       }
 
-      // Attach filter and sort events
       filterInput.addEventListener('input', () => {
         applyFilterAndSort();
         clearFilterBtn.classList.toggle('show', filterInput.value.length > 0);
@@ -1727,12 +1784,11 @@
         await fetchAppList();
         if (!loaded) {
           appList.forEach((app, idx) => {
-            desktopIcons.push({ id: 'app_' + idx, type: 'app', label: app.file, file: app.file, x: 60 + (idx % 8) * 80, y: 30 + Math.floor(idx / 8) * 90, folderId: null });
+            desktopIcons.push({ id: 'app_' + idx, type: 'app', label: app.file, file: app.file, x: 60 + (idx % 8) * 68, y: 30 + Math.floor(idx / 8) * 76, folderId: null });
           });
-          // Add social apps as icons
           socialApps.forEach((social, idx) => {
             const id = 'social_' + idx;
-            desktopIcons.push({ id, type: 'app', label: social.desc, file: social.file, x: 60 + ((appList.length + idx) % 8) * 80, y: 30 + Math.floor((appList.length + idx) / 8) * 90, folderId: null });
+            desktopIcons.push({ id, type: 'app', label: social.desc, file: social.file, x: 60 + ((appList.length + idx) % 8) * 68, y: 30 + Math.floor((appList.length + idx) / 8) * 76, folderId: null });
           });
           const folder = createFolder('My Favorites', '#ff6a8a');
           const favApps = ['CREATORBOARD', 'MUSICSHELL0', 'COSMICSHELL0'];
@@ -1754,7 +1810,7 @@
           renderDesktopIcons();
           applyFilterAndSort();
         }
-        console.log('✨ Ai Desktop v11 (Stable) ready!');
+        console.log('✨ Ai Desktop v12 (iOS drag, scroll fixed) ready!');
         console.log(`📦 ${appList.length} apps loaded from GitHub.`);
       }
 
