@@ -1,0 +1,1632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>NeonVerse AI — Immersive 3D Workspace</title>
+    <style>
+        :root {
+            --bg: #050510;
+            --glass: rgba(15, 15, 35, 0.55);
+            --glass-border: rgba(120, 180, 255, 0.15);
+            --glass-glow: rgba(100, 150, 255, 0.2);
+            --text: #e0e8ff;
+            --text-dim: #8899cc;
+            --cyan: #00f5ff;
+            --pink: #ff4d8f;
+            --purple: #a855f7;
+            --blue: #3b82f6;
+            --green: #10b981;
+            --orange: #f97316;
+            --gold: #fbbf24;
+            --safe-top: env(safe-area-inset-top, 16px);
+            --safe-bottom: env(safe-area-inset-bottom, 16px);
+            --safe-left: env(safe-area-inset-left, 12px);
+            --safe-right: env(safe-area-inset-right, 12px);
+            --radius: 18px;
+            --touch-target: 48px;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            font-family: -apple-system, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+            color: var(--text);
+            position: fixed;
+            touch-action: none;
+            overscroll-behavior: none;
+            -webkit-font-smoothing: antialiased;
+        }
+        #three-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            touch-action: none;
+            pointer-events: auto;
+        }
+        .ui-overlay {
+            position: fixed;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .ui-overlay>* {
+            pointer-events: auto;
+        }
+        #top-bar {
+            top: var(--safe-top);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 6px 12px;
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px var(--glass-glow);
+        }
+        .mode-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-dim);
+            padding: 8px 14px;
+            border-radius: 24px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            min-height: 36px;
+            white-space: nowrap;
+            touch-action: manipulation;
+        }
+        .mode-btn.active {
+            background: linear-gradient(135deg, rgba(0, 245, 255, 0.2), rgba(168, 85, 247, 0.25));
+            border-color: rgba(0, 245, 255, 0.4);
+            color: #fff;
+            box-shadow: 0 0 16px rgba(0, 245, 255, 0.3);
+        }
+        .mode-btn:active {
+            transform: scale(0.94);
+        }
+        #bottom-hint {
+            bottom: calc(var(--safe-bottom) + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: var(--text-dim);
+            text-align: center;
+            letter-spacing: 0.4px;
+            opacity: 0.7;
+            transition: opacity 0.6s;
+            white-space: nowrap;
+            text-shadow: 0 0 12px rgba(100, 150, 255, 0.5);
+        }
+        .chat-panel {
+            position: fixed;
+            z-index: 50;
+            width: min(92vw, 420px);
+            max-height: 60vh;
+            background: var(--glass);
+            backdrop-filter: blur(28px) saturate(1.3);
+            -webkit-backdrop-filter: blur(28px) saturate(1.3);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 0 32px var(--glass-glow);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            pointer-events: auto;
+            transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s;
+        }
+        .chat-panel.hidden {
+            transform: translateY(30px) scale(0.95);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .chat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            flex-shrink: 0;
+            cursor: grab;
+        }
+        .chat-header:active {
+            cursor: grabbing;
+        }
+        .chat-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        .chat-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            box-shadow: 0 0 12px currentColor;
+            flex-shrink: 0;
+        }
+        .chat-close {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: var(--text);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            touch-action: manipulation;
+        }
+        .chat-close:active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 80px;
+            max-height: 38vh;
+            -webkit-overflow-scrolling: touch;
+        }
+        .chat-messages::-webkit-scrollbar {
+            width: 3px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+        .msg {
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 13px;
+            line-height: 1.5;
+            max-width: 85%;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            letter-spacing: 0.2px;
+        }
+        .msg.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, rgba(0, 245, 255, 0.18), rgba(168, 85, 247, 0.2));
+            border: 1px solid rgba(0, 245, 255, 0.25);
+            border-bottom-right-radius: 4px;
+            color: #fff;
+        }
+        .msg.ai {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom-left-radius: 4px;
+            color: var(--text);
+        }
+        .msg.loading {
+            font-style: italic;
+            color: var(--text-dim);
+            opacity: 0.7;
+        }
+        .chat-input-area {
+            display: flex;
+            gap: 8px;
+            padding: 10px 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            flex-shrink: 0;
+        }
+        .chat-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 10px 16px;
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+            min-height: 40px;
+            resize: none;
+            font-family: inherit;
+            touch-action: manipulation;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+        .chat-input:focus {
+            border-color: rgba(0, 245, 255, 0.4);
+            box-shadow: 0 0 12px rgba(0, 245, 255, 0.15);
+        }
+        .chat-send {
+            background: linear-gradient(135deg, #00c8e0, #a855f7);
+            border: none;
+            color: #fff;
+            border-radius: 20px;
+            padding: 10px 18px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            touch-action: manipulation;
+            min-height: 40px;
+            white-space: nowrap;
+        }
+        .chat-send:active {
+            transform: scale(0.93);
+            box-shadow: 0 0 20px rgba(0, 245, 255, 0.5);
+        }
+        .chat-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .settings-modal {
+            position: fixed;
+            z-index: 100;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(92vw, 480px);
+            background: var(--glass);
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 40px var(--glass-glow);
+            padding: 20px;
+            pointer-events: auto;
+            transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .settings-modal.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, -50%) scale(0.9);
+        }
+        .settings-modal h2 {
+            font-size: 18px;
+            margin-bottom: 14px;
+            letter-spacing: 0.5px;
+            text-align: center;
+            background: linear-gradient(135deg, #00f5ff, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .settings-group {
+            margin-bottom: 14px;
+        }
+        .settings-group label {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            display: block;
+            margin-bottom: 4px;
+        }
+        .settings-group input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 10px 14px;
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+            font-family: monospace;
+            user-select: text;
+            -webkit-user-select: text;
+            touch-action: manipulation;
+        }
+        .settings-group input:focus {
+            border-color: rgba(0, 245, 255, 0.4);
+        }
+        .settings-close {
+            display: block;
+            margin: 16px auto 0;
+            background: linear-gradient(135deg, #00c8e0, #a855f7);
+            border: none;
+            color: #fff;
+            border-radius: 24px;
+            padding: 12px 32px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            touch-action: manipulation;
+        }
+        .settings-close:active {
+            transform: scale(0.95);
+        }
+        .code-editor-overlay {
+            position: fixed;
+            z-index: 80;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 16, 0.92);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+            transition: opacity 0.4s, transform 0.4s;
+        }
+        .code-editor-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(40px);
+        }
+        .code-toolbar {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            padding: calc(var(--safe-top) + 8px) 14px 8px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            flex-shrink: 0;
+        }
+        .code-toolbar .mode-btn {
+            font-size: 11px;
+            padding: 6px 12px;
+            min-height: 32px;
+        }
+        .code-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            flex-direction: row;
+        }
+        .code-editor-textarea {
+            flex: 1;
+            background: rgba(10, 10, 25, 0.7);
+            border: none;
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            color: #c8e0ff;
+            font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            padding: 14px;
+            resize: none;
+            outline: none;
+            user-select: text;
+            -webkit-user-select: text;
+            touch-action: pan-y;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .code-preview-frame {
+            flex: 1;
+            background: #fff;
+            border: none;
+            min-width: 0;
+            min-height: 0;
+        }
+        @media (max-width: 600px) {
+            .code-body {
+                flex-direction: column;
+            }
+            .code-editor-textarea {
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                max-height: 40%;
+            }
+            .code-preview-frame {
+                max-height: 60%;
+            }
+            .chat-panel {
+                width: 96vw;
+                max-height: 50vh;
+                bottom: calc(var(--safe-bottom) + 50px) !important;
+                top: auto !important;
+                left: 2vw !important;
+                right: auto !important;
+            }
+            #top-bar {
+                gap: 4px;
+                padding: 4px 8px;
+            }
+            .mode-btn {
+                padding: 6px 10px;
+                font-size: 10px;
+                min-height: 32px;
+            }
+        }
+        .float-indicator {
+            position: fixed;
+            z-index: 20;
+            bottom: calc(var(--safe-bottom) + 50px);
+            right: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .float-indicator span {
+            font-size: 10px;
+            color: var(--text-dim);
+            text-align: right;
+            letter-spacing: 0.3px;
+            opacity: 0.6;
+        }
+        .glow-pulse {
+            animation: pulse-glow 2.5s ease-in-out infinite;
+        }
+        @keyframes pulse-glow {
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(0, 245, 255, 0.2);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(168, 85, 247, 0.4);
+            }
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .orb-label {
+            position: fixed;
+            z-index: 5;
+            pointer-events: none;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            text-shadow: 0 0 16px currentColor, 0 0 4px rgba(0, 0, 0, 0.8);
+            opacity: 0.85;
+            transition: opacity 0.3s;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="three-canvas"></canvas>
+
+    <!-- Top Navigation -->
+    <div class="ui-overlay" id="top-bar">
+        <button class="mode-btn active" data-mode="orbit" aria-label="Orbit mode">🔄 Orbit</button>
+        <button class="mode-btn" data-mode="gravity" aria-label="Gravity mode">🌌 Gravity</button>
+        <button class="mode-btn" data-mode="float" aria-label="Float mode">🕊️ Float</button>
+        <button class="mode-btn" data-mode="code" aria-label="Code editor">💻 Code</button>
+        <button class="mode-btn" id="btn-cinema" aria-label="Cinematic mode">🎬 Cinema</button>
+        <button class="mode-btn" id="btn-settings" aria-label="Settings">⚙️</button>
+    </div>
+
+    <div class="ui-overlay" id="bottom-hint">Drag to rotate • Pinch to zoom • Tap orbs to chat</div>
+
+    <!-- Chat Panels (created dynamically) -->
+    <div id="chat-container"></div>
+
+    <!-- Settings Modal -->
+    <div class="settings-modal hidden" id="settings-modal">
+        <h2>⚙️ API Settings</h2>
+        <div class="settings-group">
+            <label>OpenAI API Key (GPT)</label>
+            <input type="password" id="api-openai" placeholder="sk-..." autocomplete="off">
+        </div>
+        <div class="settings-group">
+            <label>Google Gemini API Key 1</label>
+            <input type="password" id="api-gemini1" placeholder="AIza..." autocomplete="off">
+        </div>
+        <div class="settings-group">
+            <label>Google Gemini API Key 2</label>
+            <input type="password" id="api-gemini2" placeholder="AIza..." autocomplete="off">
+        </div>
+        <div class="settings-group">
+            <label>DeepSeek API Key</label>
+            <input type="password" id="api-deepseek" placeholder="sk-..." autocomplete="off">
+        </div>
+        <button class="settings-close" id="btn-settings-close">✓ Save & Close</button>
+    </div>
+
+    <!-- Code Editor Overlay -->
+    <div class="code-editor-overlay hidden" id="code-editor">
+        <div class="code-toolbar">
+            <button class="mode-btn active" id="code-tab-html">HTML</button>
+            <button class="mode-btn" id="code-tab-css">CSS</button>
+            <button class="mode-btn" id="code-tab-js">JS</button>
+            <button class="mode-btn" id="btn-code-preview">▶ Preview</button>
+            <button class="mode-btn" id="btn-code-save">💾 Save</button>
+            <button class="mode-btn" id="btn-code-close">✕ Close</button>
+        </div>
+        <div class="code-body">
+            <textarea class="code-editor-textarea" id="code-textarea" spellcheck="false" placeholder="Write your HTML/CSS/JS here..."></textarea>
+            <iframe class="code-preview-frame" id="code-preview-frame" sandbox="allow-scripts allow-modals allow-forms allow-popups"></iframe>
+        </div>
+    </div>
+
+    <div class="float-indicator" id="float-indicator">
+        <span>Float Mode</span>
+        <span>Drag to look</span>
+        <span>Pinch to move</span>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
+    </script>
+    <script>
+        (function() {
+            // ============ CONFIGURATION ============
+            const AI_CONFIG = {
+                gpt: { name: 'ChatGPT', color: '#10b981', emoji: '🤖', apiKeyKey: 'nv_openai_key',
+                    endpoint: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini',
+                    buildBody: (msg, key) => ({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: msg }],
+                        max_tokens: 1000, temperature: 0.7 }),
+                    headers: (key) => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }),
+                    parseResponse: (data) => data.choices && data.choices[0] && data.choices[0].message.content ||
+                        'No response' },
+                gemini1: { name: 'Gemini 1', color: '#3b82f6', emoji: '💎', apiKeyKey: 'nv_gemini1_key',
+                    endpoint: (key) =>
+                    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' +
+                    key, model: 'gemini-1.5-flash', buildBody: (msg, key) => ({ contents: [{ parts: [{ text: msg }] }] }),
+                    headers: (key) => ({ 'Content-Type': 'application/json' }),
+                    parseResponse: (data) => data.candidates && data.candidates[0] && data.candidates[0].content &&
+                        data.candidates[0].content.parts && data.candidates[0].content.parts[0].text || 'No response' },
+                gemini2: { name: 'Gemini 2', color: '#a855f7', emoji: '🔮', apiKeyKey: 'nv_gemini2_key',
+                    endpoint: (key) =>
+                    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' +
+                    key, model: 'gemini-1.5-flash', buildBody: (msg, key) => ({ contents: [{ parts: [{ text: msg }] }] }),
+                    headers: (key) => ({ 'Content-Type': 'application/json' }),
+                    parseResponse: (data) => data.candidates && data.candidates[0] && data.candidates[0].content &&
+                        data.candidates[0].content.parts && data.candidates[0].content.parts[0].text || 'No response' },
+                deepseek: { name: 'DeepSeek', color: '#f97316', emoji: '🐋', apiKeyKey: 'nv_deepseek_key',
+                    endpoint: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat',
+                    buildBody: (msg, key) => ({ model: 'deepseek-chat', messages: [{ role: 'user', content: msg }],
+                        max_tokens: 1000, temperature: 0.7 }),
+                    headers: (key) => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }),
+                    parseResponse: (data) => data.choices && data.choices[0] && data.choices[0].message.content ||
+                        'No response' }
+            };
+
+            // ============ STATE ============
+            let currentMode = 'orbit';
+            let cameraTheta = 0.8;
+            let cameraPhi = 1.2;
+            let cameraRadius = 8;
+            let targetCameraTheta = 0.8;
+            let targetCameraPhi = 1.2;
+            let targetCameraRadius = 8;
+            let isDragging = false;
+            let lastTouchX = 0;
+            let lastTouchY = 0;
+            let pinchStartDist = 0;
+            let pinchStartRadius = 8;
+            let floatModeActive = false;
+            let floatVelocity = { x: 0, y: 0, z: 0 };
+            let gravityWells = [];
+            let particles = [];
+            let particleSystem = null;
+            let particleGeometry = null;
+            let particlePositions = null;
+            let particleVelocities = [];
+            let audioCtx = null;
+            let audioNodes = [];
+            let orbMeshes = {};
+            let orbLabels = {};
+            let chatPanels = {};
+            let activeChat = null;
+            let isCinematic = false;
+            let cinematicTimer = 0;
+            let clock = new THREE.Clock();
+
+            // ============ THREE.JS SETUP ============
+            const canvas = document.getElementById('three-canvas');
+            const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true,
+                powerPreference: 'high-performance' });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+
+            const scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x050510, 0.035);
+
+            const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 8);
+
+            // ============ LIGHTS ============
+            const ambientLight = new THREE.AmbientLight(0x223355, 1.2);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            directionalLight.position.set(5, 8, 5);
+            scene.add(directionalLight);
+
+            const pointLight1 = new THREE.PointLight(0x00f5ff, 2, 15);
+            pointLight1.position.set(3, 2, 3);
+            scene.add(pointLight1);
+
+            const pointLight2 = new THREE.PointLight(0xff4d8f, 2, 15);
+            pointLight2.position.set(-3, -1, 2);
+            scene.add(pointLight2);
+
+            const pointLight3 = new THREE.PointLight(0xa855f7, 2, 15);
+            pointLight3.position.set(0, 4, -2);
+            scene.add(pointLight3);
+
+            // ============ MATERIALS ============
+            function createGlowMaterial(color, intensity = 1) {
+                return new THREE.MeshStandardMaterial({
+                    color: color,
+                    emissive: color,
+                    emissiveIntensity: intensity * 0.6,
+                    roughness: 0.15,
+                    metalness: 0.2,
+                });
+            }
+
+            function createGlassMaterial(color, opacity = 0.25) {
+                return new THREE.MeshPhysicalMaterial({
+                    color: color,
+                    metalness: 0.1,
+                    roughness: 0.05,
+                    transparent: true,
+                    opacity: opacity,
+                    clearcoat: 1.0,
+                    clearcoatRoughness: 0.1,
+                    envMapIntensity: 1.5,
+                    emissive: color,
+                    emissiveIntensity: 0.2,
+                });
+            }
+
+            // ============ SCENE OBJECTS ============
+            // Central atom sphere (glass)
+            const centerSphereGeom = new THREE.SphereGeometry(1.2, 64, 64);
+            const centerSphereMat = createGlassMaterial(0xaaccff, 0.22);
+            const centerSphere = new THREE.Mesh(centerSphereGeom, centerSphereMat);
+            scene.add(centerSphere);
+
+            // Wireframe overlay on center sphere
+            const wireframeGeom = new THREE.SphereGeometry(1.21, 32, 32);
+            const wireframeMat = new THREE.MeshBasicMaterial({ color: 0x4488ff, wireframe: true, transparent: true,
+                opacity: 0.15 });
+            const wireframeSphere = new THREE.Mesh(wireframeGeom, wireframeMat);
+            scene.add(wireframeSphere);
+
+            // Orbital rings (Bohr model style)
+            const ringGeoms = [
+                { radius: 2.8, tube: 0.03, color: 0x00f5ff, opacity: 0.3 },
+                { radius: 3.8, tube: 0.025, color: 0xa855f7, opacity: 0.25 },
+                { radius: 4.8, tube: 0.02, color: 0xff4d8f, opacity: 0.2 },
+                { radius: 2.3, tube: 0.035, color: 0x10b981, opacity: 0.35 },
+            ];
+            const rings = [];
+            ringGeoms.forEach((rg, i) => {
+                const torusGeom = new THREE.TorusGeometry(rg.radius, rg.tube, 32, 128);
+                const torusMat = new THREE.MeshBasicMaterial({ color: rg.color, transparent: true, opacity: rg
+                        .opacity });
+                const torus = new THREE.Mesh(torusGeom, torusMat);
+                torus.rotation.x = Math.PI / 2 + (i * 0.4);
+                torus.rotation.y = i * 0.7;
+                scene.add(torus);
+                rings.push(torus);
+            });
+
+            // AI Orbs
+            const orbData = [
+                { id: 'gpt', config: AI_CONFIG.gpt, radius: 0.45, orbitRadius: 2.8, orbitSpeed: 0.4, orbitOffset: 0,
+                    color: 0x10b981, emissiveIntensity: 0.9 },
+                { id: 'gemini1', config: AI_CONFIG.gemini1, radius: 0.45, orbitRadius: 3.8, orbitSpeed: 0.3,
+                    orbitOffset: Math.PI * 0.5, color: 0x3b82f6, emissiveIntensity: 0.9 },
+                { id: 'gemini2', config: AI_CONFIG.gemini2, radius: 0.45, orbitRadius: 4.8, orbitSpeed: 0.25,
+                    orbitOffset: Math.PI * 1.2, color: 0xa855f7, emissiveIntensity: 0.9 },
+                { id: 'deepseek', config: AI_CONFIG.deepseek, radius: 0.45, orbitRadius: 2.3, orbitSpeed: 0.5,
+                    orbitOffset: Math.PI * 1.8, color: 0xf97316, emissiveIntensity: 0.9 },
+            ];
+
+            orbData.forEach(data => {
+                const geom = new THREE.SphereGeometry(data.radius, 48, 48);
+                const mat = createGlowMaterial(data.color, data.emissiveIntensity);
+                const mesh = new THREE.Mesh(geom, mat);
+                mesh.userData = { orbId: data.id, config: data.config, orbitRadius: data.orbitRadius,
+                    orbitSpeed: data.orbitSpeed, orbitOffset: data.orbitOffset };
+                scene.add(mesh);
+                orbMeshes[data.id] = mesh;
+
+                // Glow sprite
+                const spriteCanvas = document.createElement('canvas');
+                spriteCanvas.width = 128;
+                spriteCanvas.height = 128;
+                const ctx = spriteCanvas.getContext('2d');
+                const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+                const hexColor = '#' + data.color.toString(16).padStart(6, '0');
+                grad.addColorStop(0, hexColor + 'cc');
+                grad.addColorStop(0.3, hexColor + '55');
+                grad.addColorStop(1, hexColor + '00');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, 128, 128);
+                const spriteTex = new THREE.CanvasTexture(spriteCanvas);
+                const spriteMat = new THREE.SpriteMaterial({ map: spriteTex, transparent: true, blending: THREE
+                        .AdditiveBlending, depthWrite: false });
+                const sprite = new THREE.Sprite(spriteMat);
+                sprite.scale.set(3.5, 3.5, 1);
+                mesh.add(sprite);
+            });
+
+            // Particle system for background
+            const particleCount = 800;
+            particleGeometry = new THREE.BufferGeometry();
+            particlePositions = new Float32Array(particleCount * 3);
+            const particleSizes = new Float32Array(particleCount);
+            const particleColors = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                const r = 6 + Math.random() * 20;
+                particlePositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                particlePositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                particlePositions[i * 3 + 2] = r * Math.cos(phi);
+                particleSizes[i] = Math.random() * 3 + 0.5;
+                const colChoice = Math.random();
+                if (colChoice < 0.33) {
+                    particleColors[i * 3] = 0.4;
+                    particleColors[i * 3 + 1] = 0.96;
+                    particleColors[i * 3 + 2] = 1;
+                } else if (colChoice < 0.66) {
+                    particleColors[i * 3] = 1;
+                    particleColors[i * 3 + 1] = 0.3;
+                    particleColors[i * 3 + 2] = 0.56;
+                } else {
+                    particleColors[i * 3] = 0.66;
+                    particleColors[i * 3 + 1] = 0.33;
+                    particleColors[i * 3 + 2] = 0.97;
+                }
+            }
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+            particleGeometry.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
+            particleGeometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+
+            const particleMat = new THREE.PointsMaterial({
+                size: 0.06,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                sizeAttenuation: true,
+            });
+            particleSystem = new THREE.Points(particleGeometry, particleMat);
+            scene.add(particleSystem);
+            particleVelocities = new Array(particleCount).fill(null).map(() => ({
+                x: (Math.random() - 0.5) * 0.004,
+                y: (Math.random() - 0.5) * 0.004,
+                z: (Math.random() - 0.5) * 0.004,
+            }));
+
+            // Gravity simulation particles
+            const gravityParticleCount = 600;
+            const gravityParticleGeom = new THREE.BufferGeometry();
+            const gravityPositions = new Float32Array(gravityParticleCount * 3);
+            const gravityColorsArr = new Float32Array(gravityParticleCount * 3);
+            for (let i = 0; i < gravityParticleCount; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                const r = 2 + Math.random() * 6;
+                gravityPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                gravityPositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                gravityPositions[i * 3 + 2] = r * Math.cos(phi);
+                const t = Math.random();
+                gravityColorsArr[i * 3] = 0.4 + t * 0.5;
+                gravityColorsArr[i * 3 + 1] = 0.3 + t * 0.4;
+                gravityColorsArr[i * 3 + 2] = 0.9 + t * 0.1;
+            }
+            gravityParticleGeom.setAttribute('position', new THREE.BufferAttribute(gravityPositions, 3));
+            gravityParticleGeom.setAttribute('color', new THREE.BufferAttribute(gravityColorsArr, 3));
+            const gravityParticleMat = new THREE.PointsMaterial({
+                size: 0.05,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.7,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                sizeAttenuation: true,
+            });
+            const gravityParticleSystem = new THREE.Points(gravityParticleGeom, gravityParticleMat);
+            gravityParticleSystem.visible = false;
+            scene.add(gravityParticleSystem);
+            const gravityParticleVelocities = new Array(gravityParticleCount).fill(null).map(() => ({ x: 0, y: 0, z: 0 }));
+            const gravityParticleBasePositions = new Float32Array(gravityPositions);
+            gravityWells = [];
+
+            // Stars background
+            const starGeom = new THREE.BufferGeometry();
+            const starCount = 600;
+            const starPositions = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount; i++) {
+                starPositions[i * 3] = (Math.random() - 0.5) * 80;
+                starPositions[i * 3 + 1] = (Math.random() - 0.5) * 80;
+                starPositions[i * 3 + 2] = (Math.random() - 0.5) * 80;
+            }
+            starGeom.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+            const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.04, transparent: true, opacity: 0.5,
+                blending: THREE.AdditiveBlending, depthWrite: false });
+            const stars = new THREE.Points(starGeom, starMat);
+            scene.add(stars);
+
+            // ============ TOUCH CONTROLS ============
+            canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+            canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+            canvas.addEventListener('touchcancel', onTouchEnd, { passive: false });
+
+            // Mouse controls for desktop testing
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('wheel', onWheel, { passive: false });
+
+            function onTouchStart(e) {
+                e.preventDefault();
+                if (isCinematic) return;
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
+                } else if (e.touches.length === 2) {
+                    isDragging = false;
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    pinchStartDist = Math.sqrt(dx * dx + dy * dy);
+                    pinchStartRadius = targetCameraRadius;
+                }
+            }
+
+            function onTouchMove(e) {
+                e.preventDefault();
+                if (isCinematic) return;
+                if (e.touches.length === 1 && isDragging) {
+                    const dx = e.touches[0].clientX - lastTouchX;
+                    const dy = e.touches[0].clientY - lastTouchY;
+                    if (currentMode === 'float' && floatModeActive) {
+                        floatVelocity.x += dx * 0.003;
+                        floatVelocity.y -= dy * 0.003;
+                    } else if (currentMode === 'gravity') {
+                        targetCameraTheta -= dx * 0.005;
+                        targetCameraPhi -= dy * 0.005;
+                    } else {
+                        targetCameraTheta -= dx * 0.005;
+                        targetCameraPhi -= dy * 0.005;
+                    }
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
+                } else if (e.touches.length === 2) {
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const scale = pinchStartDist / dist;
+                    targetCameraRadius = Math.max(3, Math.min(20, pinchStartRadius * scale));
+                }
+            }
+
+            function onTouchEnd(e) {
+                e.preventDefault();
+                if (e.touches.length === 0) {
+                    isDragging = false;
+                } else if (e.touches.length === 1) {
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
+                }
+            }
+
+            function onMouseDown(e) {
+                isDragging = true;
+                lastTouchX = e.clientX;
+                lastTouchY = e.clientY;
+            }
+
+            function onMouseMove(e) {
+                if (!isDragging) return;
+                const dx = e.clientX - lastTouchX;
+                const dy = e.clientY - lastTouchY;
+                targetCameraTheta -= dx * 0.005;
+                targetCameraPhi -= dy * 0.005;
+                lastTouchX = e.clientX;
+                lastTouchY = e.clientY;
+            }
+
+            function onMouseUp(e) { isDragging = false; }
+
+            function onWheel(e) {
+                e.preventDefault();
+                targetCameraRadius = Math.max(3, Math.min(20, targetCameraRadius + e.deltaY * 0.005));
+            }
+
+            // ============ TAP DETECTION ON ORBS ============
+            let tapStartTime = 0;
+            let tapStartPos = { x: 0, y: 0 };
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    tapStartTime = Date.now();
+                    tapStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+            }, { passive: true });
+            canvas.addEventListener('touchend', (e) => {
+                if (e.changedTouches.length === 1) {
+                    const dt = Date.now() - tapStartTime;
+                    const dx = Math.abs(e.changedTouches[0].clientX - tapStartPos.x);
+                    const dy = Math.abs(e.changedTouches[0].clientY - tapStartPos.y);
+                    if (dt < 300 && dx < 15 && dy < 15) {
+                        handleTap(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+                    }
+                }
+            }, { passive: true });
+
+            function handleTap(screenX, screenY) {
+                if (isCinematic) return;
+                if (currentMode === 'gravity') {
+                    // Place a gravity well at the tap position
+                    placeGravityWell(screenX, screenY);
+                    return;
+                }
+                if (currentMode === 'float') {
+                    // No specific action in float mode
+                    return;
+                }
+                if (currentMode === 'orbit') {
+                    // Check if tapped on an orb
+                    const raycaster = new THREE.Raycaster();
+                    const mouse = new THREE.Vector2(
+                        (screenX / window.innerWidth) * 2 - 1,
+                        -(screenY / window.innerHeight) * 2 + 1
+                    );
+                    raycaster.setFromCamera(mouse, camera);
+                    const orbMeshesArray = Object.values(orbMeshes);
+                    const intersects = raycaster.intersectObjects(orbMeshesArray);
+                    if (intersects.length > 0) {
+                        const orbId = intersects[0].object.userData.orbId;
+                        openChatPanel(orbId);
+                    }
+                }
+            }
+
+            function placeGravityWell(screenX, screenY) {
+                const raycaster = new THREE.Raycaster();
+                const mouse = new THREE.Vector2(
+                    (screenX / window.innerWidth) * 2 - 1,
+                    -(screenY / window.innerHeight) * 2 + 1
+                );
+                raycaster.setFromCamera(mouse, camera);
+                const dir = raycaster.ray.direction.clone();
+                const origin = raycaster.ray.origin.clone();
+                const t = -origin.dot(new THREE.Vector3(0, 0, 1)) / (dir.dot(new THREE.Vector3(0, 0, 1)) || 0.001);
+                const point = origin.clone().add(dir.clone().multiplyScalar(Math.max(0.5, t)));
+                const well = {
+                    position: new THREE.Vector3(point.x, point.y, point.z),
+                    strength: 0.06 + Math.random() * 0.04,
+                    radius: 1.5 + Math.random() * 1.5,
+                    color: new THREE.Color().setHSL(Math.random() * 0.3 + 0.55, 0.9, 0.6),
+                    mesh: null,
+                };
+                const wellGeom = new THREE.SphereGeometry(0.2, 16, 16);
+                const wellMat = new THREE.MeshBasicMaterial({ color: well.color, transparent: true, opacity: 0.8,
+                    blending: THREE.AdditiveBlending });
+                well.mesh = new THREE.Mesh(wellGeom, wellMat);
+                well.mesh.position.copy(well.position);
+                scene.add(well.mesh);
+                gravityWells.push(well);
+                if (gravityWells.length > 8) {
+                    const oldWell = gravityWells.shift();
+                    if (oldWell.mesh) scene.remove(oldWell.mesh);
+                }
+                playGravityTone();
+            }
+
+            // ============ CHAT SYSTEM ============
+            function openChatPanel(orbId) {
+                const data = orbData.find(d => d.id === orbId);
+                if (!data) return;
+                if (activeChat === orbId && chatPanels[orbId] && !chatPanels[orbId].classList.contains('hidden')) {
+                    closeChatPanel(orbId);
+                    return;
+                }
+                // Close other panels
+                Object.keys(chatPanels).forEach(id => {
+                    if (id !== orbId && chatPanels[id]) chatPanels[id].classList.add('hidden');
+                });
+                activeChat = orbId;
+                if (!chatPanels[orbId]) {
+                    chatPanels[orbId] = createChatPanelDOM(orbId, data);
+                } else {
+                    chatPanels[orbId].classList.remove('hidden');
+                }
+                // Position panel
+                positionChatPanel(orbId);
+                playOrbTone(data.color);
+            }
+
+            function closeChatPanel(orbId) {
+                if (chatPanels[orbId]) {
+                    chatPanels[orbId].classList.add('hidden');
+                }
+                if (activeChat === orbId) activeChat = null;
+            }
+
+            function positionChatPanel(orbId) {
+                const panel = chatPanels[orbId];
+                if (!panel) return;
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
+                const panelW = Math.min(vw * 0.92, 420);
+                const panelH = Math.min(vh * 0.5, 380);
+                const safeBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom')
+                    .replace('px', '') || '0');
+                const topBarHeight = 60;
+                const gap = 12;
+                panel.style.width = panelW + 'px';
+                panel.style.left = ((vw - panelW) / 2) + 'px';
+                panel.style.bottom = (safeBottom + gap) + 'px';
+                panel.style.top = 'auto';
+                panel.style.maxHeight = panelH + 'px';
+                panel.classList.remove('hidden');
+                panel.classList.add('fade-in');
+            }
+
+            function createChatPanelDOM(orbId, data) {
+                const container = document.getElementById('chat-container');
+                const panel = document.createElement('div');
+                panel.className = 'chat-panel hidden';
+                panel.dataset.orbId = orbId;
+                const colorHex = '#' + data.color.toString(16).padStart(6, '0');
+                panel.innerHTML = `
+                    <div class="chat-header" id="chat-header-${orbId}">
+                        <div class="chat-title">
+                            <span class="chat-dot" style="color:${colorHex};background:${colorHex};box-shadow:0 0 12px ${colorHex};"></span>
+                            ${data.config.emoji} ${data.config.name}
+                        </div>
+                        <button class="chat-close" data-orb-id="${orbId}" aria-label="Close">✕</button>
+                    </div>
+                    <div class="chat-messages" id="chat-msgs-${orbId}">
+                        <div class="msg ai">Hello! I'm ${data.config.name}. How can I help you today?</div>
+                    </div>
+                    <div class="chat-input-area">
+                        <textarea class="chat-input" id="chat-input-${orbId}" placeholder="Message..." rows="1"></textarea>
+                        <button class="chat-send" id="chat-send-${orbId}" data-orb-id="${orbId}">Send</button>
+                    </div>
+                `;
+                container.appendChild(panel);
+
+                // Event listeners
+                panel.querySelector('.chat-close').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    closeChatPanel(orbId);
+                });
+                panel.querySelector('.chat-send').addEventListener('click', () => {
+                    sendChatMessage(orbId);
+                });
+                panel.querySelector('.chat-input').addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendChatMessage(orbId);
+                    }
+                });
+                // Auto-resize textarea
+                panel.querySelector('.chat-input').addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+                });
+                // Draggable
+                const header = panel.querySelector('.chat-header');
+                let dragOffsetX = 0;
+                let dragOffsetY = 0;
+                let isPanelDragging = false;
+                header.addEventListener('touchstart', (e) => {
+                    if (e.target.closest('.chat-close')) return;
+                    isPanelDragging = true;
+                    const rect = panel.getBoundingClientRect();
+                    dragOffsetX = e.touches[0].clientX - rect.left;
+                    dragOffsetY = e.touches[0].clientY - rect.top;
+                    header.style.cursor = 'grabbing';
+                }, { passive: true });
+                header.addEventListener('touchmove', (e) => {
+                    if (!isPanelDragging) return;
+                    e.preventDefault();
+                    const x = e.touches[0].clientX - dragOffsetX;
+                    const y = e.touches[0].clientY - dragOffsetY;
+                    panel.style.left = Math.max(0, Math.min(window.innerWidth - 80, x)) + 'px';
+                    panel.style.top = y + 'px';
+                    panel.style.bottom = 'auto';
+                }, { passive: false });
+                header.addEventListener('touchend', () => {
+                    isPanelDragging = false;
+                    header.style.cursor = 'grab';
+                }, { passive: true });
+
+                return panel;
+            }
+
+            async function sendChatMessage(orbId) {
+                const data = orbData.find(d => d.id === orbId);
+                if (!data) return;
+                const input = document.getElementById('chat-input-' + orbId);
+                const msgsDiv = document.getElementById('chat-msgs-' + orbId);
+                const sendBtn = document.getElementById('chat-send-' + orbId);
+                if (!input || !msgsDiv || !sendBtn) return;
+                const text = input.value.trim();
+                if (!text) return;
+
+                const apiKey = localStorage.getItem(data.config.apiKeyKey) || '';
+                if (!apiKey) {
+                    msgsDiv.innerHTML +=
+                        `<div class="msg ai" style="color:#ff6b6b;">⚠️ Please set your API key in Settings (⚙️) first.</div>`;
+                    input.value = '';
+                    msgsDiv.scrollTop = msgsDiv.scrollHeight;
+                    return;
+                }
+
+                // Add user message
+                msgsDiv.innerHTML += `<div class="msg user">${escapeHtml(text)}</div>`;
+                input.value = '';
+                input.style.height = 'auto';
+                msgsDiv.scrollTop = msgsDiv.scrollHeight;
+
+                // Add loading message
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'msg ai loading';
+                loadingDiv.textContent = '✨ Thinking...';
+                msgsDiv.appendChild(loadingDiv);
+                msgsDiv.scrollTop = msgsDiv.scrollHeight;
+
+                sendBtn.disabled = true;
+                try {
+                    const config = data.config;
+                    const endpoint = typeof config.endpoint === 'function' ? config.endpoint(apiKey) : config
+                        .endpoint;
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: config.headers(apiKey),
+                        body: JSON.stringify(config.buildBody(text, apiKey)),
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                    }
+                    const result = await response.json();
+                    const aiText = config.parseResponse(result);
+                    loadingDiv.textContent = aiText;
+                    loadingDiv.classList.remove('loading');
+                    loadingDiv.classList.add('ai');
+                } catch (err) {
+                    loadingDiv.textContent = '⚠️ Error: ' + (err.message || 'Unknown error');
+                    loadingDiv.classList.remove('loading');
+                    loadingDiv.style.color = '#ff6b6b';
+                } finally {
+                    sendBtn.disabled = false;
+                    msgsDiv.scrollTop = msgsDiv.scrollHeight;
+                }
+            }
+
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            // ============ AUDIO SYSTEM ============
+            function initAudio() {
+                if (!audioCtx) {
+                    try {
+                        audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                    } catch (e) {
+                        console.warn('Web Audio not available');
+                    }
+                }
+            }
+
+            function playOrbTone(colorHex) {
+                initAudio();
+                if (!audioCtx) return;
+                try {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(520 + Math.random() * 200, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(780, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.5);
+                } catch (e) {}
+            }
+
+            function playGravityTone() {
+                initAudio();
+                if (!audioCtx) return;
+                try {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300 + Math.random() * 400, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.4);
+                } catch (e) {}
+            }
+
+            function playAmbientTone() {
+                initAudio();
+                if (!audioCtx) return;
+                if (audioNodes.length > 2) return;
+                try {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    const lfo = audioCtx.createOscillator();
+                    const lfoGain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(220 + Math.random() * 300, audioCtx.currentTime);
+                    lfo.type = 'sine';
+                    lfo.frequency.setValueAtTime(0.15 + Math.random() * 0.3, audioCtx.currentTime);
+                    lfoGain.gain.setValueAtTime(20, audioCtx.currentTime);
+                    lfo.connect(lfoGain);
+                    lfoGain.connect(osc.frequency);
+                    gain.gain.setValueAtTime(0.015, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.005, audioCtx.currentTime + 3);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(audioCtx.currentTime);
+                    lfo.start(audioCtx.currentTime);
+                    audioNodes.push({ osc, gain, lfo, lfoGain });
+                    setTimeout(() => {
+                        try {
+                            osc.stop();
+                            lfo.stop();
+                            audioNodes = audioNodes.filter(n => n.osc !== osc);
+                        } catch (e) {}
+                    }, 8000);
+                } catch (e) {}
+            }
+
+            // ============ MODE SWITCHING ============
+            const modeButtons = document.querySelectorAll('.mode-btn[data-mode]');
+            modeButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const mode = btn.dataset.mode;
+                    setMode(mode);
+                });
+                btn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    const mode = btn.dataset.mode;
+                    setMode(mode);
+                });
+            });
+
+            function setMode(mode) {
+                if (mode === 'code') {
+                    document.getElementById('code-editor').classList.remove('hidden');
+                    modeButtons.forEach(b => b.classList.remove('active'));
+                    document.querySelector(`.mode-btn[data-mode="code"]`)?.classList.add('active');
+                    return;
+                }
+                document.getElementById('code-editor').classList.add('hidden');
+                currentMode = mode;
+                modeButtons.forEach(b => b.classList.remove('active'));
+                document.querySelector(`.mode-btn[data-mode="${mode}"]`)?.classList.add('active');
+                document.getElementById('float-indicator').style.opacity = mode === 'float' ? '1' : '0';
+                document.getElementById('bottom-hint').textContent =
+                    mode === 'orbit' ? 'Drag to rotate • Pinch to zoom • Tap orbs to chat' :
+                    mode === 'gravity' ? 'Tap anywhere to create gravity wells' :
+                    mode === 'float' ? 'Float freely • Drag to look • Pinch to move' : '';
+                if (mode === 'gravity') {
+                    gravityParticleSystem.visible = true;
+                } else {
+                    gravityParticleSystem.visible = false;
+                }
+                if (mode === 'float') {
+                    floatModeActive = true;
+                } else {
+                    floatModeActive = false;
+                }
+            }
+
+            // ============ CODE EDITOR ============
+            const codeTextarea = document.getElementById('code-textarea');
+            const codePreviewFrame = document.getElementById('code-preview-frame');
+            let currentCodeTab = 'html';
+            const codeStorage = {
+                html: localStorage.getItem('nv_code_html') || '<h1 style="color:#a855f7;font-family:sans-serif;">Hello NeonVerse!</h1>\n<p style="color:#00f5ff;">Edit this code and see the preview update.</p>',
+                css: localStorage.getItem('nv_code_css') || 'body { background:#0a0a1a; padding:20px; font-family:sans-serif; }',
+                js: localStorage.getItem('nv_code_js') || '// Your JavaScript here\nconsole.log("NeonVerse active!");',
+            };
+
+            function updateCodePreview() {
+                const html = codeStorage.html;
+                const css = codeStorage.css;
+                const js = codeStorage.js;
+                const fullHTML = `<!DOCTYPE html><html><head><style>${css}</style></head><body>${html}<script>${js}<\/script></body></html>`;
+                codePreviewFrame.srcdoc = fullHTML;
+            }
+
+            function switchCodeTab(tab) {
+                currentCodeTab = tab;
+                document.querySelectorAll('.code-toolbar .mode-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('code-tab-' + tab)?.classList.add('active');
+                codeTextarea.value = codeStorage[tab];
+                codeTextarea.placeholder = `Write ${tab.toUpperCase()} here...`;
+            }
+
+            document.getElementById('code-tab-html').addEventListener('click', () => switchCodeTab('html'));
+            document.getElementById('code-tab-css').addEventListener('click', () => switchCodeTab('css'));
+            document.getElementById('code-tab-js').addEventListener('click', () => switchCodeTab('js'));
+            document.getElementById('btn-code-preview').addEventListener('click', () => {
+                codeStorage[currentCodeTab] = codeTextarea.value;
+                updateCodePreview();
+                playOrbTone(0x00f5ff);
+            });
+            document.getElementById('btn-code-save').addEventListener('click', () => {
+                codeStorage[currentCodeTab] = codeTextarea.value;
+                localStorage.setItem('nv_code_' + currentCodeTab, codeStorage[currentCodeTab]);
+                updateCodePreview();
+                playOrbTone(0x10b981);
+                alert('✓ Saved to localStorage!');
+            });
+            document.getElementById('btn-code-close').addEventListener('click', () => {
+                codeStorage[currentCodeTab] = codeTextarea.value;
+                document.getElementById('code-editor').classList.add('hidden');
+                setMode('orbit');
+            });
+            codeTextarea.addEventListener('input', () => {
+                codeStorage[currentCodeTab] = codeTextarea.value;
+                updateCodePreview();
+            });
+
+            // Initialize code editor
+            switchCodeTab('html');
+            updateCodePreview();
+
+            // ============ SETTINGS ============
+            document.getElementById('btn-settings').addEventListener('click', () => {
+                document.getElementById('settings-modal').classList.remove('hidden');
+                document.getElementById('api-openai').value = localStorage.getItem('nv_openai_key') || '';
+                document.getElementById('api-gemini1').value = localStorage.getItem('nv_gemini1_key') || '';
+                document.getElementById('api-gemini2').value = localStorage.getItem('nv_gemini2_key') || '';
+                document.getElementById('api-deepseek').value = localStorage.getItem('nv_deepseek_key') || '';
+            });
+            document.getElementById('btn-settings-close').addEventListener('click', () => {
+                localStorage.setItem('nv_openai_key', document.getElementById('api-openai').value.trim());
+                localStorage.setItem('nv_gemini1_key', document.getElementById('api-gemini1').value.trim());
+                localStorage.setItem('nv_gemini2_key', document.getElementById('api-gemini2').value.trim());
+                localStorage.setItem('nv_deepseek_key', document.getElementById('api-deepseek').value.trim());
+                document.getElementById('settings-modal').classList.add('hidden');
+                playOrbTone(0xa855f7);
+            });
+
+            // ============ CINEMATIC MODE ============
+            document.getElementById('btn-cinema').addEventListener('click', () => {
+                isCinematic = !isCinematic;
+                if (isCinematic) {
+                    cinematicTimer = 0;
+                    document.getElementById('btn-cinema').classList.add('active');
+                    document.getElementById('bottom-hint').textContent = '🎬 Cinematic mode - enjoy the show...';
+                } else {
+                    document.getElementById('btn-cinema').classList.remove('active');
+                    document.getElementById('bottom-hint').textContent =
+                        'Drag to rotate • Pinch to zoom • Tap orbs to chat';
+                }
+            });
+
+            // ============ ANIMATION LOOP ============
+            function animate() {
+                requestAnimationFrame(animate);
+                const delta = clock.getDelta();
+                const time = clock.getElapsedTime();
+
+                // Smooth camera transitions
+                cameraTheta += (targetCameraTheta - cameraTheta) * 0.08;
+                cameraPhi += (targetCameraPhi - cameraPhi) * 0.08;
+                cameraRadius += (targetCameraRadius - cameraRadius) * 0.08;
+                cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi));
+
+                if (isCinematic) {
+                    cinematicTimer += delta;
+                    const t = cinematicTimer;
+                    targetCameraTheta = t * 0.3;
+                    targetCameraPhi = 1.2 + Math.sin(t * 0.4) * 0.6;
+                    targetCameraRadius = 6 + Math.sin(t * 0.7) * 2.5;
+                    if (t > 12) {
+                        isCinematic = false;
+                        document.getElementById('btn-cinema').classList.remove('active');
+                        document.getElementById('bottom-hint').textContent =
+                            'Drag to rotate • Pinch to zoom • Tap orbs to chat';
+                    }
+                }
+
+                if (floatModeActive && currentMode === 'float' && !isCinematic) {
+                    // Float mode: apply velocity with damping
+                    floatVelocity.x *= 0.97;
+                    floatVelocity.y *= 0.97;
+                    floatVelocity.z *= 0.97;
+                    targetCameraTheta += floatVelocity.x;
+                    targetCameraPhi += floatVelocity.y;
+                    targetCameraRadius += floatVelocity.z;
+                    targetCameraPhi = Math.max(0.15, Math.min(Math.PI - 0.15, targetCameraPhi));
+                    targetCameraRadius = Math.max(2, Math.min(25, targetCameraRadius));
+                }
+
+                const cx = cameraRadius * Math.sin(cameraPhi) * Math.cos(cameraTheta);
+                const cy = cameraRadius * Math.cos(cameraPhi);
+                const cz = cameraRadius * Math.sin(cameraPhi) * Math.sin(cameraTheta);
+                camera.position.set(cx, cy, cz);
+                camera.lookAt(0, 0, 0);
+
+                // Rotate center sphere
+                centerSphere.rotation.x += 0.0015;
+                centerSphere.rotation.y += 0.002;
+                wireframeSphere.rotation.x = centerSphere.rotation.x;
+                wireframeSphere.rotation.y = centerSphere.rotation.y;
+                wireframeSphere.rotation.z = centerSphere.rotation.z;
+
+                // Rotate rings
+                rings.forEach((ring, i) => {
+                    ring.rotation.z += 0.002 * (i % 2 === 0 ? 1 : -1);
+                    ring.rotation.x += 0.001 * (i + 1) * 0.5;
+                });
+
+                // Update AI orb positions
+                orbData.forEach(data => {
+                    const mesh = orbMeshes[data.id];
+                    if (mesh) {
+                        const angle = time * data.orbitSpeed + data.orbitOffset;
+                        const x = data.orbitRadius * Math.cos(angle);
+                        const z = data.orbitRadius * Math.sin(angle);
+                        const y = Math.sin(angle * 1.5) * 0.6;
+                        mesh.position.set(x, y, z);
+                        mesh.rotation.x += 0.01;
+                        mesh.rotation.y += 0.015;
+                        // Pulse glow
+                        const pulse = 1 + Math.sin(time * 2 + data.orbitOffset) * 0.15;
+                        mesh.scale.setScalar(pulse);
+                    }
+                });
+
+                // Update background particles
+                const posArr = particleGeometry.attributes.position.array;
+                for (let i = 0; i < particleCount; i++) {
+                    posArr[i * 3] += particleVelocities[i].x;
+                    posArr[i * 3 + 1] += particleVelocities[i].y;
+                    posArr[i * 3 + 2] += particleVelocities[i].z;
+                    // Wrap around
+                    if (Math.abs(posArr[i * 3]) > 30) particleVelocities[i].x *= -1;
+                    if (Math.abs(posArr[i * 3 + 1]) > 30) particleVelocities[i].y *= -1;
+                    if (Math.abs(posArr[i * 3 + 2]) > 30) particleVelocities[i].z *= -1;
+                }
+                particleGeometry.attributes.position.needsUpdate = true;
+                particleSystem.rotation.y += 0.0003;
+                particleSystem.rotation.x += 0.0002;
+
+                // Stars rotation
+                stars.rotation.y += 0.0001;
+
+                // Update gravity simulation
+                if (currentMode === 'gravity' && gravityWells.length > 0) {
+                    const gPos = gravityParticleSystem.geometry.attributes.position.array;
+                    for (let i = 0; i < gravityParticleCount; i++) {
+                        const px = gPos[i * 3];
+                        const py = gPos[i * 3 + 1];
+                        const pz = gPos[i * 3 + 2];
+                        let totalForceX = 0,
+                            totalForceY = 0,
+                            totalForceZ = 0;
+                        for (const well of gravityWells) {
+                            const dx = well.position.x - px;
+                            const dy = well.position.y - py;
+                            const dz = well.position.z - pz;
+                            const distSq = dx * dx + dy * dy + dz * dz;
+                            const dist = Math.sqrt(distSq) || 0.001;
+                            const force = well.strength / (distSq + 0.5);
+                            totalForceX += dx / dist * force;
+                            totalForceY += dy / dist * force;
+                            totalForceZ += dz / dist * force;
+                        }
+                        gravityParticleVelocities[i].x += totalForceX;
+                        gravityParticleVelocities[i].y += totalForceY;
+                        gravityParticleVelocities[i].z += totalForceZ;
+                        gravityParticleVelocities[i].x *= 0.97;
+                        gravityParticleVelocities[i].y *= 0.97;
+                        gravityParticleVelocities[i].z *= 0.97;
+                        gPos[i * 3] += gravityParticleVelocities[i].x;
+                        gPos[i * 3 + 1] += gravityParticleVelocities[i].y;
+                        gPos[i * 3 + 2] += gravityParticleVelocities[i].z;
+                        // Reset if too far
+                        if (Math.abs(gPos[i * 3]) > 15 || Math.abs(gPos[i * 3 + 1]) > 15 || Math.abs(gPos[i * 3 + 2]) >
+                            15) {
+                            gPos[i * 3] = gravityParticleBasePositions[i * 3];
+                            gPos[i * 3 + 1] = gravityParticleBasePositions[i * 3 + 1];
+                            gPos[i * 3 + 2] = gravityParticleBasePositions[i * 3 + 2];
+                            gravityParticleVelocities[i].x = 0;
+                            gravityParticleVelocities[i].y = 0;
+                            gravityParticleVelocities[i].z = 0;
+                        }
+                    }
+                    gravityParticleSystem.geometry.attributes.position.needsUpdate = true;
+                }
+
+                // Update light positions for dynamic effect
+                pointLight1.position.x = Math.cos(time * 0.6) * 4;
+                pointLight1.position.z = Math.sin(time * 0.6) * 4;
+                pointLight2.position.x = Math.cos(time * 0.4 + 2) * 3;
+                pointLight2.position.z = Math.sin(time * 0.4 + 2) * 3;
+                pointLight3.position.y = 3 + Math.sin(time * 0.8) * 2;
+
+                // Ambient audio
+                if (Math.random() < 0.002) {
+                    playAmbientTone();
+                }
+
+                renderer.render(scene, camera);
+            }
+
+            // ============ RESIZE HANDLER ============
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                // Reposition any open chat panels
+                Object.keys(chatPanels).forEach(id => {
+                    if (chatPanels[id] && !chatPanels[id].classList.contains('hidden')) {
+                        positionChatPanel(id);
+                    }
+                });
+            });
+
+            // ============ INITIALIZE ============
+            function init() {
+                setMode('orbit');
+                document.getElementById('float-indicator').style.opacity = '0';
+                // Preload API keys from localStorage
+                const storedKeys = ['nv_openai_key', 'nv_gemini1_key', 'nv_gemini2_key', 'nv_deepseek_key'];
+                storedKeys.forEach(key => {
+                    if (!localStorage.getItem(key)) {
+                        localStorage.setItem(key, '');
+                    }
+                });
+                animate();
+                console.log('🌈 NeonVerse AI — Immersive 3D Workspace initialized');
+                console.log('🤖 Tap orbs to chat • 🌌 Gravity mode for particle fun • 💻 Code editor included');
+            }
+
+            init();
+        })();
+    </script>
+</body>
+</html>
