@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>⚡ Ai Desktop · v14 (Full)</title>
+  <title>⚡ Ai Desktop · v15</title>
   <style>
+    /* === same styles as before === */
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
     body {
       background: #0b0b1a; color: #d0d0ff; font-family: 'Segoe UI', 'Courier New', monospace;
@@ -114,7 +115,7 @@
       position: absolute; background: rgba(16,16,40,0.92); backdrop-filter: blur(6px);
       border: 1px solid #4a3a7a; border-radius: 14px; box-shadow: 0 8px 40px rgba(0,0,0,0.8);
       display: flex; flex-direction: column; overflow: hidden; z-index: 50;
-      touch-action: none; min-width: 120px; min-height: 80px; resize: both;
+      touch-action: none; min-width: 140px; min-height: 100px; resize: both;
     }
     .folder-window .fw-header {
       display: flex; align-items: center; background: rgba(20,20,60,0.8);
@@ -122,8 +123,12 @@
     }
     .folder-window .fw-header:active { cursor: grabbing; }
     .folder-window .fw-title { flex: 1; font-size: 0.75rem; font-weight: 400; color: #c8c0ff; }
-    .folder-window .fw-controls button { background: none; border: none; color: #8a7aaa; font-size: 0.9rem; cursor: pointer; padding: 0 0.2rem; }
+    .folder-window .fw-controls button {
+      background: none; border: none; color: #8a7aaa; font-size: 0.9rem; cursor: pointer; padding: 0 0.2rem;
+    }
     .folder-window .fw-controls .fw-close:hover { color: #ff6a8a; }
+    .folder-window .fw-controls .fw-open-all { color: #66ffcc; }
+    .folder-window .fw-controls .fw-open-all:hover { color: #00ffaa; }
     .folder-window .fw-content {
       flex: 1; padding: 0.4rem; overflow-y: auto;
       display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 0.4rem; align-content: start;
@@ -139,7 +144,7 @@
     .folder-window .fw-item .fw-remove:hover { color: #ff6a8a; }
 
     .window {
-      position: absolute; min-width: 240px; min-height: 180px;
+      position: absolute; min-width: 260px; min-height: 200px;
       background: rgba(16,16,40,0.92); backdrop-filter: blur(6px);
       border: 1px solid #4a3a7a; border-radius: 14px;
       box-shadow: 0 8px 40px rgba(0,0,0,0.8), 0 0 30px #2a1a5a44;
@@ -156,9 +161,17 @@
       flex-shrink: 0; min-height: 32px; touch-action: none;
     }
     .window-header:active { cursor: grabbing; }
+    .window-header .star-btn {
+      background: none; border: none; font-size: 0.9rem; cursor: pointer;
+      padding: 0 4px; margin-right: 4px; color: #8a7aaa; transition: 0.15s;
+      touch-action: manipulation;
+    }
+    .window-header .star-btn.active { color: #ffcc00; }
+    .window-header .star-btn:hover { color: #ffcc00; }
     .window-title {
       flex: 1; font-size: 0.8rem; font-weight: 400; letter-spacing: 0.3px;
-      color: #c8c0ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 0.5rem;
+      color: #c8c0ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      margin-right: 0.5rem;
     }
     .window-controls { display: flex; gap: 0.2rem; }
     .window-controls button {
@@ -417,10 +430,8 @@
 
   <script>
     (function() {
-      // --------------------------------------------------------------
-      // CONFIG
-      // --------------------------------------------------------------
-      let GITHUB_USER = 'worldpeacebtn'; // default
+      // ----- CONFIG -----
+      let GITHUB_USER = 'worldpeacebtn';
       const socialApps = [
         { file: 'https://www.facebook.com', desc: 'Facebook', emoji: '📘' },
         { file: 'https://www.instagram.com', desc: 'Instagram', emoji: '📸' },
@@ -432,20 +443,18 @@
       let appList = [];
       let isAppListLoaded = false;
 
-      // --------------------------------------------------------------
-      // STATE
-      // --------------------------------------------------------------
+      // ----- STATE -----
       let windows = [];
       let nextId = 1;
       let desktopIcons = [];
       let folders = [];
       let nextFolderId = 1;
       let favorites = [];
-      const STORAGE_KEY = 'ai_desktop_state_v14';
+      const STORAGE_KEY = 'ai_desktop_state_v15';
       let listView = false;
       let _isRendering = false;
 
-      // DOM refs
+      // DOM refs (same as before)
       const desktop = document.getElementById('desktop');
       const taskbar = document.getElementById('taskbar');
       const openAppGridBtn = document.getElementById('openAppGridBtn');
@@ -481,9 +490,7 @@
       const dockPreviewLabel = document.getElementById('dockPreviewLabel');
       const dockIframe = document.getElementById('dockIframe');
 
-      // --------------------------------------------------------------
-      // FETCH APP LIST FROM GITHUB (user‑configurable)
-      // --------------------------------------------------------------
+      // ----- FETCH APP LIST -----
       async function fetchAppList(user) {
         const username = user || GITHUB_USER;
         try {
@@ -493,10 +500,11 @@
           const htmlFiles = data
             .filter(item => item.type === 'file' && item.name.endsWith('.html'))
             .map(item => ({ file: item.name.replace('.html', ''), desc: item.name.replace('.html', '') }));
+          // try shell and anime theatre
           try {
-            const shellResponse = await fetch(`https://api.github.com/repos/${username}/Ai/contents/SHELL`);
-            if (shellResponse.ok) {
-              const shellData = await shellResponse.json();
+            const shellRes = await fetch(`https://api.github.com/repos/${username}/Ai/contents/SHELL`);
+            if (shellRes.ok) {
+              const shellData = await shellRes.json();
               const shellHtml = shellData
                 .filter(item => item.type === 'file' && item.name.endsWith('.html'))
                 .map(item => ({ file: 'SHELL/' + item.name.replace('.html', ''), desc: 'SHELL/' + item.name.replace('.html', '') }));
@@ -504,9 +512,9 @@
             }
           } catch(e) {}
           try {
-            const animeResponse = await fetch(`https://api.github.com/repos/${username}/Ai/contents/SHELL/x42_anime_theatre`);
-            if (animeResponse.ok) {
-              const animeData = await animeResponse.json();
+            const animeRes = await fetch(`https://api.github.com/repos/${username}/Ai/contents/SHELL/x42_anime_theatre`);
+            if (animeRes.ok) {
+              const animeData = await animeRes.json();
               const animeHtml = animeData
                 .filter(item => item.type === 'file' && item.name.endsWith('.html'))
                 .map(item => ({ file: 'SHELL/x42_anime_theatre/' + item.name.replace('.html', ''), desc: 'SHELL/x42_anime_theatre/' + item.name.replace('.html', '') }));
@@ -529,9 +537,7 @@
         }
       }
 
-      // --------------------------------------------------------------
-      // HELPERS
-      // --------------------------------------------------------------
+      // ----- HELPERS -----
       function getAppUrl(file) {
         if (file.startsWith('http') || file === 'browser') return file;
         return `./${file}.html`;
@@ -553,9 +559,7 @@
         return map[base] || '📄';
       }
 
-      // --------------------------------------------------------------
-      // FAVORITES
-      // --------------------------------------------------------------
+      // ----- FAVORITES -----
       function toggleFavorite(iconId) {
         const idx = favorites.indexOf(iconId);
         if (idx > -1) {
@@ -566,14 +570,20 @@
         saveState();
         renderDesktopIcons();
         renderFavorites();
+        // Also update any open windows' star button
+        document.querySelectorAll('.window .star-btn').forEach(btn => {
+          const file = btn.dataset.file;
+          const icon = desktopIcons.find(i => i.file === file);
+          if (icon) {
+            btn.classList.toggle('active', favorites.includes(icon.id));
+          }
+        });
       }
       function isFavorite(iconId) {
         return favorites.indexOf(iconId) > -1;
       }
 
-      // --------------------------------------------------------------
-      // TIMELINE
-      // --------------------------------------------------------------
+      // ----- TIMELINE -----
       function getTimeGroup(date) {
         const now = new Date();
         const d = new Date(date);
@@ -588,9 +598,7 @@
         return 'Older';
       }
 
-      // --------------------------------------------------------------
-      // SORTING
-      // --------------------------------------------------------------
+      // ----- SORTING -----
       function sortIconsAndWindows() {
         const sortVal = sortSelect.value;
         windows.sort((a, b) => {
@@ -635,9 +643,7 @@
         renderDesktopIcons();
       }
 
-      // --------------------------------------------------------------
-      // ARRANGE & HEIGHT
-      // --------------------------------------------------------------
+      // ----- ARRANGE -----
       function arrangeIcons() {
         if (listView) return;
         const icons = desktopIcons.filter(icon => !icon.folderId);
@@ -673,9 +679,7 @@
         desktop.style.minHeight = '100%';
       }
 
-      // --------------------------------------------------------------
-      // VIEW TOGGLE
-      // --------------------------------------------------------------
+      // ----- VIEW TOGGLE -----
       function toggleView() {
         listView = !listView;
         desktop.classList.toggle('list-view', listView);
@@ -698,9 +702,7 @@
         saveState();
       }
 
-      // --------------------------------------------------------------
-      // RENDER DESKTOP ICONS (with separators for date sort)
-      // --------------------------------------------------------------
+      // ----- RENDER DESKTOP ICONS -----
       function renderDesktopIcons() {
         if (_isRendering) return;
         _isRendering = true;
@@ -708,7 +710,6 @@
           document.querySelectorAll('.desktop-icon, .desktop-separator').forEach(el => el.remove());
           const sortVal = sortSelect.value;
           let iconsToRender = [...desktopIcons];
-          // If date sort, we insert separators
           if (sortVal === 'date') {
             const groups = {};
             const topLevel = desktopIcons.filter(i => !i.folderId);
@@ -725,7 +726,6 @@
                 groups[g].forEach(icon => temp.push(icon));
               }
             });
-            // add folders at the end
             const foldersOnly = desktopIcons.filter(i => i.folderId);
             temp.push(...foldersOnly);
             iconsToRender = temp;
@@ -738,8 +738,6 @@
               if (listView) {
                 sep.style.position = 'relative';
               } else {
-                // In grid view, we need to place it absolutely across full width.
-                // We'll set position:relative and width:100% with a left offset.
                 sep.style.cssText = 'position:relative; width:100%; text-align:center; color:#8a8aba; font-size:0.7rem; padding:4px 0; margin:4px 0; border-bottom:1px solid #3a2a6a;';
               }
               sep.textContent = '— ' + icon.label + ' —';
@@ -797,9 +795,8 @@
               if (icon.type === 'folder') {
                 const action = prompt('Type "delete" to delete, or enter new name to rename:', '');
                 if (action === null) return;
-                if (action === 'delete') {
-                  deleteFolder(icon.id);
-                } else if (action.trim()) {
+                if (action === 'delete') deleteFolder(icon.id);
+                else if (action.trim()) {
                   const folder = folders.find(f => f.id === icon.id);
                   if (folder) {
                     folder.name = action.trim();
@@ -842,9 +839,7 @@
         }
       }
 
-      // --------------------------------------------------------------
-      // DRAGGABLE
-      // --------------------------------------------------------------
+      // ----- DRAGGABLE -----
       function makeDraggable(element, iconData) {
         let startX, startY, origX, origY;
         let isDragging = false;
@@ -1034,9 +1029,7 @@
         element.addEventListener('contextmenu', (e) => e.preventDefault());
       }
 
-      // --------------------------------------------------------------
-      // FOLDER MANAGEMENT
-      // --------------------------------------------------------------
+      // ----- FOLDER MANAGEMENT -----
       function createFolder(name, color = '#7a5aff') {
         const id = 'folder_' + nextFolderId++;
         const icon = { id, type: 'folder', label: name, x: 100 + Math.random()*200, y: 60 + Math.random()*150, children: [], color };
@@ -1091,9 +1084,7 @@
         applyFilterAndSort();
       }
 
-      // --------------------------------------------------------------
-      // FOLDER WINDOW
-      // --------------------------------------------------------------
+      // ----- FOLDER WINDOW -----
       let folderWindows = [];
 
       function openFolderWindow(folderId) {
@@ -1112,7 +1103,13 @@
         win.style.zIndex = 50 + folderWindows.length;
         const header = document.createElement('div');
         header.className = 'fw-header';
-        header.innerHTML = `<span class="fw-title">📁 ${folder.name}</span><div class="fw-controls"><button class="fw-close" title="Close">✕</button></div>`;
+        header.innerHTML = `
+          <span class="fw-title">📁 ${folder.name}</span>
+          <div class="fw-controls">
+            <button class="fw-open-all" title="Open all apps in this folder">🚀</button>
+            <button class="fw-close" title="Close">✕</button>
+          </div>
+        `;
         win.appendChild(header);
         const content = document.createElement('div');
         content.className = 'fw-content';
@@ -1122,6 +1119,15 @@
         folderWindows.push(fwObj);
         renderFolderWindowContent(folderId);
         header.querySelector('.fw-close').addEventListener('click', () => closeFolderWindow(folderId));
+        header.querySelector('.fw-open-all').addEventListener('click', () => {
+          const appIds = folder.appIds || [];
+          appIds.forEach(id => {
+            const icon = desktopIcons.find(i => i.id === id);
+            if (icon && icon.type === 'app') {
+              launchApp(icon.file);
+            }
+          });
+        });
         let dragData = null;
         header.addEventListener('mousedown', (e) => {
           if (e.target.closest('.fw-controls')) return;
@@ -1323,14 +1329,12 @@
         folderWindows.forEach(fw => renderFolderWindowContent(fw.folderId));
       }
 
-      // --------------------------------------------------------------
-      // APP WINDOWS (browser and regular)
-      // --------------------------------------------------------------
+      // ----- APP WINDOWS -----
       function createWindow(file, title, x, y, w, h, notes = '', tags = '', minimized = false, maximized = false) {
         const id = nextId++;
         const deskRect = desktop.getBoundingClientRect();
-        const maxW = Math.max(240, deskRect.width * 0.85);
-        const maxH = Math.max(180, deskRect.height * 0.8);
+        const maxW = Math.max(260, deskRect.width * 0.85);
+        const maxH = Math.max(200, deskRect.height * 0.8);
         w = Math.min(w || 420, maxW);
         h = Math.min(h || 320, maxH);
         x = Math.min(x || 100, deskRect.width - w - 20);
@@ -1361,8 +1365,31 @@
           div.style.zIndex = 10 + windows.indexOf(win);
           const header = document.createElement('div');
           header.className = 'window-header';
-          header.innerHTML = `<span class="window-title">🌐 Browser</span><div class="window-controls"><button class="btn-minimize" title="Minimize">−</button><button class="btn-maximize" title="Maximize">⛶</button><button class="btn-close" title="Close">✕</button></div>`;
+          // Star button (we'll add it)
+          const starBtn = document.createElement('button');
+          starBtn.className = 'star-btn';
+          starBtn.dataset.file = 'browser';
+          const icon = desktopIcons.find(i => i.file === 'browser' || (i.type === 'app' && i.file === 'browser'));
+          if (icon) {
+            starBtn.classList.toggle('active', favorites.includes(icon.id));
+          }
+          starBtn.textContent = '⭐';
+          starBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!icon) return;
+            toggleFavorite(icon.id);
+          });
+          header.appendChild(starBtn);
+          const titleSpan = document.createElement('span');
+          titleSpan.className = 'window-title';
+          titleSpan.textContent = '🌐 Browser';
+          header.appendChild(titleSpan);
+          const controls = document.createElement('div');
+          controls.className = 'window-controls';
+          controls.innerHTML = `<button class="btn-minimize" title="Minimize">−</button><button class="btn-maximize" title="Maximize">⛶</button><button class="btn-close" title="Close">✕</button>`;
+          header.appendChild(controls);
           div.appendChild(header);
+
           const content = document.createElement('div');
           content.className = 'window-content';
           content.style.display = 'flex';
@@ -1374,7 +1401,8 @@
           addressBar.style.borderBottom = '1px solid #3a2a6a';
           const urlInput = document.createElement('input');
           urlInput.type = 'text';
-          urlInput.placeholder = 'Enter URL or search...';
+          urlInput.placeholder = 'Search or enter URL...';
+          urlInput.value = 'https://www.google.de';
           urlInput.style.flex = '1';
           urlInput.style.background = '#1a1a3a';
           urlInput.style.border = '1px solid #3a2a6a';
@@ -1395,7 +1423,7 @@
           addressBar.appendChild(goBtn);
           content.appendChild(addressBar);
           const iframe = document.createElement('iframe');
-          iframe.src = 'about:blank';
+          iframe.src = 'https://www.google.de';
           iframe.style.flex = '1';
           iframe.style.border = 'none';
           iframe.style.background = '#0a0a1a';
@@ -1405,15 +1433,30 @@
           resizeHandle.className = 'resize-handle';
           div.appendChild(resizeHandle);
           desktop.appendChild(div);
-          function navigate() { let url = urlInput.value.trim(); if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url; iframe.src = url; }
+
+          function navigate() {
+            let url = urlInput.value.trim();
+            if (!url) return;
+            if (url.includes(' ') || !url.includes('.') && !url.startsWith('http')) {
+              // treat as search
+              url = 'https://www.google.de/search?q=' + encodeURIComponent(url);
+            } else if (!url.startsWith('http://') && !url.startsWith('https://')) {
+              url = 'https://' + url;
+            }
+            iframe.src = url;
+          }
           goBtn.addEventListener('click', navigate);
           urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') navigate(); });
-          header.querySelector('.btn-minimize').addEventListener('click', (e) => { e.stopPropagation(); win.minimized = true; div.remove(); updateTaskbar(); saveState(); });
-          header.querySelector('.btn-maximize').addEventListener('click', (e) => { e.stopPropagation(); win.maximized = !win.maximized; div.classList.toggle('maximized'); if (win.maximized) { win._prevRect = { x: win.x, y: win.y, w: win.w, h: win.h }; div.style.left = '0'; div.style.top = '0'; div.style.width = '100%'; div.style.height = '100%'; } else { const prev = win._prevRect || { x: 100, y: 60, w: 420, h: 320 }; win.x = prev.x; win.y = prev.y; win.w = prev.w; win.h = prev.h; div.style.left = win.x + 'px'; div.style.top = win.y + 'px'; div.style.width = win.w + 'px'; div.style.height = win.h + 'px'; } saveState(); });
-          header.querySelector('.btn-close').addEventListener('click', (e) => { e.stopPropagation(); closeWindow(win.id); });
+
+          // Controls
+          controls.querySelector('.btn-minimize').addEventListener('click', (e) => { e.stopPropagation(); win.minimized = true; div.remove(); updateTaskbar(); saveState(); });
+          controls.querySelector('.btn-maximize').addEventListener('click', (e) => { e.stopPropagation(); win.maximized = !win.maximized; div.classList.toggle('maximized'); if (win.maximized) { win._prevRect = { x: win.x, y: win.y, w: win.w, h: win.h }; div.style.left = '0'; div.style.top = '0'; div.style.width = '100%'; div.style.height = '100%'; } else { const prev = win._prevRect || { x: 100, y: 60, w: 420, h: 320 }; win.x = prev.x; win.y = prev.y; win.w = prev.w; win.h = prev.h; div.style.left = win.x + 'px'; div.style.top = win.y + 'px'; div.style.width = win.w + 'px'; div.style.height = win.h + 'px'; } saveState(); });
+          controls.querySelector('.btn-close').addEventListener('click', (e) => { e.stopPropagation(); closeWindow(win.id); });
+
+          // Drag & Resize (same as regular)
           let dragData = null;
           header.addEventListener('mousedown', (e) => {
-            if (e.target.closest('.window-controls')) return;
+            if (e.target.closest('.window-controls') || e.target.closest('.star-btn')) return;
             const rect = div.getBoundingClientRect();
             dragData = { offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
             const onMove = (ev) => {
@@ -1433,7 +1476,7 @@
             document.addEventListener('mouseup', onUp);
           });
           header.addEventListener('touchstart', (e) => {
-            if (e.target.closest('.window-controls')) return;
+            if (e.target.closest('.window-controls') || e.target.closest('.star-btn')) return;
             const touch = e.touches[0];
             const rect = div.getBoundingClientRect();
             dragData = { offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top };
@@ -1464,8 +1507,8 @@
               let newW = resizeData.startW + (ev.clientX - resizeData.startX);
               let newH = resizeData.startH + (ev.clientY - resizeData.startY);
               const deskRect = desktop.getBoundingClientRect();
-              newW = Math.min(Math.max(240, newW), deskRect.width - 20);
-              newH = Math.min(Math.max(180, newH), deskRect.height - 20);
+              newW = Math.min(Math.max(260, newW), deskRect.width - 20);
+              newH = Math.min(Math.max(200, newH), deskRect.height - 20);
               div.style.width = newW + 'px';
               div.style.height = newH + 'px';
               const winData = windows.find(w => w.id === win.id);
@@ -1486,8 +1529,8 @@
               let newW = resizeData.startW + (t.clientX - resizeData.startX);
               let newH = resizeData.startH + (t.clientY - resizeData.startY);
               const deskRect = desktop.getBoundingClientRect();
-              newW = Math.min(Math.max(240, newW), deskRect.width - 20);
-              newH = Math.min(Math.max(180, newH), deskRect.height - 20);
+              newW = Math.min(Math.max(260, newW), deskRect.width - 20);
+              newH = Math.min(Math.max(200, newH), deskRect.height - 20);
               div.style.width = newW + 'px';
               div.style.height = newH + 'px';
               const winData = windows.find(w => w.id === win.id);
@@ -1497,6 +1540,7 @@
             document.addEventListener('touchmove', onMove, { passive: false });
             document.addEventListener('touchend', onUp, { passive: false });
           }, { passive: false });
+
           updateTaskbar();
           saveState();
           return;
@@ -1515,7 +1559,31 @@
 
         const header = document.createElement('div');
         header.className = 'window-header';
-        header.innerHTML = `<span class="window-title">${win.title}</span><div class="window-controls"><button class="btn-minimize" title="Minimize">−</button><button class="btn-maximize" title="Maximize">⛶</button><button class="btn-close" title="Close">✕</button></div>`;
+        // Star button
+        const starBtn = document.createElement('button');
+        starBtn.className = 'star-btn';
+        starBtn.dataset.file = win.file;
+        const icon = desktopIcons.find(i => i.file === win.file);
+        if (icon) {
+          starBtn.classList.toggle('active', favorites.includes(icon.id));
+        }
+        starBtn.textContent = '⭐';
+        starBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (!icon) return;
+          toggleFavorite(icon.id);
+        });
+        header.appendChild(starBtn);
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'window-title';
+        titleSpan.textContent = win.title;
+        header.appendChild(titleSpan);
+
+        const controls = document.createElement('div');
+        controls.className = 'window-controls';
+        controls.innerHTML = `<button class="btn-minimize" title="Minimize">−</button><button class="btn-maximize" title="Maximize">⛶</button><button class="btn-close" title="Close">✕</button>`;
+        header.appendChild(controls);
         div.appendChild(header);
 
         const content = document.createElement('div');
@@ -1545,9 +1613,10 @@
 
         desktop.appendChild(div);
 
+        // Drag & Resize (same as regular)
         let dragData = null;
         function onDragStart(e) {
-          if (e.target.closest('.window-controls')) return;
+          if (e.target.closest('.window-controls') || e.target.closest('.star-btn')) return;
           const touch = e.touches ? e.touches[0] : e;
           const rect = div.getBoundingClientRect();
           dragData = { offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top };
@@ -1585,8 +1654,8 @@
             let newW = resizeData.startW + (t.clientX - resizeData.startX);
             let newH = resizeData.startH + (t.clientY - resizeData.startY);
             const deskRect = desktop.getBoundingClientRect();
-            newW = Math.min(Math.max(240, newW), deskRect.width - 20);
-            newH = Math.min(Math.max(180, newH), deskRect.height - 20);
+            newW = Math.min(Math.max(260, newW), deskRect.width - 20);
+            newH = Math.min(Math.max(200, newH), deskRect.height - 20);
             div.style.width = newW + 'px';
             div.style.height = newH + 'px';
             const winData = windows.find(w => w.id === win.id);
@@ -1601,14 +1670,14 @@
         resizeHandle.addEventListener('mousedown', onResizeStart);
         resizeHandle.addEventListener('touchstart', onResizeStart, { passive: false });
 
-        header.querySelector('.btn-minimize').addEventListener('click', (e) => {
+        controls.querySelector('.btn-minimize').addEventListener('click', (e) => {
           e.stopPropagation();
           win.minimized = true;
           div.remove();
           updateTaskbar();
           saveState();
         });
-        header.querySelector('.btn-maximize').addEventListener('click', (e) => {
+        controls.querySelector('.btn-maximize').addEventListener('click', (e) => {
           e.stopPropagation();
           win.maximized = !win.maximized;
           div.classList.toggle('maximized');
@@ -1624,7 +1693,7 @@
           }
           saveState();
         });
-        header.querySelector('.btn-close').addEventListener('click', (e) => {
+        controls.querySelector('.btn-close').addEventListener('click', (e) => {
           e.stopPropagation();
           closeWindow(win.id);
         });
@@ -1649,9 +1718,7 @@
         saveState();
       }
 
-      // --------------------------------------------------------------
-      // TASKBAR
-      // --------------------------------------------------------------
+      // ----- TASKBAR -----
       function updateTaskbar() {
         taskbar.innerHTML = '';
         windows.forEach(win => {
@@ -1675,9 +1742,7 @@
         });
       }
 
-      // --------------------------------------------------------------
-      // LAUNCH APP & BROWSER
-      // --------------------------------------------------------------
+      // ----- LAUNCH APP & BROWSER -----
       function launchApp(file) {
         const social = socialApps.find(s => s.file === file);
         if (social) {
@@ -1698,9 +1763,7 @@
         updateTaskbar();
       }
 
-      // --------------------------------------------------------------
-      // APP GRID MODAL
-      // --------------------------------------------------------------
+      // ----- APP GRID MODAL -----
       function openAppGrid() { appModal.classList.add('active'); renderAppGrid(''); }
       function renderAppGrid(searchTerm = '') {
         const term = searchTerm.toLowerCase().trim();
@@ -1727,26 +1790,20 @@
       appModal.addEventListener('click', (e) => { if (e.target === appModal) appModal.classList.remove('active'); });
       appSearchInput.addEventListener('input', (e) => renderAppGrid(e.target.value));
 
-      // --------------------------------------------------------------
-      // REMOVE LAST APP
-      // --------------------------------------------------------------
+      // ----- REMOVE LAST APP -----
       removeAppBtn.addEventListener('click', () => {
         if (windows.length === 0) { alert('No windows to close.'); return; }
         const last = windows[windows.length - 1];
         closeWindow(last.id);
       });
 
-      // --------------------------------------------------------------
-      // NEW FOLDER
-      // --------------------------------------------------------------
+      // ----- NEW FOLDER -----
       newFolderBtn.addEventListener('click', () => {
         const name = prompt('Enter folder name:', 'New Folder');
         if (name && name.trim()) { createFolder(name.trim(), '#7a5aff'); arrangeIcons(); }
       });
 
-      // --------------------------------------------------------------
-      // UPLOAD MEDIA
-      // --------------------------------------------------------------
+      // ----- UPLOAD MEDIA -----
       uploadBtn.addEventListener('click', () => fileUploadInput.click());
       fileUploadInput.addEventListener('change', (e) => {
         const files = e.target.files;
@@ -1762,17 +1819,13 @@
         alert(files.length + ' file(s) uploaded.');
       });
 
-      // --------------------------------------------------------------
-      // OPEN / CLOSE ALL
-      // --------------------------------------------------------------
+      // ----- OPEN / CLOSE ALL -----
       openAllBtn.addEventListener('click', () => {
         appList.forEach(app => { if (!windows.some(w => w.file === app.file)) launchApp(app.file); });
       });
       closeAllBtn.addEventListener('click', () => { windows.slice().forEach(w => closeWindow(w.id)); });
 
-      // --------------------------------------------------------------
-      // THEME TOGGLE
-      // --------------------------------------------------------------
+      // ----- THEME TOGGLE -----
       const themes = ['theme-purple','theme-blue','theme-green','theme-red','theme-cyber'];
       let themeIndex = 0;
       themeToggleBtn.addEventListener('click', () => {
@@ -1788,13 +1841,10 @@
         themeIndex = themes.indexOf(savedTheme);
       }
 
-      // --------------------------------------------------------------
-      // FILTER & SORT (with clear)
-      // --------------------------------------------------------------
+      // ----- FILTER & SORT -----
       function applyFilterAndSort() {
         if (_isRendering) return;
         const filter = filterInput.value.trim().toLowerCase();
-
         document.querySelectorAll('.window').forEach(el => {
           const id = parseInt(el.dataset.id);
           const win = windows.find(w => w.id === id);
@@ -1806,7 +1856,6 @@
           }
           el.style.display = show ? 'flex' : 'none';
         });
-
         document.querySelectorAll('.desktop-icon').forEach(el => {
           const iconId = el.dataset.iconId;
           const icon = desktopIcons.find(i => i.id === iconId);
@@ -1824,7 +1873,6 @@
           }
           el.style.display = show ? 'flex' : 'none';
         });
-
         sortIconsAndWindows();
       }
 
@@ -1839,15 +1887,11 @@
       });
       sortSelect.addEventListener('change', applyFilterAndSort);
 
-      // --------------------------------------------------------------
-      // ARRANGE & VIEW TOGGLE
-      // --------------------------------------------------------------
+      // ----- ARRANGE & VIEW -----
       arrangeBtn.addEventListener('click', arrangeIcons);
       viewToggleBtn.addEventListener('click', toggleView);
 
-      // --------------------------------------------------------------
-      // FAVORITES PANEL
-      // --------------------------------------------------------------
+      // ----- FAVORITES PANEL -----
       function renderFavorites() {
         const search = favSearch.value.toLowerCase().trim();
         const favIcons = desktopIcons.filter(icon => favorites.includes(icon.id) && !icon.folderId);
@@ -1892,9 +1936,7 @@
       favPanelClose.addEventListener('click', () => favoritesPanel.classList.remove('open'));
       favSearch.addEventListener('input', renderFavorites);
 
-      // --------------------------------------------------------------
-      // EXPORT / IMPORT
-      // --------------------------------------------------------------
+      // ----- EXPORT / IMPORT -----
       function exportNotes() {
         const data = {
           windows: windows.map(win => ({ title: win.title, file: win.file, notes: win.notes, tags: win.tags, date: win.date })),
@@ -1947,8 +1989,6 @@
             if (data.githubUser) {
               GITHUB_USER = data.githubUser;
               fetchAppList(GITHUB_USER).then(() => {
-                // reload icons? we can just re-init
-                // but we will let the user reload.
                 alert('GitHub user switched to: ' + GITHUB_USER);
                 location.reload();
               });
@@ -1963,9 +2003,7 @@
         importFileInput.value = '';
       });
 
-      // --------------------------------------------------------------
-      // RESET
-      // --------------------------------------------------------------
+      // ----- RESET -----
       resetBtn.addEventListener('click', () => {
         if (confirm('Reset all data?')) {
           localStorage.removeItem(STORAGE_KEY);
@@ -1974,9 +2012,7 @@
         }
       });
 
-      // --------------------------------------------------------------
-      // CAT
-      // --------------------------------------------------------------
+      // ----- CAT -----
       const catFacts = [
         '🐱 I purr when you organize your files.',
         '📂 Drag apps into folders to keep your desktop tidy!',
@@ -2000,9 +2036,7 @@
         setTimeout(() => { catSpeech.style.display = 'none'; }, 4000);
       });
 
-      // --------------------------------------------------------------
-      // PERSISTENCE
-      // --------------------------------------------------------------
+      // ----- PERSISTENCE -----
       function saveState() {
         const state = {
           windows: windows.map(win => ({ id: win.id, file: win.file, title: win.title, x: win.x, y: win.y, w: win.w, h: win.h, minimized: win.minimized, maximized: win.maximized, notes: win.notes, tags: win.tags, date: win.date })),
@@ -2052,20 +2086,16 @@
         } catch(e) { return false; }
       }
 
-      // --------------------------------------------------------------
-      // INIT
-      // --------------------------------------------------------------
+      // ----- INIT -----
       async function init() {
         const loaded = loadState();
         await fetchAppList(GITHUB_USER);
         if (!loaded) {
+          // Create app icons (no social apps on desktop)
           appList.forEach((app, idx) => {
             desktopIcons.push({ id: 'app_' + idx, type: 'app', label: app.file, file: app.file, x: 60 + (idx % 8) * 68, y: 30 + Math.floor(idx / 8) * 76, folderId: null });
           });
-          socialApps.forEach((social, idx) => {
-            const id = 'social_' + idx;
-            desktopIcons.push({ id, type: 'app', label: social.desc, file: social.file, x: 60 + ((appList.length + idx) % 8) * 68, y: 30 + Math.floor((appList.length + idx) / 8) * 76, folderId: null });
-          });
+          // No social apps on desktop
           const folder = createFolder('My Favorites', '#ff6a8a');
           const favApps = ['CREATORBOARD', 'MUSICSHELL0', 'COSMICSHELL0'];
           favApps.forEach(file => {
@@ -2073,12 +2103,7 @@
             if (icon) moveIconToFolder(icon.id, folder.id);
           });
           arrangeIcons();
-          const demoApps = ['CREATORBOARD', 'MUSICSHELL0'];
-          demoApps.forEach((file, idx) => {
-            if (appList.some(a => a.file === file)) {
-              createWindow(file, file, 100 + idx*50, 60 + idx*40, 420, 320);
-            }
-          });
+          // Do NOT open any windows on first load
           saveState();
           renderDesktopIcons();
           applyFilterAndSort();
@@ -2086,7 +2111,7 @@
           renderDesktopIcons();
           applyFilterAndSort();
         }
-        console.log('✨ Ai Desktop v14 (Full) ready!');
+        console.log('✨ Ai Desktop v15 ready!');
         console.log(`📦 ${appList.length} apps loaded from GitHub user: ${GITHUB_USER}`);
         console.log(`⭐ ${favorites.length} favorites.`);
       }
