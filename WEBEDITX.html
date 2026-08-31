@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>GlassHUD Pro - Arcade Game-Button DJ Pult & Mouse Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #05070b; color: #e6edf3; }
+        .font-mono-custom { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Audio-Reactive Rainbow Cyberpunk Glow */
+        @keyframes rainbowGlow {
+            0% { filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.6)); }
+            33% { filter: drop-shadow(0 0 20px rgba(236, 72, 153, 0.8)); }
+            66% { filter: drop-shadow(0 0 15px rgba(34, 197, 94, 0.7)); }
+            100% { filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.6)); }
+        }
+        .audio-reactive-glow { animation: rainbowGlow 3s infinite ease-in-out; }
+
+        /* Tree-Hierarchy Holographic Dock */
+        .holo-dock {
+            background: rgba(13, 17, 23, 0.95);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            backdrop-filter: blur(12px);
+        }
+        .tree-node {
+            background: rgba(22, 27, 34, 0.95);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            transition: all 0.2s ease;
+        }
+        .tree-node.active-layer {
+            border-color: #f43f5e;
+            background: rgba(244, 63, 94, 0.15);
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.4);
+        }
+
+        /* Arcade Game-Buttons */
+        .arcade-btn {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid #38bdf8;
+            box-shadow: 0 4px 10px rgba(56, 189, 248, 0.3), inset 0 2px 4px rgba(255,255,255,0.2);
+            transition: all 0.1s ease;
+            cursor: pointer;
+        }
+        .arcade-btn:active { transform: scale(0.95); box-shadow: 0 2px 5px rgba(56, 189, 248, 0.5); }
+        .arcade-btn.active { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-color: #f43f5e; }
+
+        /* Dual-Thumb Joysticks with Mouse Emoji */
+        .thumb-joystick {
+            width: 70px;
+            height: 70px;
+            background: radial-gradient(circle at 30% 30%, #38bdf8, #0369a1 70%, #0c4a6e 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
+            touch-action: none;
+            cursor: pointer;
+            position: relative;
+        }
+
+        /* Always-On Blended Color Circle Wheel */
+        .color-circle-wheel {
+            width: 140px;
+            height: 140px;
+            background: conic-gradient(from 0deg, red, yellow, lime, cyan, blue, magenta, red);
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+            cursor: crosshair;
+            border: 2px solid rgba(255,255,255,0.4);
+        }
+
+        /* Mouse-Simulating Eyeball Lupe Lens */
+        .eyeball-lupe {
+            position: absolute;
+            width: 130px;
+            height: 130px;
+            border: 3px solid #38bdf8;
+            border-radius: 50%;
+            box-shadow: 0 0 35px rgba(56, 189, 248, 0.9), inset 0 0 20px rgba(56, 189, 248, 0.5);
+            pointer-events: auto;
+            cursor: move;
+            display: none;
+            z-index: 100;
+            background: radial-gradient(circle, rgba(56,189,248,0.15) 0%, rgba(3,105,161,0.4) 100%);
+        }
+
+        ::-webkit-scrollbar { width: 3px; height: 3px; }
+        ::-webkit-scrollbar-track { background: #05070b; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+    </style>
+</head>
+<body class="h-full overflow-hidden flex flex-col select-none">
+
+    <!-- Top Navigation Header -->
+    <header class="h-10 border-b border-[#30363d] bg-[#0d1117] px-2.5 flex items-center justify-between z-50 shrink-0 text-xs audio-reactive-glow">
+        <div class="flex items-center gap-2">
+            <span class="font-bold text-sky-400">🔮 GlassHUD Arcade Studio</span>
+            <div class="h-3 w-[1px] bg-[#30363d]"></div>
+            <span class="text-[10px] text-slate-400 font-mono-custom" id="active-target-badge">Target: Body</span>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+            <label class="px-2 py-0.5 rounded bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 cursor-pointer flex items-center gap-1" title="Upload Media">
+                📁 <input type="file" id="media-upload" accept="audio/*,video/*,image/*" class="hidden" onchange="loadMediaFile(event)">
+            </label>
+            <button onclick="toggleAudioPlay()" id="audio-play-btn" class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-[#30363d] hidden" title="Play/Pause Audio">▶️</button>
+            <button onclick="toggleScanMode()" id="btn-scan" class="px-2 py-0.5 rounded bg-[#21262d] text-slate-300 border border-[#30363d]" title="Mouse Simulator Lupe">🖱️ Lupe</button>
+            <button onclick="toggleSnippetLibrary()" class="px-2 py-0.5 rounded bg-amber-600/30 text-amber-300 border border-amber-500/30">📚</button>
+            <button onclick="downloadCode()" class="px-2 py-0.5 rounded bg-sky-600 text-white">💾</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 relative overflow-hidden bg-[#05070b] p-2 flex flex-col lg:flex-row gap-2">
+
+        <!-- Left Column: Code Editor & Tree Hierarchy Dock -->
+        <div class="lg:w-1/2 flex flex-col gap-2 overflow-hidden">
+            <!-- Code Editor -->
+            <div class="h-36 bg-[#0d1117] border border-[#30363d] rounded-lg flex flex-col overflow-hidden shrink-0">
+                <div class="px-3 py-1 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between text-xs">
+                    <span class="text-sky-400 text-[11px] font-semibold">💻 HTML Source & Text Editor</span>
+                    <button onclick="switchTab()" class="text-slate-400 hover:text-white text-[10px]" id="tab-toggle">Toggle CSS</button>
+                </div>
+                <div class="relative flex-1 font-mono-custom text-xs bg-[#05070b] overflow-auto">
+                    <textarea id="editor-html" oninput="compileCode()" class="absolute inset-0 w-full h-full bg-transparent p-2.5 text-slate-200 focus:outline-none resize-none leading-relaxed z-10" placeholder="HTML..."><div>
+    <h1 class="editable-text" style="color: #38bdf8;">🔮 GlassHUD Arcade Studio</h1>
+    <p class="editable-text" style="color: #c084fc;">Use left & right arcade joysticks to transform elements!</p>
+    <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400" style="width: 140px; border-radius: 12px; margin-top: 8px;" />
+</div></textarea>
+                    <textarea id="editor-css" oninput="compileCode()" class="absolute inset-0 w-full h-full bg-transparent p-2.5 text-emerald-300 hidden z-10" placeholder="CSS...">body { background: #05070b; color: #e6edf3; font-family: sans-serif; padding: 15px; }</textarea>
+                </div>
+            </div>
+
+            <!-- Blended Color Circle Hub & DOM Tree -->
+            <div class="flex-1 holo-dock rounded-lg p-2.5 flex flex-col lg:flex-row gap-2 overflow-hidden">
+                <!-- Always-on Blended Color Circle -->
+                <div class="flex flex-col items-center justify-center p-2 bg-[#0d1117]/80 rounded-lg border border-[#30363d] shrink-0">
+                    <div class="text-[10px] text-sky-400 font-semibold mb-1">🎨 Color & Alpha Hub</div>
+                    <div class="color-circle-wheel relative flex items-center justify-center scale-75" onclick="pickColorFromCircle(event)">
+                        <div class="w-10 h-10 rounded-full border-2 border-white shadow-lg pointer-events-none bg-sky-400" id="color-preview-marker"></div>
+                    </div>
+                    <div class="w-full space-y-0.5 text-[10px] mt-1">
+                        <div class="flex justify-between text-slate-300"><span>Alpha</span><span id="alpha-val">1.0</span></div>
+                        <input type="range" min="0.1" max="1.0" step="0.05" value="1.0" oninput="adjustAlpha(this.value)" class="w-full accent-sky-400">
+                    </div>
+                </div>
+
+                <!-- DOM Tree Hierarchy -->
+                <div class="flex-1 flex flex-col overflow-hidden">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-[#30363d] text-xs">
+                        <span class="font-semibold text-sky-400">🌳 DOM Tree Inspector</span>
+                    </div>
+                    <div id="tree-container" class="flex-1 overflow-y-auto space-y-1 pt-1.5"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Live Preview Canvas with Mouse Simulator Lupe -->
+        <div id="preview-wrapper" class="lg:w-1/2 bg-white rounded-lg flex flex-col overflow-hidden relative shadow-2xl min-h-[260px]">
+            <div id="eyeball-lupe" class="eyeball-lupe flex flex-col items-center justify-center text-center p-2">
+                <div class="text-2xl mb-1">🖱️</div>
+                <div id="lupe-readout" class="bg-slate-950/90 text-sky-300 text-[10px] font-mono-custom px-2 py-1 rounded shadow border border-sky-500/50 pointer-events-none">
+                    Mouse Simulator Active
+                </div>
+            </div>
+
+            <div class="absolute top-2 right-2 z-20 flex gap-1.5">
+                <button onclick="reloadPreview()" class="w-7 h-7 rounded-full bg-slate-900/80 text-white flex items-center justify-center text-xs shadow hover:bg-slate-800">🔄</button>
+            </div>
+            <iframe id="preview-iframe" class="w-full h-full border-0 pointer-events-auto"></iframe>
+        </div>
+
+    </main>
+
+    <!-- Dual-Thumb Arcade Game-Button Footer -->
+    <footer class="dj-pult h-24 px-3 flex items-center justify-between z-50 shrink-0 text-xs text-slate-300">
+        <!-- Left Thumb Joystick & Game-Buttons -->
+        <div class="flex items-center gap-2">
+            <div id="joystick-left" class="thumb-joystick flex flex-col items-center justify-center text-[10px] font-bold text-white shadow-lg">
+                <span>🌐 3D</span>
+                <span id="readout-left" class="text-[9px] text-sky-200">0°</span>
+            </div>
+            <div class="flex flex-col gap-1">
+                <button onclick="setDJMode('left', 'perspective', this)" class="arcade-btn active px-2.5 py-1 rounded text-[10px] text-white font-medium">3D Pitch</button>
+                <button onclick="setDJMode('left', 'rotate', this)" class="arcade-btn px-2.5 py-1 rounded text-[10px] text-white font-medium">Rotate</button>
+            </div>
+        </div>
+
+        <!-- Center Shape Presets (Grid Game Buttons) -->
+        <div class="grid grid-cols-3 gap-1">
+            <button onclick="applyShapePreset('circle')" class="arcade-btn px-2 py-1.5 rounded text-[10px] text-sky-300 font-semibold text-center">⭕ Circle</button>
+            <button onclick="applyShapePreset('square')" class="arcade-btn px-2 py-1.5 rounded text-[10px] text-sky-300 font-semibold text-center">⏹️ Square</button>
+            <button onclick="applyShapePreset('rounded')" class="arcade-btn px-2 py-1.5 rounded text-[10px] text-sky-300 font-semibold text-center">🔲 Rounded</button>
+        </div>
+
+        <!-- Right Thumb Joystick & Game-Buttons -->
+        <div class="flex items-center gap-2">
+            <div class="flex flex-col gap-1 text-right">
+                <button onclick="setDJMode('right', 'scale', this)" class="arcade-btn active px-2.5 py-1 rounded text-[10px] text-white font-medium">Scale</button>
+                <button onclick="setDJMode('right', 'opacity', this)" class="arcade-btn px-2.5 py-1 rounded text-[10px] text-white font-medium">Opacity</button>
+            </div>
+            <div id="joystick-right" class="thumb-joystick flex flex-col items-center justify-center text-[10px] font-bold text-white shadow-lg">
+                <span>🔍 SCL</span>
+                <span id="readout-right" class="text-[9px] text-sky-200">1.0x</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Asset Library Modal -->
+    <div id="snippet-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md hidden p-4">
+        <div class="bg-[#121620] rounded-xl max-w-xl w-full p-4 space-y-3 border border-white/20 shadow-2xl relative max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between pb-2 border-b border-[#30363d]">
+                <h3 class="text-xs font-semibold text-white">📚 Asset Library Grid</h3>
+                <button onclick="toggleSnippetLibrary()" class="text-slate-400 hover:text-white text-xs">✕</button>
+            </div>
+            <div class="flex-1 overflow-y-auto grid grid-cols-2 gap-2.5 pr-1" id="snippet-list-container"></div>
+            <div class="pt-2 border-t border-[#30363d] flex justify-end">
+                <button onclick="toggleSnippetLibrary()" class="px-3 py-1 bg-sky-600 text-white rounded text-xs font-semibold">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <audio id="audio-player" class="hidden" loop></audio>
+
+    <script>
+        let snippetLibrary = [
+            { id: 1, name: 'Glass Card Div', html: '<div class="editable-el" style="background:rgba(255,255,255,0.1); padding:16px; border-radius:12px; backdrop-filter:blur(8px);"><h3>Glass Card</h3><p>Sample component.</p></div>' },
+            { id: 2, name: 'Banner Pic', html: '<img class="editable-el" src="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=400" style="width:100%; border-radius:10px;" />' }
+        ];
+
+        let isScanMode = false;
+        let selectedElementIndex = 0;
+        let activeLeftMode = 'perspective';
+        let activeRightMode = 'scale';
+        let iframeDoc = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            compileCode();
+            renderSnippetLibrary();
+            setupMovableLupe();
+            setupDualJoysticks();
+        });
+
+        function compileCode() {
+            const html = document.getElementById('editor-html').value;
+            const css = document.getElementById('editor-css').value;
+
+            const fullCode = `
+                <!DOCTYPE html>
+                <html>
+                <head><style>${css} 
+                    .glasshud-selected { outline: 3px dashed #f43f5e !important; outline-offset: 4px; }
+                    .editable-text { cursor: text; }
+                </style></head>
+                <body>${html}</body>
+                </html>
+            `;
+
+            const iframe = document.getElementById('preview-iframe');
+            if (!iframe) return;
+            iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            iframeDoc.open();
+            iframeDoc.write(fullCode);
+            iframeDoc.close();
+
+            if (isScanMode) {
+                attachEyeballLupe(iframe, iframeDoc);
+            }
+
+            attachLiveTextEditing(iframeDoc);
+            buildDOMTree(html);
+        }
+
+        function reloadPreview() { compileCode(); }
+
+        function switchTab() {
+            const htmlEd = document.getElementById('editor-html');
+            const cssEd = document.getElementById('editor-css');
+            const btn = document.getElementById('tab-toggle');
+            if (cssEd.classList.contains('hidden')) {
+                cssEd.classList.remove('hidden');
+                htmlEd.classList.add('hidden');
+                btn.innerText = 'Toggle HTML';
+            } else {
+                htmlEd.classList.remove('hidden');
+                cssEd.classList.add('hidden');
+                btn.innerText = 'Toggle CSS';
+            }
+        }
+
+        // Live Direct Text Editing on Canvas
+        function attachLiveTextEditing(doc) {
+            doc.querySelectorAll('h1, h2, h3, p, span, button').forEach(el => {
+                el.setAttribute('contenteditable', 'true');
+                el.addEventListener('input', () => {
+                    const bodyHTML = doc.body.innerHTML.replace(/ class="[^"]*glasshud-selected[^"]*"/g, '');
+                    document.getElementById('editor-html').value = bodyHTML.trim();
+                });
+            });
+        }
+
+        // DOM Tree Hierarchy Builder
+        function buildDOMTree(htmlString) {
+            const container = document.getElementById('tree-container');
+            if (!container) return;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlString, 'text/html');
+            const elements = Array.from(doc.querySelectorAll('body *'));
+            
+            let html = '';
+            elements.forEach((el, idx) => {
+                if (!(el instanceof Element)) return;
+                const tag = el.tagName.toLowerCase();
+                
+                html += `
+                    <div id="tree-node-${idx}" class="tree-node rounded-lg p-1.5 flex items-center justify-between text-xs cursor-pointer" onclick="selectElementByIndex(${idx});">
+                        <div class="flex items-center gap-1.5 truncate">
+                            <span class="px-1.5 py-0.2 rounded text-[9px] font-mono-custom font-semibold bg-sky-500/20 text-sky-300">&lt;${tag}&gt;</span>
+                            <span class="text-slate-300 font-mono-custom truncate text-[10px]">${el.textContent.trim().substring(0, 15) || tag}</span>
+                        </div>
+                        <span class="text-[9px] text-sky-400">Select</span>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function selectElementByIndex(idx, elementsArray = null) {
+            if (!iframeDoc) return;
+            const allEls = elementsArray || Array.from(iframeDoc.querySelectorAll('body *'));
+            allEls.forEach(el => el.classList.remove('glasshud-selected'));
+            selectedElementIndex = idx;
+            const target = allEls[idx];
+
+            if (target) {
+                target.classList.add('glasshud-selected');
+                document.getElementById('active-target-badge').innerText = `Target: <${target.tagName.toLowerCase()}>`;
+                
+                document.querySelectorAll('.tree-node').forEach(n => n.classList.remove('active-layer'));
+                const node = document.getElementById(`tree-node-${idx}`);
+                if (node) node.classList.add('active-layer');
+            }
+        }
+
+        // Eyeball Lupe & Mouse Simulator
+        function toggleScanMode() {
+            isScanMode = !isScanMode;
+            const btn = document.getElementById('btn-scan');
+            const lupe = document.getElementById('eyeball-lupe');
+            if (isScanMode) {
+                btn.classList.add('bg-sky-600', 'text-white');
+                if (lupe) { lupe.style.display = 'flex'; lupe.style.left = '30px'; lupe.style.top = '30px'; }
+            } else {
+                btn.classList.remove('bg-sky-600', 'text-white');
+                if (lupe) lupe.style.display = 'none';
+            }
+        }
+
+        function setupMovableLupe() {
+            const lupe = document.getElementById('eyeball-lupe');
+            if (!lupe) return;
+            let isDragging = false;
+            let startX, startY;
+
+            lupe.addEventListener('mousedown', (e) => { isDragging = true; startX = e.clientX - lupe.offsetLeft; startY = e.clientY - lupe.offsetTop; });
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const x = e.clientX - startX;
+                const y = e.clientY - startY;
+                lupe.style.left = x + 'px';
+                lupe.style.top = y + 'px';
+
+                if (iframeDoc) {
+                    const centerX = x + 70;
+                    const centerY = y + 70;
+                    const target = iframeDoc.elementFromPoint(centerX, centerY);
+                    if (target && target instanceof Element) {
+                        document.getElementById('lupe-readout').innerText = `<${target.tagName.toLowerCase()}> (Simulating Hover)`;
+                    }
+                }
+            });
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            lupe.addEventListener('touchstart', (e) => { isDragging = true; startX = e.touches[0].clientX - lupe.offsetLeft; startY = e.touches[0].clientY - lupe.offsetTop; }, {passive: true});
+            window.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                const x = e.touches[0].clientX - startX;
+                const y = e.touches[0].clientY - startY;
+                lupe.style.left = x + 'px';
+                lupe.style.top = y + 'px';
+
+                if (iframeDoc) {
+                    const target = iframeDoc.elementFromPoint(x + 70, y + 70);
+                    if (target && target instanceof Element) {
+                        document.getElementById('lupe-readout').innerText = `<${target.tagName.toLowerCase()}>`;
+                    }
+                }
+            }, {passive: true});
+            window.addEventListener('touchend', () => { isDragging = false; });
+        }
+
+        function attachEyeballLupe(iframe, doc) {
+            const allElements = Array.from(doc.querySelectorAll('body *'));
+            allElements.forEach((el, idx) => {
+                if (!(el instanceof Element)) return;
+                el.addEventListener('click', (e) => {
+                    if (!isScanMode) return;
+                    e.stopPropagation();
+                    selectElementByIndex(idx, allElements);
+                });
+            });
+        }
+
+        // Dual-Thumb Joysticks
+        function setDJMode(side, mode, btn) {
+            if (side === 'left') {
+                activeLeftMode = mode;
+                btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            } else {
+                activeRightMode = mode;
+                btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            }
+            btn.classList.add('active');
+        }
+
+        function setupDualJoysticks() {
+            setupSingleJoystick('joystick-left', (delta) => {
+                applyTransform(activeLeftMode, delta);
+            });
+            setupSingleJoystick('joystick-right', (delta) => {
+                applyTransform(activeRightMode, delta);
+            });
+        }
+
+        function setupSingleJoystick(id, callback) {
+            const joy = document.getElementById(id);
+            if (!joy) return;
+            let isDragging = false;
+            let startX = 0;
+
+            const handleMove = (clientX) => {
+                const diff = clientX - startX;
+                if (Math.abs(diff) > 15) {
+                    callback(diff > 0 ? 1 : -1);
+                    startX = clientX;
+                }
+            };
+
+            joy.addEventListener('mousedown', (e) => { isDragging = true; startX = e.clientX; });
+            window.addEventListener('mousemove', (e) => { if (isDragging) handleMove(e.clientX); });
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            joy.addEventListener('touchstart', (e) => { isDragging = true; startX = e.touches[0].clientX; }, {passive: true});
+            window.addEventListener('touchmove', (e) => { if (isDragging) handleMove(e.touches[0].clientX); }, {passive: true});
+            window.addEventListener('touchend', () => { isDragging = false; });
+        }
+
+        function applyTransform(prop, delta) {
+            if (!iframeDoc) return;
+            const allEls = Array.from(iframeDoc.querySelectorAll('body *'));
+            const target = allEls[selectedElementIndex] || iframeDoc.body;
+            if (!target) return;
+
+            let currentTransform = target.style.transform || '';
+
+            if (prop === 'perspective') {
+                let currentRotateX = 0;
+                if (currentTransform.includes('perspective')) {
+                    const match = currentTransform.match(/rotateX\(([^)]+)deg\)/);
+                    if (match) currentRotateX = parseFloat(match[1]);
+                }
+                currentRotateX += delta * 6;
+                target.style.transform = `perspective(800px) rotateX(${currentRotateX}deg)`;
+                document.getElementById('readout-left').innerText = `${currentRotateX}°`;
+            } else if (prop === 'rotate') {
+                let currentRotate = 0;
+                if (currentTransform.includes('rotateZ')) {
+                    const match = currentTransform.match(/rotateZ\(([^)]+)deg\)/);
+                    if (match) currentRotate = parseFloat(match[1]);
+                }
+                currentRotate += delta * 5;
+                target.style.transform = `rotateZ(${currentRotate}deg)`;
+                document.getElementById('readout-left').innerText = `${currentRotate}°`;
+            } else if (prop === 'scale') {
+                let currentScale = 1.0;
+                if (currentTransform.includes('scale')) {
+                    const match = currentTransform.match(/scale\(([^)]+)\)/);
+                    if (match) currentScale = parseFloat(match[1]);
+                }
+                currentScale = Math.max(0.2, currentScale + (delta * 0.05));
+                target.style.transform = `scale(${currentScale})`;
+                document.getElementById('readout-right').innerText = `${currentScale.toFixed(1)}x`;
+            } else if (prop === 'opacity') {
+                let curOpacity = parseFloat(target.style.opacity) || 1.0;
+                curOpacity = Math.max(0.1, Math.min(1.0, curOpacity + (delta * 0.1)));
+                target.style.opacity = curOpacity;
+                document.getElementById('readout-right').innerText = `${Math.round(curOpacity * 100)}%`;
+            }
+        }
+
+        // Shape Presets
+        function applyShapePreset(shape) {
+            if (!iframeDoc) return;
+            const allEls = Array.from(iframeDoc.querySelectorAll('body *'));
+            const target = allEls[selectedElementIndex] || iframeDoc.body;
+            if (!target) return;
+
+            if (shape === 'circle') {
+                target.style.borderRadius = '50%';
+                target.style.width = '150px';
+                target.style.height = '150px';
+                target.style.overflow = 'hidden';
+            } else if (shape === 'square') {
+                target.style.borderRadius = '0px';
+            } else if (shape === 'rounded') {
+                target.style.borderRadius = '16px';
+            }
+        }
+
+        // Color Circle Modal
+        function toggleColorWheel() {
+            const modal = document.getElementById('color-modal');
+            if (modal) modal.classList.toggle('hidden');
+        }
+
+        function pickColorFromCircle(e) {
+            const rect = e.target.getBoundingClientRect();
+            const x = e.clientX - rect.left - rect.width / 2;
+            const y = e.clientY - rect.top - rect.height / 2;
+            const angle = Math.atan2(y, x) * (180 / Math.PI);
+            const hue = (angle + 360) % 360;
+            const color = `hsl(${Math.round(hue)}, 100%, 50%)`;
+            
+            document.getElementById('color-preview-marker').style.backgroundColor = color;
+            if (iframeDoc) {
+                const allEls = Array.from(iframeDoc.querySelectorAll('body *'));
+                const target = allEls[selectedElementIndex] || iframeDoc.body;
+                if (target) target.style.color = color;
+            }
+        }
+
+        function adjustAlpha(val) {
+            document.getElementById('alpha-val').innerText = val;
+            if (iframeDoc) {
+                const allEls = Array.from(iframeDoc.querySelectorAll('body *'));
+                const target = allEls[selectedElementIndex] || iframeDoc.body;
+                if (target) target.style.opacity = val;
+            }
+        }
+
+        // Universal Media Loader
+        function loadMediaFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            const ed = document.getElementById('editor-html');
+
+            if (file.type.startsWith('audio/')) {
+                const audio = document.getElementById('audio-player');
+                audio.src = url;
+                audio.play().then(() => {
+                    document.getElementById('audio-play-btn').classList.remove('hidden');
+                }).catch(() => {
+                    document.getElementById('audio-play-btn').classList.remove('hidden');
+                });
+            } else if (file.type.startsWith('video/')) {
+                ed.value += `\n<video controls src="${url}" style="width:100%; border-radius:12px; margin-top:10px;"></video>`;
+                compileCode();
+            } else if (file.type.startsWith('image/')) {
+                ed.value += `\n<img src="${url}" style="width:150px; border-radius:12px; margin-top:10px;" />`;
+                compileCode();
+            }
+        }
+
+        function toggleAudioPlay() {
+            const audio = document.getElementById('audio-player');
+            const btn = document.getElementById('audio-play-btn');
+            if (audio.paused) {
+                audio.play();
+                btn.innerText = '⏸️';
+            } else {
+                audio.pause();
+                btn.innerText = '▶️';
+            }
+        }
+
+        function toggleSnippetLibrary() {
+            const modal = document.getElementById('snippet-modal');
+            if (modal) modal.classList.toggle('hidden');
+        }
+
+        function renderSnippetLibrary() {
+            const container = document.getElementById('snippet-list-container');
+            if (!container) return;
+            let html = '';
+            snippetLibrary.forEach(s => {
+                html += `
+                    <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 flex items-center justify-between text-xs">
+                        <span class="font-semibold text-white">${s.name}</span>
+                        <button onclick="respawnSnippet(${s.id})" class="px-2.5 py-1 rounded bg-sky-600 text-white font-medium text-[11px]">Respawn</button>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function respawnSnippet(id) {
+            const snippet = snippetLibrary.find(s => s.id === id);
+            if (!snippet) return;
+            const ed = document.getElementById('editor-html');
+            if (ed) {
+                ed.value += '\n' + snippet.html;
+                compileCode();
+                toggleSnippetLibrary();
+            }
+        }
+
+        function downloadCode() {
+            const html = document.getElementById('editor-html').value;
+            const css = document.getElementById('editor-css').value;
+            const fullCode = `<!DOCTYPE html>\n<html>\n<head><style>${css}</style></head>\n<body>${html}</body>\n</html>`;
+            const blob = new Blob([fullCode], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'glasshud-arcade.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
