@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Holo-Nexus Studio — Ultimate Audio & Media Suite</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root{
+  --cyan:#00f3ff;--magenta:#ff00ff;--lime:#62fcd7;--pink:#fd76b5;
+  --yellow:#f2ff86;--peach:#ffb795;--bg:#03040a;--panel:rgba(10,12,18,0.9);
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#03040a;color:#eafaff;font-family:Inter,ui-sans-serif,system-ui,sans-serif;touch-action:none}
+canvas{display:block}
+#webgl{position:absolute;inset:0;z-index:1}
+.hud{position:absolute;z-index:20;pointer-events:none;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:10px}
+.panel{pointer-events:auto;background:var(--panel);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(0,243,255,0.3);box-shadow:0 0 25px rgba(0,243,255,0.1);border-radius:10px}
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;width:100%}
+.compact-btn{background:#161923;border:1px solid rgba(0,243,255,0.3);border-radius:6px;color:#eafaff;padding:6px 10px;cursor:pointer;font-size:14px;transition:0.2s}
+.compact-btn:hover{border-color:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+.drawer{position:absolute;top:60px;right:10px;width:320px;max-height:calc(100vh - 140px);background:var(--panel);border:1px solid rgba(0,243,255,0.3);border-radius:12px;padding:12px;display:none;flex-direction:column;gap:10px;overflow-y:auto;pointer-events:auto;z-index:50}
+.section-title{font-size:11px;letter-spacing:1px;color:var(--cyan);text-transform:uppercase;margin-bottom:4px;border-bottom:1px solid rgba(0,243,255,0.2);padding-bottom:2px}
+.row{display:flex;justify-content:space-between;align-items:center;font-size:11px;margin:4px 0}
+select,input[type=range]{background:#161923;border:1px solid #3b3f4b;color:#fff;padding:4px;border-radius:4px}
+input[type=range]{accent-color:var(--cyan);width:120px}
+#vaultGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-height:140px;overflow-y:auto;margin-top:6px}
+.vault-thumb{aspect-ratio:1;background:#0c0f17;border:1px solid rgba(0,243,255,0.3);border-radius:6px;overflow:hidden;position:relative;cursor:pointer;display:grid;place-items:center;font-size:9px;text-align:center;padding:2px}
+.vault-thumb img, .vault-thumb video{width:100%;height:100%;object-fit:cover}
+.dock{pointer-events:auto;background:var(--panel);border:1px solid rgba(0,243,255,0.3);border-radius:30px;padding:8px 16px;display:flex;gap:10px;align-items:center;align-self:center;box-shadow:0 0 20px rgba(0,243,255,0.15)}
+#toast{position:absolute;top:20px;left:50%;transform:translateX(-50%);background:#090d16;border:1px solid var(--cyan);padding:6px 14px;border-radius:20px;font-size:11px;z-index:100;opacity:0;transition:0.3s;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(5px)}
+#dropOverlay{position:absolute;inset:0;background:rgba(0,243,255,0.08);border:3px dashed var(--cyan);z-index:999;display:none;place-items:center;font-size:24px;color:var(--cyan);pointer-events:none;backdrop-filter:blur(4px)}
+.joystick{position:absolute;bottom:70px;left:20px;width:90px;height:90px;border-radius:50%;background:rgba(0,243,255,0.05);border:1px solid rgba(0,243,255,0.3);pointer-events:auto;display:none;place-items:center}
+.joystick.right{left:auto;right:20px}
+.knob{width:36px;height:36px;background:var(--cyan);border-radius:50%;box-shadow:0 0 12px var(--cyan);position:absolute;cursor:pointer}
+@media(max-width:700px){.joystick{display:grid}}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<div id="dropOverlay">⚡ DROP MEDIA INTO NEXUS SPACE ⚡</div>
+<div id="toast">SYSTEM READY</div>
+<div id="webgl"></div>
+
+<div id="joyMove" class="joystick"><div id="knobMove" class="knob"></div></div>
+<div id="joyLook" class="joystick right"><div id="knobLook" class="knob"></div></div>
+
+<div class="hud">
+  <!-- Top Bar -->
+  <div class="top-bar panel">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:24px;height:24px;border:2px solid var(--cyan);transform:rotate(45deg);display:grid;place-items:center"><div style="width:8px;height:8px;background:var(--magenta)"></div></div>
+      <span style="font-weight:bold;font-size:13px;letter-spacing:1px">HOLO-NEXUS</span>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="compact-btn" id="btnExplorer" title="Web Explorer">🌐</button>
+      <button class="compact-btn" id="btnMorph" title="Morph Core">🌙</button>
+      <button class="compact-btn" id="btnSettings" title="Settings">⚙️</button>
+    </div>
+  </div>
+
+  <!-- Settings Drawer -->
+  <div class="panel drawer" id="settingsDrawer">
+    <div class="section-title">Visual & Color Matrix</div>
+    <div class="row"><span>Scheme</span>
+      <select id="selScheme">
+        <option value="cyber">Cyber Cyan</option>
+        <option value="solar">Solar Flare</option>
+        <option value="matrix">Emerald Matrix</option>
+        <option value="void">Deep Void</option>
+      </select>
+    </div>
+    <div class="row"><span>Preset</span>
+      <select id="selPreset">
+        <option value="wave">Wave Grid</option>
+        <option value="pulse">Bass Burst</option>
+        <option value="static">Static</option>
+      </select>
+    </div>
+    <div class="row"><span>Grid Intensity</span><input type="range" id="rngGrid" min="0" max="1" step="0.05" value="0.4"></div>
+    <div class="row"><span>Bloom Strength</span><input type="range" id="rngBloom" min="0" max="4" step="0.1" value="2.5"></div>
+    
+    <div class="section-title" style="margin-top:8px">Moon Vault & Media</div>
+    <label class="compact-btn" style="text-align:center;display:block;cursor:pointer" for="fileInput">📁 Upload Media (.mp3, .mp4, .glb, .html, .pdf)</label>
+    <input type="file" id="fileInput" accept="image/*,video/*,audio/*,.glb,.html,.pdf" multiple style="display:none">
+    <div id="vaultGrid"></div>
+  </div>
+
+  <!-- Bottom Dock -->
+  <div class="dock">
+    <button class="compact-btn" id="btnPlay">▶</button>
+    <button class="compact-btn" id="btnPause">⏸</button>
+    <div style="font-size:10px;line-height:1.2">
+      <b id="lblStatus" style="color:var(--cyan)">NEXUS IDLE</b><br>
+      <span id="lblSub" style="color:#8b92a5">DRAG & DROP OR UPLOAD MEDIA</span>
+    </div>
+    <label class="compact-btn" for="audioInput" style="margin-left:auto;cursor:pointer">🎵</label>
+    <input type="file" id="audioInput" accept="audio/*" multiple style="display:none">
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
+import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+
+const $ = id => document.getElementById(id);
+const toast = t => {
+  const e = $('toast'); e.textContent = t; e.classList.add('show');
+  clearTimeout(window.__t); window.__t = setTimeout(() => e.classList.remove('show'), 1800);
+};
+
+const state = {
+  primary: 0x00f3ff, secondary: 0xff00ff, logic: 0x62fcd7,
+  grid: 0.4, bloom: 2.5, preset: 'wave', morphIdx: 0
+};
+
+// UI Toggles
+$('btnSettings').onclick = () => {
+  const d = $('settingsDrawer');
+  d.style.display = d.style.display === 'flex' ? 'none' : 'flex';
+};
+$('btnExplorer').onclick = () => toast('🌐 Web Explorer mode active. Use joysticks to navigate nodes.');
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x03040a);
+scene.fog = new THREE.FogExp2(0x03040a, 0.012);
+
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 1000);
+camera.position.set(0, 4, 14);
+
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+$('webgl').appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.enablePan = true; controls.minDistance = 2; controls.maxDistance = 50;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 2.5, 0.5, 0.1);
+composer.addPass(bloomPass);
+
+const room = new THREE.Group(); scene.add(room);
+
+// Circuit Floor
+const gridGeo = new THREE.PlaneGeometry(100, 100, 70, 70);
+gridGeo.rotateX(-Math.PI / 2);
+const baseVerts = [];
+for (let i = 0; i < gridGeo.attributes.position.count; i++) {
+  baseVerts.push(gridGeo.attributes.position.getX(i), gridGeo.attributes.position.getY(i), gridGeo.attributes.position.getZ(i));
+}
+const gridMat = new THREE.MeshBasicMaterial({ color: state.primary, wireframe: true, transparent: true, opacity: state.grid });
+const gridMesh = new THREE.Mesh(gridGeo, gridMat); gridMesh.position.y = -3.5; room.add(gridMesh);
+
+// Central Moon-like Core & Rings
+const nexusGroup = new THREE.Group(); room.add(nexusGroup);
+let coreMesh, wireMesh, coreMat, wireMat;
+
+function buildNexus(type) {
+  if (coreMesh) nexusGroup.remove(coreMesh);
+  if (wireMesh) nexusGroup.remove(wireMesh);
+  let geo;
+  if (type % 4 === 0) geo = new THREE.SphereGeometry(2.2, 32, 32); // Moon style
+  else if (type % 4 === 1) geo = new THREE.IcosahedronGeometry(2.2, 2);
+  else if (type % 4 === 2) geo = new THREE.TorusKnotGeometry(1.5, 0.4, 100, 16);
+  else geo = new THREE.OctahedronGeometry(2.5, 1);
+
+  coreMat = new THREE.MeshBasicMaterial({ color: state.secondary });
+  coreMesh = new THREE.Mesh(geo, coreMat);
+  wireMat = new THREE.MeshBasicMaterial({ color: state.primary, wireframe: true, transparent: true, opacity: 0.85 });
+  wireMesh = new THREE.Mesh(geo.clone(), wireMat);
+  nexusGroup.add(coreMesh, wireMesh);
+}
+buildNexus(0);
+
+// Orbiting Rings
+const rings = [];
+for (let r = 0; r < 4; r++) {
+  const rGeo = new THREE.TorusGeometry(3.2 + r * 0.8, 0.025, 6, 100);
+  const rMat = new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(r / 4, 0.9, 0.6), transparent: true, opacity: 0.8 });
+  const ring = new THREE.Mesh(rGeo, rMat);
+  ring.rotation.x = Math.PI / 2 + r * 0.3;
+  nexusGroup.add(ring);
+  rings.push({ mesh: ring, idx: r });
+}
+
+// Particle Stars
+const pCount = 350;
+const pGeo = new THREE.BufferGeometry();
+const pPos = new Float32Array(pCount * 3);
+const pVel = [];
+for (let i = 0; i < pCount; i++) {
+  const k = i * 3;
+  pPos[k] = (Math.random() - 0.5) * 50; pPos[k + 1] = (Math.random() - 0.5) * 40; pPos[k + 2] = (Math.random() - 0.5) * 50;
+  pVel.push({ x: (Math.random() - 0.5) * 0.03, y: (Math.random() - 0.5) * 0.03, z: (Math.random() - 0.5) * 0.04 });
+}
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.15, color: 0xffffff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending }));
+room.add(particles);
+
+// Vault & Media Items
+const vaultItems = [];
+const lineMat = new THREE.LineBasicMaterial({ color: state.primary, transparent: true, opacity: 0.3 });
+
+function createHologramNode(url, type, name) {
+  const angle = Math.random() * Math.PI * 2;
+  const radius = 6 + Math.random() * 4;
+  const hGroup = new THREE.Group();
+  hGroup.position.set(Math.cos(angle) * radius, Math.random() * 3 - 1, Math.sin(angle) * radius);
+
+  // Connect to Nexus with Energy Line
+  const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), hGroup.position]);
+  const energyLine = new THREE.Line(lineGeo, lineMat);
+  nexusGroup.add(energyLine);
+  hGroup.userData = { name, type, line: energyLine, lineGeo };
+
+  if (type.startsWith('image/')) {
+    const tex = new THREE.TextureLoader().load(url); tex.colorSpace = THREE.SRGBColorSpace;
+    hGroup.add(new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })));
+  } else if (type.startsWith('video/')) {
+    const vid = document.createElement('video'); vid.src = url; vid.loop = true; vid.muted = true; vid.playsInline = true; vid.autoplay = true; vid.play().catch(()=>{});
+    const tex = new THREE.VideoTexture(vid); tex.colorSpace = THREE.SRGBColorSpace;
+    hGroup.add(new THREE.Mesh(new THREE.PlaneGeometry(3, 2), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })));
+    hGroup.userData.video = vid;
+  } else if (name.endsWith('.glb')) {
+    new GLTFLoader().load(url, gltf => { gltf.scene.scale.setScalar(1.5); hGroup.add(gltf.scene); });
+  } else if (name.endsWith('.html') || type === 'text/html') {
+    // Render interactive HTML / text node via canvas texture
+    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#080d1a'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 6; ctx.strokeRect(0,0,512,512);
+    ctx.fillStyle = '#00f3ff'; ctx.font = 'bold 28px monospace'; ctx.fillText('HTML NODE:', 30, 60);
+    ctx.fillStyle = '#eafaff'; ctx.font = '20px monospace'; ctx.fillText(name, 30, 110);
+    ctx.fillStyle = '#62fcd7'; ctx.font = '16px monospace'; ctx.fillText('Interactive Holo Document', 30, 160);
+    const tex = new THREE.CanvasTexture(canvas);
+    hGroup.add(new THREE.Mesh(new THREE.PlaneGeometry(3.5, 3.5), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })));
+  } else {
+    const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#00f3ff'; ctx.fillRect(0,0,256,256);
+    ctx.fillStyle = '#03040a'; ctx.font = 'bold 22px monospace'; ctx.fillText(name.slice(0, 16), 20, 130);
+    const tex = new THREE.CanvasTexture(canvas);
+    hGroup.add(new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })));
+  }
+
+  room.add(hGroup);
+  vaultItems.push(hGroup);
+  refreshVault();
+  toast('✨ DEPLOYED TO HOLO VAULT');
+}
+
+function refreshVault() {
+  const grid = $('vaultGrid'); grid.innerHTML = '';
+  vaultItems.forEach((item, idx) => {
+    const thumb = document.createElement('div'); thumb.className = 'vault-thumb';
+    thumb.innerHTML = `<span>${idx + 1}<br>${item.userData.name.slice(0,8)}</span>`;
+    thumb.onclick = () => { controls.target.copy(item.position); toast('FOCUS: ' + item.userData.name); };
+    grid.appendChild(thumb);
+  });
+}
+
+$('fileInput').onchange = e => Array.from(e.target.files).forEach(f => createHologramNode(URL.createObjectURL(f), f.type || f.name, f.name));
+
+// Audio Playlist System
+let audioCtx, analyser, audioSource, audioGain, audioData;
+const audioEl = new Audio(); audioEl.loop = false;
+let playlist = [], currentTrackIdx = 0;
+
+$('audioInput').onchange = e => {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  playlist = files.map(f => ({ url: URL.createObjectURL(f), name: f.name }));
+  currentTrackIdx = 0;
+  playCurrentTrack();
+};
+
+function playCurrentTrack() {
+  if (!playlist.length) return;
+  const track = playlist[currentTrackIdx];
+  audioEl.src = track.url;
+  initAudio();
+  audioEl.play().then(() => {
+    $('lblStatus').textContent = "PLAYING: " + track.name;
+    toast('🎵 TRACK: ' + track.name);
+  }).catch(() => toast('PRESS PLAY'));
+}
+
+audioEl.onended = () => {
+  if (playlist.length) {
+    currentTrackIdx = (currentTrackIdx + 1) % playlist.length;
+    playCurrentTrack();
+  }
+};
+
+function initAudio() {
+  if (audioCtx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  audioCtx = new AC();
+  analyser = audioCtx.createAnalyser(); analyser.fftSize = 1024;
+  audioData = new Uint8Array(analyser.frequencyBinCount);
+  audioGain = audioCtx.createGain(); audioGain.gain.value = 0.8;
+  audioSource = audioCtx.createMediaElementSource(audioEl);
+  audioSource.connect(audioGain); audioGain.connect(analyser); analyser.connect(audioCtx.destination);
+}
+
+$('btnPlay').onclick = () => { if (playlist.length) { audioCtx?.resume(); audioEl.play(); } else { $('audioInput').click(); } };
+$('btnPause').onclick = () => audioEl.pause();
+
+// Color Schemes & Controls
+const schemes = {
+  cyber: [0x00f3ff, 0xff00ff, 0x62fcd7],
+  solar: [0xfd76b5, 0x62fcd7, 0xf2ff86],
+  matrix: [0x00ff66, 0x003311, 0xc7ff00],
+  void: [0x9933ff, 0x00ffff, 0xff00aa]
+};
+$('selScheme').onchange = e => {
+  const c = schemes[e.target.value];
+  state.primary = c[0]; state.secondary = c[1]; state.logic = c[2];
+  gridMat.color.setHex(state.primary);
+  if (coreMat) coreMat.color.setHex(state.secondary);
+  if (wireMat) wireMat.color.setHex(state.primary);
+  lineMat.color.setHex(state.primary);
+};
+$('selPreset').onchange = e => state.preset = e.target.value;
+$('rngGrid').oninput = e => { state.grid = +e.target.value; gridMat.opacity = state.grid; };
+$('rngBloom').oninput = e => { state.bloom = +e.target.value; bloomPass.strength = state.bloom; };
+$('btnMorph').onclick = () => { state.morphIdx++; buildNexus(state.morphIdx); toast('🌙 MOON NEXUS MORPHED'); };
+
+// Drag & Drop Support
+const overlay = $('dropOverlay');
+window.addEventListener('dragover', e => { e.preventDefault(); overlay.style.display = 'grid'; });
+window.addEventListener('dragleave', () => overlay.style.display = 'none');
+window.addEventListener('drop', e => {
+  e.preventDefault(); overlay.style.display = 'none';
+  Array.from(e.dataTransfer.files).forEach(f => createHologramNode(URL.createObjectURL(f), f.type || f.name, f.name));
+});
+
+// Joysticks Flight Control
+let moveVec = new THREE.Vector3(), lookVec = new THREE.Vector2();
+function setupJoystick(contId, knobId, cb) {
+  const cont = $(contId), knob = $(knobId);
+  let active = false, sx = 0, sy = 0;
+  cont.onpointerdown = e => { active = true; sx = e.clientX; sy = e.clientY; cont.setPointerCapture(e.pointerId); };
+  cont.onpointermove = e => {
+    if (!active) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy, dist = Math.min(30, Math.hypot(dx, dy)), angle = Math.atan2(dy, dx);
+    knob.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
+    cb(Math.cos(angle)*(dist/30), Math.sin(angle)*(dist/30));
+  };
+  const end = () => { active = false; knob.style.transform = 'translate(0px,0px)'; cb(0,0); };
+  cont.onpointerup = end; cont.onpointercancel = end;
+}
+setupJoystick('joyMove', 'knobMove', (x,y) => { moveVec.x = x; moveVec.z = y; });
+setupJoystick('joyLook', 'knobLook', (x,y) => { lookVec.x = x; lookVec.y = y; });
+
+// Animation Loop
+let time = 0, last = performance.now();
+function animate() {
+  requestAnimationFrame(animate);
+  const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
+
+  let bass = 0, mid = 0;
+  if (analyser) {
+    analyser.getByteFrequencyData(audioData);
+    for (let i = 0; i < 12; i++) bass += audioData[i];
+    for (let i = 12; i < 60; i++) mid += audioData[i];
+    bass /= 12; mid /= 60;
+  }
+  bass /= 255; mid /= 255;
+
+  const pulse = 1 + (bass * 0.8) * (state.preset === 'pulse' ? 1.6 : 0.5);
+  nexusGroup.scale.setScalar(pulse);
+  nexusGroup.rotation.y += dt * (0.3 + mid * 0.8);
+
+  rings.forEach(r => {
+    r.mesh.rotation.z = time * (0.2 + r.idx * 0.1);
+  });
+
+  // Circuit Grid Waves
+  const pos = gridGeo.attributes.position.array;
+  for (let i = 0; i < pos.length; i += 3) {
+    const ox = baseVerts[i], oy = baseVerts[i + 1];
+    let z = 0;
+    if (state.preset === 'wave' || state.preset === 'pulse') {
+      z = Math.sin(ox * 0.2 + time * 3) * 0.5 + Math.cos(oy * 0.2 - time * 2) * 0.5;
+      if (state.preset === 'pulse') z += Math.sin(Math.hypot(ox, oy) * 0.4 - time * 6) * (bass * 3.5);
+    }
+    pos[i + 2] = z;
+  }
+  gridGeo.attributes.position.needsUpdate = true;
+  gridMesh.position.z = (time * 4) % 2;
+
+  // Billboarding & Energy Lines Update
+  vaultItems.forEach(item => {
+    item.rotation.y = Math.atan2(camera.position.x - item.position.x, camera.position.z - item.position.z);
+    // Update Energy Line positions connecting to nexus
+    const positions = item.userData.line.geometry.attributes.position;
+    positions.setXYZ(1, item.position.x, item.position.y, item.position.z);
+    positions.needsUpdate = true;
+  });
+
+  // Joystick Flight
+  if (Math.abs(moveVec.x) > 0.01 || Math.abs(moveVec.z) > 0.01) {
+    camera.position.x += moveVec.x * dt * 10;
+    camera.position.z += moveVec.z * dt * 10;
+  }
+  if (Math.abs(lookVec.x) > 0.01 || Math.abs(lookVec.y) > 0.01) {
+    controls.target.x += lookVec.x * dt * 6;
+    controls.target.y -= lookVec.y * dt * 6;
+  }
+
+  bloomPass.strength = state.bloom + bass * 2;
+  controls.update();
+  composer.render();
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
