@@ -656,39 +656,84 @@
         }
       }
 
-      // ===== FETCH APP LIST WITH DATE INFO =====
-      async function fetchAppList(user, repo) {
+async function fetchAppList(user, repo) {
         const username = user || GITHUB_USER;
         const reponame = repo || GITHUB_REPO;
+        
+        // Optional: Check cache first to save API calls during testing
+        const cached = localStorage.getItem(`app_list_${username}_${reponame}`);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (Date.now() - parsed.time < 3600000) { // 1 hour cache
+              appList = parsed.data;
+              isAppListLoaded = true;
+              return appList;
+            }
+          } catch(e) {}
+        }
+
         try {
+          // Fetch root contents once
           const rootData = await fetchRepoContents(username, reponame);
           const htmlFiles = [];
-          for (const item of rootData) {
-            if (item.type === 'file' && item.name.endsWith('.html')) {
-              const fileInfo = {
-                file: item.name.replace('.html', ''),
-                desc: item.name.replace('.html', ''),
-                url: item.url,
-                sha: item.sha,
-                size: item.size,
-                created_at: null,
-                updated_at: null,
-                last_modified: null,
-              };
-              try {
-                const detailRes = await fetch(item.url);
-                if (detailRes.ok) {
-                  const detail = await detailRes.json();
-                  fileInfo.created_at = detail.created_at || detail.commit?.committer?.date || null;
-                  fileInfo.updated_at = detail.commit?.committer?.date || null;
-                  fileInfo.last_modified = detail.commit?.committer?.date || null;
-                  fileInfo.size = detail.size || item.size;
-                }
-              } catch(e) {}
-              htmlFiles.push(fileInfo);
+
+          if (Array.isArray(rootData)) {
+            for (const item of rootData) {
+              if (item.type === 'file' && item.name.endsWith('.html')) {
+                htmlFiles.push({
+                  file: item.name.replace('.html', ''),
+                  desc: item.name.replace('.html', ''),
+                  size: item.size,
+                  updated_at: item.commit?.committer?.date || null
+                });
+              }
             }
           }
 
+          // Helper for subfolders to avoid repetitive blocks
+          async function fetchSubFolder(subpath) {
+            const subData = await fetchRepoContents(username, reponame, subpath);
+            if (Array.isArray(subData)) {
+              for (const item of subData) {
+                if (item.type === 'file' && item.name.endsWith('.html')) {
+                  const pathKey = `${subpath}/${item.name.replace('.html', '')}`;
+                  htmlFiles.push({
+                    file: pathKey,
+                    desc: pathKey,
+                    size: item.size,
+                    updated_at: null
+                  });
+                }
+              }
+            }
+          }
+
+          await fetchSubFolder('SHELL');
+          await fetchSubFolder('SHELL/x42_anime_theatre');
+
+          htmlFiles.sort((a, b) => a.file.localeCompare(b.file));
+          appList = htmlFiles;
+          isAppListLoaded = true;
+
+          // Save to cache
+          localStorage.setItem(`app_list_${username}_${reponame}`, JSON.stringify({
+            time: Date.now(),
+            data: appList
+          }));
+
+          return htmlFiles;
+        } catch (error) {
+          console.error('Failed to fetch app list, using fallback:', error);
+          appList = [
+            { file: 'index', desc: 'Main gateway' },
+            { file: 'CREATORBOARD', desc: 'Digital canvas' },
+            { file: 'MUSICSHELL0', desc: 'Audio playground' },
+          ];
+          isAppListLoaded = true;
+          return appList;
+        }
+      }
           // SHELL folder
           const shellData = await fetchRepoContents(username, reponame, 'SHELL');
           if (shellData && !shellData.message) {
