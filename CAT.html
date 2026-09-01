@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>⚡ Ai Desktop · v15</title>
+  <title>⚡ Ai Desktop · v16</title>
   <style>
-    /* === same styles as before === */
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
     body {
       background: #0b0b1a; color: #d0d0ff; font-family: 'Segoe UI', 'Courier New', monospace;
@@ -84,6 +83,10 @@
       border-radius: 50%; width: 16px; height: 16px; font-size: 10px; display: flex;
       align-items: center; justify-content: center; border: 1px solid #aa8800;
     }
+    .desktop-icon .icon-img .tag-badge {
+      position: absolute; bottom: -6px; right: -6px; font-size: 10px;
+      filter: drop-shadow(0 0 2px rgba(0,0,0,0.8));
+    }
     .desktop-icon:active .icon-img { transform: scale(0.92); }
     .desktop-icon .icon-label {
       font-size: 0.45rem; text-align: center; color: #d0d0ff; text-shadow: 0 0 8px #000;
@@ -96,6 +99,7 @@
       display: flex; align-items: center; justify-content: center; border: 1px solid #aa4a6a;
     }
     .desktop-icon.file .icon-img { background: #1a2a3a; border-color: #4a6a8a; }
+    .desktop-icon.fav-folder .icon-img { background: #2a1a3a; border-color: #ffcc00; }
     .desktop-separator {
       width: 100%; text-align: center; color: #8a8aba; font-size: 0.7rem;
       padding: 4px 0; margin: 4px 0; border-bottom: 1px solid #3a2a6a;
@@ -148,11 +152,12 @@
       background: rgba(16,16,40,0.92); backdrop-filter: blur(6px);
       border: 1px solid #4a3a7a; border-radius: 14px;
       box-shadow: 0 8px 40px rgba(0,0,0,0.8), 0 0 30px #2a1a5a44;
-      display: flex; flex-direction: column; overflow: hidden; transition: box-shadow 0.2s;
-      z-index: 10; touch-action: none; resize: both;
+      display: flex; flex-direction: column; overflow: hidden; transition: box-shadow 0.2s, opacity 0.25s;
+      z-index: 10; touch-action: none; resize: both; opacity: 0.85;
     }
     .window:hover { box-shadow: 0 8px 50px rgba(60,40,160,0.4); }
-    .window.maximized { top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; border-radius: 0; border: none; resize: none; }
+    .window.focused { opacity: 1; z-index: 20; }
+    .window.maximized { top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; border-radius: 0; border: none; resize: none; opacity: 1; }
     .window.minimized { display: none; }
 
     .window-header {
@@ -263,41 +268,45 @@
     }
     .app-modal-close:hover { color: #ff6a8a; }
 
+    /* NARROW FAVORITES PANEL (dock style) */
     #favoritesPanel {
-      position: fixed; left: -320px; top: 0; bottom: 0; width: 300px;
+      position: fixed; left: -180px; top: 0; bottom: 0; width: 160px;
       background: rgba(10,10,30,0.95); backdrop-filter: blur(12px);
       border-right: 1px solid #4a3a7a; z-index: 2000;
-      transition: left 0.3s ease; padding: 0.8rem 0.6rem;
+      transition: left 0.3s ease; padding: 0.6rem 0.4rem;
       display: flex; flex-direction: column; overflow: hidden;
     }
     #favoritesPanel.open { left: 0; }
     #favoritesPanel .fav-header {
       display: flex; justify-content: space-between; align-items: center;
-      padding-bottom: 0.4rem; border-bottom: 1px solid #3a2a6a;
+      padding-bottom: 0.3rem; border-bottom: 1px solid #3a2a6a;
     }
-    #favoritesPanel .fav-header h2 { font-size: 1rem; font-weight: 300; color: #b8b0ff; }
-    #favoritesPanel .fav-header button { background: none; border: none; color: #8a7aaa; font-size: 1.2rem; cursor: pointer; }
+    #favoritesPanel .fav-header h2 { font-size: 0.7rem; font-weight: 300; color: #b8b0ff; }
+    #favoritesPanel .fav-header button { background: none; border: none; color: #8a7aaa; font-size: 1rem; cursor: pointer; }
     #favoritesPanel .fav-header button:hover { color: #ff6a8a; }
     #favoritesPanel .fav-search {
-      width: 100%; padding: 0.3rem 0.6rem; margin: 0.4rem 0;
+      width: 100%; padding: 0.2rem 0.4rem; margin: 0.3rem 0;
       background: #0a0a1a; border: 1px solid #3a2a6a; border-radius: 20px;
-      color: #d0d0ff; outline: none; font-size: 0.8rem;
+      color: #d0d0ff; outline: none; font-size: 0.6rem;
     }
     #favoritesPanel .fav-search:focus { border-color: #9a7aff; }
     #favoritesPanel .fav-list {
-      flex: 1; overflow-y: auto; padding-top: 0.4rem;
+      flex: 1; overflow-y: auto; padding-top: 0.3rem;
     }
-    #favoritesPanel .fav-list::-webkit-scrollbar { width: 3px; }
-    #favoritesPanel .fav-list::-webkit-scrollbar-thumb { background: #4a3a7a; border-radius: 3px; }
+    #favoritesPanel .fav-list::-webkit-scrollbar { width: 2px; }
+    #favoritesPanel .fav-list::-webkit-scrollbar-thumb { background: #4a3a7a; border-radius: 2px; }
     .fav-item {
-      display: flex; align-items: center; gap: 0.6rem;
-      padding: 0.4rem 0.6rem; border-radius: 8px; cursor: pointer;
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.3rem 0.4rem; border-radius: 6px; cursor: pointer;
       transition: background 0.15s;
     }
     .fav-item:hover { background: #2a2a5a; }
-    .fav-item .fav-icon { font-size: 1.2rem; width: 28px; text-align: center; }
-    .fav-item .fav-label { font-size: 0.8rem; color: #c8c0ff; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .fav-item .fav-remove { color: #8a6a8a; cursor: pointer; font-size: 0.8rem; }
+    .fav-item .fav-icon { font-size: 1.2rem; width: 24px; text-align: center; flex-shrink: 0; }
+    .fav-item .fav-label {
+      font-size: 0.6rem; color: #c8c0ff; flex: 1; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+    .fav-item .fav-remove { color: #8a6a8a; cursor: pointer; font-size: 0.7rem; flex-shrink: 0; }
     .fav-item .fav-remove:hover { color: #ff6a8a; }
 
     #cat-widget {
@@ -345,8 +354,9 @@
       .window { min-width: 180px; min-height: 140px; }
       .folder-window { min-width: 100px; min-height: 60px; }
       #cat-widget { font-size: 0.5rem; bottom: 42px; right: 56px; }
-      #favoritesPanel { width: 260px; left: -280px; }
+      #favoritesPanel { width: 130px; left: -150px; }
       #favoritesPanel.open { left: 0; }
+      #favoritesPanel .fav-item .fav-label { font-size: 0.5rem; }
     }
   </style>
 </head>
@@ -402,13 +412,13 @@
     </div>
   </div>
 
-  <!-- FAVORITES PANEL -->
+  <!-- NARROW FAVORITES PANEL -->
   <div id="favoritesPanel">
     <div class="fav-header">
-      <h2>⭐ Favorites</h2>
+      <h2>⭐ Favs</h2>
       <button id="favPanelClose">✕</button>
     </div>
-    <input type="text" class="fav-search" id="favSearch" placeholder="Search favorites..." />
+    <input type="text" class="fav-search" id="favSearch" placeholder="Search..." />
     <div class="fav-list" id="favList"></div>
   </div>
 
@@ -440,6 +450,7 @@
         { file: 'https://github.com/worldpeacebtn/Ai', desc: 'GitHub Repo', emoji: '🐙' },
         { file: 'browser', desc: 'Browser', emoji: '🌐' }
       ];
+      const PREMADE_TAGS = ['🐋', '✨', '⚛️'];
       let appList = [];
       let isAppListLoaded = false;
 
@@ -450,11 +461,12 @@
       let folders = [];
       let nextFolderId = 1;
       let favorites = [];
-      const STORAGE_KEY = 'ai_desktop_state_v15';
+      const STORAGE_KEY = 'ai_desktop_state_v16';
       let listView = false;
       let _isRendering = false;
+      let _focusTimeout = null;
 
-      // DOM refs (same as before)
+      // DOM refs
       const desktop = document.getElementById('desktop');
       const taskbar = document.getElementById('taskbar');
       const openAppGridBtn = document.getElementById('openAppGridBtn');
@@ -500,7 +512,6 @@
           const htmlFiles = data
             .filter(item => item.type === 'file' && item.name.endsWith('.html'))
             .map(item => ({ file: item.name.replace('.html', ''), desc: item.name.replace('.html', '') }));
-          // try shell and anime theatre
           try {
             const shellRes = await fetch(`https://api.github.com/repos/${username}/Ai/contents/SHELL`);
             if (shellRes.ok) {
@@ -558,6 +569,9 @@
         };
         return map[base] || '📄';
       }
+      function getFirstWord(str) {
+        return str.split(/[\s_\-]/)[0] || str;
+      }
 
       // ----- FAVORITES -----
       function toggleFavorite(iconId) {
@@ -570,7 +584,11 @@
         saveState();
         renderDesktopIcons();
         renderFavorites();
-        // Also update any open windows' star button
+        updateWindowStarButtons();
+      }
+      function isFavorite(iconId) { return favorites.indexOf(iconId) > -1; }
+
+      function updateWindowStarButtons() {
         document.querySelectorAll('.window .star-btn').forEach(btn => {
           const file = btn.dataset.file;
           const icon = desktopIcons.find(i => i.file === file);
@@ -579,8 +597,39 @@
           }
         });
       }
-      function isFavorite(iconId) {
-        return favorites.indexOf(iconId) > -1;
+
+      // ----- TAGS (per app) -----
+      function getTagsForIcon(iconId) {
+        const icon = desktopIcons.find(i => i.id === iconId);
+        if (!icon) return [];
+        return icon.tags || [];
+      }
+      function setTagsForIcon(iconId, tags) {
+        const icon = desktopIcons.find(i => i.id === iconId);
+        if (icon) {
+          icon.tags = tags;
+          saveState();
+          renderDesktopIcons();
+        }
+      }
+      function addTagToIcon(iconId, tag) {
+        const icon = desktopIcons.find(i => i.id === iconId);
+        if (!icon) return;
+        if (!icon.tags) icon.tags = [];
+        if (!icon.tags.includes(tag)) {
+          icon.tags.push(tag);
+          saveState();
+          renderDesktopIcons();
+        }
+      }
+      function removeTagFromIcon(iconId, tag) {
+        const icon = desktopIcons.find(i => i.id === iconId);
+        if (!icon) return;
+        if (icon.tags) {
+          icon.tags = icon.tags.filter(t => t !== tag);
+          saveState();
+          renderDesktopIcons();
+        }
       }
 
       // ----- TIMELINE -----
@@ -735,18 +784,16 @@
             if (icon.type === 'separator') {
               const sep = document.createElement('div');
               sep.className = 'desktop-separator';
-              if (listView) {
-                sep.style.position = 'relative';
-              } else {
-                sep.style.cssText = 'position:relative; width:100%; text-align:center; color:#8a8aba; font-size:0.7rem; padding:4px 0; margin:4px 0; border-bottom:1px solid #3a2a6a;';
-              }
+              if (listView) sep.style.position = 'relative';
+              else sep.style.cssText = 'position:relative; width:100%; text-align:center; color:#8a8aba; font-size:0.7rem; padding:4px 0; margin:4px 0; border-bottom:1px solid #3a2a6a;';
               sep.textContent = '— ' + icon.label + ' —';
               desktop.appendChild(sep);
               return;
             }
             if (icon.folderId) return;
             const div = document.createElement('div');
-            div.className = 'desktop-icon' + (icon.type === 'folder' ? ' folder' : '') + (icon.type === 'file' ? ' file' : '');
+            const isFavFolder = icon.type === 'folder' && icon.isFavFolder;
+            div.className = 'desktop-icon' + (icon.type === 'folder' ? ' folder' : '') + (icon.type === 'file' ? ' file' : '') + (isFavFolder ? ' fav-folder' : '');
             div.dataset.iconId = icon.id;
             if (!listView) {
               div.style.left = icon.x + 'px';
@@ -757,14 +804,21 @@
             }
             const isFav = isFavorite(icon.id);
             let starHtml = isFav ? '<span class="star-badge">⭐</span>' : '';
+            // tags
+            const tags = icon.tags || [];
+            let tagHtml = '';
+            if (tags.length > 0) {
+              tagHtml = `<span class="tag-badge">${tags[0]}</span>`;
+            }
             if (icon.type === 'folder') {
               const colorStyle = icon.color ? `background-color: ${icon.color}; border-color: ${icon.color};` : '';
-              div.innerHTML = `<div class="icon-img" style="${colorStyle}">📁${starHtml}</div><div class="icon-label">${icon.label}</div><div class="folder-badge">${icon.children ? icon.children.length : 0}</div>`;
+              const folderEmoji = isFavFolder ? '⭐' : '📁';
+              div.innerHTML = `<div class="icon-img" style="${colorStyle}">${folderEmoji}${starHtml}${tagHtml}</div><div class="icon-label">${icon.label}</div><div class="folder-badge">${icon.children ? icon.children.length : 0}</div>`;
             } else if (icon.type === 'file') {
-              div.innerHTML = `<div class="icon-img">📄${starHtml}</div><div class="icon-label">${icon.label}</div>`;
+              div.innerHTML = `<div class="icon-img">📄${starHtml}${tagHtml}</div><div class="icon-label">${icon.label}</div>`;
             } else {
               const emoji = getIconEmoji(icon.file);
-              div.innerHTML = `<div class="icon-img">${emoji}${starHtml}</div><div class="icon-label">${icon.label}</div>`;
+              div.innerHTML = `<div class="icon-img">${emoji}${starHtml}${tagHtml}</div><div class="icon-label">${icon.label}</div>`;
             }
             desktop.appendChild(div);
             makeDraggable(div, icon);
@@ -789,7 +843,7 @@
               lastTap = now;
             }, { passive: false });
 
-            // Context menu
+            // Context menu: favorites, tags, rename, delete
             div.addEventListener('contextmenu', (e) => {
               e.preventDefault();
               if (icon.type === 'folder') {
@@ -805,30 +859,42 @@
                     renderDesktopIcons();
                   }
                 }
-              } else {
-                const choice = prompt('Choose action:\n1. Add to favorites\n2. Remove from favorites\n3. Move to folder...', '1');
-                if (choice === '1') {
-                  if (!isFavorite(icon.id)) {
-                    favorites.push(icon.id);
-                    saveState();
-                    renderDesktopIcons();
-                    renderFavorites();
-                  }
-                } else if (choice === '2') {
-                  const idx = favorites.indexOf(icon.id);
-                  if (idx > -1) {
-                    favorites.splice(idx, 1);
-                    saveState();
-                    renderDesktopIcons();
-                    renderFavorites();
-                  }
-                } else if (choice === '3') {
-                  const fname = prompt('Enter folder name:', '');
-                  if (fname !== null) {
-                    const folder = folders.find(f => f.name === fname);
-                    if (folder) moveIconToFolder(icon.id, folder.id);
-                    else alert('Folder not found.');
-                  }
+                return;
+              }
+              const actions = [
+                isFavorite(icon.id) ? 'Remove from favorites' : 'Add to favorites',
+                'Add tag...',
+                'Remove tag...',
+                'Move to folder...'
+              ];
+              const choice = prompt(
+                'Choose action:\n1. ' + actions[0] +
+                '\n2. Add tag...\n3. Remove tag...\n4. Move to folder...',
+                '1'
+              );
+              if (choice === '1') {
+                toggleFavorite(icon.id);
+              } else if (choice === '2') {
+                const tag = prompt('Enter tag (emoji or text):', '');
+                if (tag && tag.trim()) {
+                  addTagToIcon(icon.id, tag.trim());
+                }
+              } else if (choice === '3') {
+                const currentTags = getTagsForIcon(icon.id);
+                if (currentTags.length === 0) {
+                  alert('No tags to remove.');
+                  return;
+                }
+                const tag = prompt('Enter tag to remove (current: ' + currentTags.join(', ') + '):', '');
+                if (tag && tag.trim()) {
+                  removeTagFromIcon(icon.id, tag.trim());
+                }
+              } else if (choice === '4') {
+                const fname = prompt('Enter folder name:', '');
+                if (fname !== null) {
+                  const folder = folders.find(f => f.name === fname);
+                  if (folder) moveIconToFolder(icon.id, folder.id);
+                  else alert('Folder not found.');
                 }
               }
             });
@@ -1030,11 +1096,11 @@
       }
 
       // ----- FOLDER MANAGEMENT -----
-      function createFolder(name, color = '#7a5aff') {
+      function createFolder(name, color = '#7a5aff', isFavFolder = false) {
         const id = 'folder_' + nextFolderId++;
-        const icon = { id, type: 'folder', label: name, x: 100 + Math.random()*200, y: 60 + Math.random()*150, children: [], color };
+        const icon = { id, type: 'folder', label: name, x: 100 + Math.random()*200, y: 60 + Math.random()*150, children: [], color, isFavFolder };
         desktopIcons.push(icon);
-        folders.push({ id, name, appIds: [], color });
+        folders.push({ id, name, appIds: [], color, isFavFolder });
         saveState();
         renderDesktopIcons();
         applyFilterAndSort();
@@ -1044,6 +1110,10 @@
       function deleteFolder(folderId) {
         const folder = folders.find(f => f.id === folderId);
         if (!folder) return;
+        if (folder.isFavFolder) {
+          alert('Cannot delete the Favorites folder.');
+          return;
+        }
         (folder.appIds || []).forEach(id => {
           const icon = desktopIcons.find(i => i.id === id);
           if (icon) delete icon.folderId;
@@ -1059,6 +1129,22 @@
       function moveIconToFolder(iconId, folderId) {
         const icon = desktopIcons.find(i => i.id === iconId);
         if (!icon || icon.type === 'folder') return;
+        // If moving to a favorites folder, also add to favorites
+        const targetFolder = folders.find(f => f.id === folderId);
+        if (targetFolder && targetFolder.isFavFolder) {
+          if (!favorites.includes(iconId)) {
+            favorites.push(iconId);
+          }
+        } else {
+          // If moving out of favorites folder, remove from favorites
+          if (icon.folderId) {
+            const oldFolder = folders.find(f => f.id === icon.folderId);
+            if (oldFolder && oldFolder.isFavFolder) {
+              const idx = favorites.indexOf(iconId);
+              if (idx > -1) favorites.splice(idx, 1);
+            }
+          }
+        }
         if (icon.folderId) {
           const oldFolder = folders.find(f => f.id === icon.folderId);
           if (oldFolder) {
@@ -1103,8 +1189,9 @@
         win.style.zIndex = 50 + folderWindows.length;
         const header = document.createElement('div');
         header.className = 'fw-header';
+        const iconEmoji = folder.isFavFolder ? '⭐' : '📁';
         header.innerHTML = `
-          <span class="fw-title">📁 ${folder.name}</span>
+          <span class="fw-title">${iconEmoji} ${folder.name}</span>
           <div class="fw-controls">
             <button class="fw-open-all" title="Open all apps in this folder">🚀</button>
             <button class="fw-close" title="Close">✕</button>
@@ -1121,11 +1208,22 @@
         header.querySelector('.fw-close').addEventListener('click', () => closeFolderWindow(folderId));
         header.querySelector('.fw-open-all').addEventListener('click', () => {
           const appIds = folder.appIds || [];
-          appIds.forEach(id => {
+          if (appIds.length === 0) return;
+          // Tile windows on screen
+          const deskRect = desktop.getBoundingClientRect();
+          const cols = Math.ceil(Math.sqrt(appIds.length));
+          const rows = Math.ceil(appIds.length / cols);
+          const spacing = 20;
+          const winW = Math.max(320, (deskRect.width - (cols + 1) * spacing) / cols);
+          const winH = Math.max(240, (deskRect.height - (rows + 1) * spacing) / rows);
+          appIds.forEach((id, idx) => {
             const icon = desktopIcons.find(i => i.id === id);
-            if (icon && icon.type === 'app') {
-              launchApp(icon.file);
-            }
+            if (!icon || icon.type !== 'app') return;
+            const col = idx % cols;
+            const row = Math.floor(idx / cols);
+            const x = spacing + col * (winW + spacing);
+            const y = spacing + row * (winH + spacing);
+            launchApp(icon.file, x, y, winW, winH);
           });
         });
         let dragData = null;
@@ -1352,46 +1450,53 @@
         if (existing) existing.remove();
         if (win.minimized) { updateTaskbar(); return; }
 
-        if (win.file === 'browser') {
-          // Browser window
-          const div = document.createElement('div');
-          div.className = 'window';
-          if (win.maximized) div.classList.add('maximized');
-          div.dataset.id = win.id;
-          div.style.left = win.x + 'px';
-          div.style.top = win.y + 'px';
-          div.style.width = win.w + 'px';
-          div.style.height = win.h + 'px';
-          div.style.zIndex = 10 + windows.indexOf(win);
-          const header = document.createElement('div');
-          header.className = 'window-header';
-          // Star button (we'll add it)
-          const starBtn = document.createElement('button');
-          starBtn.className = 'star-btn';
-          starBtn.dataset.file = 'browser';
-          const icon = desktopIcons.find(i => i.file === 'browser' || (i.type === 'app' && i.file === 'browser'));
-          if (icon) {
-            starBtn.classList.toggle('active', favorites.includes(icon.id));
-          }
-          starBtn.textContent = '⭐';
-          starBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (!icon) return;
-            toggleFavorite(icon.id);
-          });
-          header.appendChild(starBtn);
-          const titleSpan = document.createElement('span');
-          titleSpan.className = 'window-title';
-          titleSpan.textContent = '🌐 Browser';
-          header.appendChild(titleSpan);
-          const controls = document.createElement('div');
-          controls.className = 'window-controls';
-          controls.innerHTML = `<button class="btn-minimize" title="Minimize">−</button><button class="btn-maximize" title="Maximize">⛶</button><button class="btn-close" title="Close">✕</button>`;
-          header.appendChild(controls);
-          div.appendChild(header);
+        const isBrowser = win.file === 'browser';
+        const div = document.createElement('div');
+        div.className = 'window';
+        if (win.maximized) div.classList.add('maximized');
+        div.dataset.id = win.id;
+        div.style.left = win.x + 'px';
+        div.style.top = win.y + 'px';
+        div.style.width = win.w + 'px';
+        div.style.height = win.h + 'px';
+        div.style.zIndex = 10 + windows.indexOf(win);
+        // Set focus
+        if (windows.indexOf(win) === windows.length - 1) {
+          div.classList.add('focused');
+        }
 
-          const content = document.createElement('div');
-          content.className = 'window-content';
+        const header = document.createElement('div');
+        header.className = 'window-header';
+        // Star button
+        const starBtn = document.createElement('button');
+        starBtn.className = 'star-btn';
+        starBtn.dataset.file = win.file;
+        const icon = desktopIcons.find(i => i.file === win.file);
+        if (icon) {
+          starBtn.classList.toggle('active', favorites.includes(icon.id));
+        }
+        starBtn.textContent = '⭐';
+        starBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (!icon) return;
+          toggleFavorite(icon.id);
+        });
+        header.appendChild(starBtn);
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'window-title';
+        titleSpan.textContent = isBrowser ? '🌐 Browser' : win.title;
+        header.appendChild(titleSpan);
+
+        const controls = document.createElement('div');
+        controls.className = 'window-controls';
+        controls.innerHTML = `<button class="btn-minimize" title="Minimize">−</button><button class="btn-maximize" title="Maximize">⛶</button><button class="btn-close" title="Close">✕</button>`;
+        header.appendChild(controls);
+        div.appendChild(header);
+
+        const content = document.createElement('div');
+        content.className = 'window-content';
+        if (isBrowser) {
           content.style.display = 'flex';
           content.style.flexDirection = 'column';
           const addressBar = document.createElement('div');
@@ -1428,17 +1533,10 @@
           iframe.style.border = 'none';
           iframe.style.background = '#0a0a1a';
           content.appendChild(iframe);
-          div.appendChild(content);
-          const resizeHandle = document.createElement('div');
-          resizeHandle.className = 'resize-handle';
-          div.appendChild(resizeHandle);
-          desktop.appendChild(div);
-
           function navigate() {
             let url = urlInput.value.trim();
             if (!url) return;
             if (url.includes(' ') || !url.includes('.') && !url.startsWith('http')) {
-              // treat as search
               url = 'https://www.google.de/search?q=' + encodeURIComponent(url);
             } else if (!url.startsWith('http://') && !url.startsWith('https://')) {
               url = 'https://' + url;
@@ -1447,148 +1545,7 @@
           }
           goBtn.addEventListener('click', navigate);
           urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') navigate(); });
-
-          // Controls
-          controls.querySelector('.btn-minimize').addEventListener('click', (e) => { e.stopPropagation(); win.minimized = true; div.remove(); updateTaskbar(); saveState(); });
-          controls.querySelector('.btn-maximize').addEventListener('click', (e) => { e.stopPropagation(); win.maximized = !win.maximized; div.classList.toggle('maximized'); if (win.maximized) { win._prevRect = { x: win.x, y: win.y, w: win.w, h: win.h }; div.style.left = '0'; div.style.top = '0'; div.style.width = '100%'; div.style.height = '100%'; } else { const prev = win._prevRect || { x: 100, y: 60, w: 420, h: 320 }; win.x = prev.x; win.y = prev.y; win.w = prev.w; win.h = prev.h; div.style.left = win.x + 'px'; div.style.top = win.y + 'px'; div.style.width = win.w + 'px'; div.style.height = win.h + 'px'; } saveState(); });
-          controls.querySelector('.btn-close').addEventListener('click', (e) => { e.stopPropagation(); closeWindow(win.id); });
-
-          // Drag & Resize (same as regular)
-          let dragData = null;
-          header.addEventListener('mousedown', (e) => {
-            if (e.target.closest('.window-controls') || e.target.closest('.star-btn')) return;
-            const rect = div.getBoundingClientRect();
-            dragData = { offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
-            const onMove = (ev) => {
-              if (!dragData) return;
-              let newX = ev.clientX - dragData.offsetX;
-              let newY = ev.clientY - dragData.offsetY;
-              const deskRect = desktop.getBoundingClientRect();
-              newX = Math.max(0, Math.min(newX, deskRect.width - div.offsetWidth));
-              newY = Math.max(0, Math.min(newY, deskRect.height - div.offsetHeight));
-              div.style.left = newX + 'px';
-              div.style.top = newY + 'px';
-              const winData = windows.find(w => w.id === win.id);
-              if (winData) { winData.x = newX; winData.y = newY; saveState(); }
-            };
-            const onUp = () => { dragData = null; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
-          });
-          header.addEventListener('touchstart', (e) => {
-            if (e.target.closest('.window-controls') || e.target.closest('.star-btn')) return;
-            const touch = e.touches[0];
-            const rect = div.getBoundingClientRect();
-            dragData = { offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top };
-            const onMove = (ev) => {
-              if (!dragData) return;
-              const t = ev.touches[0];
-              let newX = t.clientX - dragData.offsetX;
-              let newY = t.clientY - dragData.offsetY;
-              const deskRect = desktop.getBoundingClientRect();
-              newX = Math.max(0, Math.min(newX, deskRect.width - div.offsetWidth));
-              newY = Math.max(0, Math.min(newY, deskRect.height - div.offsetHeight));
-              div.style.left = newX + 'px';
-              div.style.top = newY + 'px';
-              const winData = windows.find(w => w.id === win.id);
-              if (winData) { winData.x = newX; winData.y = newY; saveState(); }
-            };
-            const onUp = () => { dragData = null; document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onUp); };
-            document.addEventListener('touchmove', onMove, { passive: false });
-            document.addEventListener('touchend', onUp, { passive: false });
-          }, { passive: false });
-          let resizeData = null;
-          resizeHandle.addEventListener('mousedown', (e) => {
-            e.stopPropagation();
-            const rect = div.getBoundingClientRect();
-            resizeData = { startX: e.clientX, startY: e.clientY, startW: rect.width, startH: rect.height };
-            const onMove = (ev) => {
-              if (!resizeData) return;
-              let newW = resizeData.startW + (ev.clientX - resizeData.startX);
-              let newH = resizeData.startH + (ev.clientY - resizeData.startY);
-              const deskRect = desktop.getBoundingClientRect();
-              newW = Math.min(Math.max(260, newW), deskRect.width - 20);
-              newH = Math.min(Math.max(200, newH), deskRect.height - 20);
-              div.style.width = newW + 'px';
-              div.style.height = newH + 'px';
-              const winData = windows.find(w => w.id === win.id);
-              if (winData) { winData.w = newW; winData.h = newH; saveState(); }
-            };
-            const onUp = () => { resizeData = null; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
-          });
-          resizeHandle.addEventListener('touchstart', (e) => {
-            e.stopPropagation();
-            const touch = e.touches[0];
-            const rect = div.getBoundingClientRect();
-            resizeData = { startX: touch.clientX, startY: touch.clientY, startW: rect.width, startH: rect.height };
-            const onMove = (ev) => {
-              if (!resizeData) return;
-              const t = ev.touches[0];
-              let newW = resizeData.startW + (t.clientX - resizeData.startX);
-              let newH = resizeData.startH + (t.clientY - resizeData.startY);
-              const deskRect = desktop.getBoundingClientRect();
-              newW = Math.min(Math.max(260, newW), deskRect.width - 20);
-              newH = Math.min(Math.max(200, newH), deskRect.height - 20);
-              div.style.width = newW + 'px';
-              div.style.height = newH + 'px';
-              const winData = windows.find(w => w.id === win.id);
-              if (winData) { winData.w = newW; winData.h = newH; saveState(); }
-            };
-            const onUp = () => { resizeData = null; document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onUp); };
-            document.addEventListener('touchmove', onMove, { passive: false });
-            document.addEventListener('touchend', onUp, { passive: false });
-          }, { passive: false });
-
-          updateTaskbar();
-          saveState();
-          return;
-        }
-
-        // Regular app window
-        const div = document.createElement('div');
-        div.className = 'window';
-        if (win.maximized) div.classList.add('maximized');
-        div.dataset.id = win.id;
-        div.style.left = win.x + 'px';
-        div.style.top = win.y + 'px';
-        div.style.width = win.w + 'px';
-        div.style.height = win.h + 'px';
-        div.style.zIndex = 10 + windows.indexOf(win);
-
-        const header = document.createElement('div');
-        header.className = 'window-header';
-        // Star button
-        const starBtn = document.createElement('button');
-        starBtn.className = 'star-btn';
-        starBtn.dataset.file = win.file;
-        const icon = desktopIcons.find(i => i.file === win.file);
-        if (icon) {
-          starBtn.classList.toggle('active', favorites.includes(icon.id));
-        }
-        starBtn.textContent = '⭐';
-        starBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (!icon) return;
-          toggleFavorite(icon.id);
-        });
-        header.appendChild(starBtn);
-
-        const titleSpan = document.createElement('span');
-        titleSpan.className = 'window-title';
-        titleSpan.textContent = win.title;
-        header.appendChild(titleSpan);
-
-        const controls = document.createElement('div');
-        controls.className = 'window-controls';
-        controls.innerHTML = `<button class="btn-minimize" title="Minimize">−</button><button class="btn-maximize" title="Maximize">⛶</button><button class="btn-close" title="Close">✕</button>`;
-        header.appendChild(controls);
-        div.appendChild(header);
-
-        const content = document.createElement('div');
-        content.className = 'window-content';
-        if (win.file !== '_folder') {
+        } else if (win.file !== '_folder') {
           const iframe = document.createElement('iframe');
           iframe.src = getAppUrl(win.file);
           iframe.loading = 'lazy';
@@ -1600,12 +1557,19 @@
           placeholder.textContent = 'Folder content';
           content.appendChild(placeholder);
         }
-
-        const notesArea = document.createElement('div');
-        notesArea.className = 'window-notes-area';
-        notesArea.innerHTML = `<div class="window-tags"><span class="tag-label">🏷️ Tags:</span><input type="text" class="tag-input" placeholder="comma, separated" value="${win.tags}" /></div><textarea class="note-textarea" placeholder="Write notes...">${win.notes}</textarea>`;
-        content.appendChild(notesArea);
         div.appendChild(content);
+
+        // Notes area (for non-browser)
+        if (!isBrowser) {
+          const notesArea = document.createElement('div');
+          notesArea.className = 'window-notes-area';
+          notesArea.innerHTML = `<div class="window-tags"><span class="tag-label">🏷️ Tags:</span><input type="text" class="tag-input" placeholder="comma, separated" value="${win.tags}" /></div><textarea class="note-textarea" placeholder="Write notes...">${win.notes}</textarea>`;
+          content.appendChild(notesArea);
+          const noteTextarea = notesArea.querySelector('.note-textarea');
+          const tagInput = notesArea.querySelector('.tag-input');
+          noteTextarea.addEventListener('input', () => { win.notes = noteTextarea.value; saveState(); });
+          tagInput.addEventListener('input', () => { win.tags = tagInput.value; saveState(); });
+        }
 
         const resizeHandle = document.createElement('div');
         resizeHandle.className = 'resize-handle';
@@ -1613,7 +1577,15 @@
 
         desktop.appendChild(div);
 
-        // Drag & Resize (same as regular)
+        // ---- Focus management ----
+        div.addEventListener('mousedown', () => {
+          bringWindowToFront(win.id);
+        });
+        div.addEventListener('touchstart', () => {
+          bringWindowToFront(win.id);
+        });
+
+        // ---- Drag ----
         let dragData = null;
         function onDragStart(e) {
           if (e.target.closest('.window-controls') || e.target.closest('.star-btn')) return;
@@ -1642,6 +1614,7 @@
         header.addEventListener('mousedown', onDragStart);
         header.addEventListener('touchstart', onDragStart, { passive: false });
 
+        // ---- Resize ----
         let resizeData = null;
         function onResizeStart(e) {
           e.stopPropagation();
@@ -1670,6 +1643,7 @@
         resizeHandle.addEventListener('mousedown', onResizeStart);
         resizeHandle.addEventListener('touchstart', onResizeStart, { passive: false });
 
+        // ---- Controls ----
         controls.querySelector('.btn-minimize').addEventListener('click', (e) => {
           e.stopPropagation();
           win.minimized = true;
@@ -1698,13 +1672,29 @@
           closeWindow(win.id);
         });
 
-        const noteTextarea = notesArea.querySelector('.note-textarea');
-        const tagInput = notesArea.querySelector('.tag-input');
-        noteTextarea.addEventListener('input', () => { win.notes = noteTextarea.value; saveState(); });
-        tagInput.addEventListener('input', () => { win.tags = tagInput.value; saveState(); });
-
         updateTaskbar();
         saveState();
+      }
+
+      function bringWindowToFront(id) {
+        const win = windows.find(w => w.id === id);
+        if (!win) return;
+        const maxZ = Math.max(...Array.from(document.querySelectorAll('.window')).map(el => parseInt(el.style.zIndex) || 0));
+        const el = document.querySelector(`.window[data-id="${id}"]`);
+        if (el) {
+          el.style.zIndex = maxZ + 1;
+          el.classList.add('focused');
+          // Remove focus from others
+          document.querySelectorAll('.window').forEach(w => {
+            if (w !== el) w.classList.remove('focused');
+          });
+          // Re-order windows array to put this at the end
+          const idx = windows.indexOf(win);
+          if (idx > -1) {
+            windows.splice(idx, 1);
+            windows.push(win);
+          }
+        }
       }
 
       function closeWindow(id) {
@@ -1729,11 +1719,7 @@
           item.addEventListener('click', () => {
             if (win.minimized) { win.minimized = false; renderWindow(win); }
             else {
-              const el = document.querySelector(`.window[data-id="${win.id}"]`);
-              if (el) {
-                const maxZ = Math.max(...Array.from(document.querySelectorAll('.window')).map(el => parseInt(el.style.zIndex) || 0));
-                el.style.zIndex = maxZ + 1;
-              }
+              bringWindowToFront(win.id);
             }
             updateTaskbar();
             saveState();
@@ -1742,21 +1728,26 @@
         });
       }
 
-      // ----- LAUNCH APP & BROWSER -----
-      function launchApp(file) {
+      // ----- LAUNCH APP -----
+      function launchApp(file, x, y, w, h) {
         const social = socialApps.find(s => s.file === file);
         if (social) {
-          if (file === 'browser') { createBrowserWindow(); return; }
+          if (file === 'browser') { createBrowserWindow(x, y, w, h); return; }
           window.open(file, '_blank');
           return;
         }
         if (windows.some(w => w.file === file)) { alert('Already open.'); return; }
-        createWindow(file, file, 120 + Math.random()*100, 80 + Math.random()*80, 420, 320);
+        createWindow(file, file, x || 120 + Math.random()*100, y || 80 + Math.random()*80, w || 420, h || 320);
       }
 
-      function createBrowserWindow() {
+      function createBrowserWindow(x, y, w, h) {
         const id = nextId++;
-        const win = { id, file: 'browser', title: 'Browser', x: 100, y: 80, w: 500, h: 400, minimized: false, maximized: false, notes: '', tags: '', date: Date.now() };
+        const deskRect = desktop.getBoundingClientRect();
+        x = x || 100;
+        y = y || 80;
+        w = w || Math.min(500, deskRect.width * 0.8);
+        h = h || Math.min(400, deskRect.height * 0.7);
+        const win = { id, file: 'browser', title: 'Browser', x, y, w, h, minimized: false, maximized: false, notes: '', tags: '', date: Date.now() };
         windows.push(win);
         renderWindow(win);
         saveState();
@@ -1891,13 +1882,13 @@
       arrangeBtn.addEventListener('click', arrangeIcons);
       viewToggleBtn.addEventListener('click', toggleView);
 
-      // ----- FAVORITES PANEL -----
+      // ----- FAVORITES PANEL (narrow, icon + first word) -----
       function renderFavorites() {
         const search = favSearch.value.toLowerCase().trim();
         const favIcons = desktopIcons.filter(icon => favorites.includes(icon.id) && !icon.folderId);
         favList.innerHTML = '';
         if (favIcons.length === 0) {
-          favList.innerHTML = '<div style="color:#8a8aba; text-align:center; padding:1rem;">No favorites yet.</div>';
+          favList.innerHTML = '<div style="color:#8a8aba; text-align:center; padding:0.5rem; font-size:0.6rem;">No favs</div>';
           return;
         }
         const filtered = favIcons.filter(icon => icon.label.toLowerCase().includes(search));
@@ -1905,9 +1896,10 @@
           const item = document.createElement('div');
           item.className = 'fav-item';
           const emoji = icon.type === 'app' ? getIconEmoji(icon.file) : '📄';
+          const shortLabel = getFirstWord(icon.label);
           item.innerHTML = `
             <span class="fav-icon">${emoji}</span>
-            <span class="fav-label">${icon.label}</span>
+            <span class="fav-label">${shortLabel}</span>
             <span class="fav-remove" data-id="${icon.id}">✕</span>
           `;
           item.addEventListener('click', (e) => {
@@ -1923,6 +1915,7 @@
               saveState();
               renderDesktopIcons();
               renderFavorites();
+              updateWindowStarButtons();
             }
           });
           favList.appendChild(item);
@@ -1940,8 +1933,8 @@
       function exportNotes() {
         const data = {
           windows: windows.map(win => ({ title: win.title, file: win.file, notes: win.notes, tags: win.tags, date: win.date })),
-          icons: desktopIcons.map(icon => ({ id: icon.id, type: icon.type, label: icon.label, file: icon.file || '', x: icon.x, y: icon.y, folderId: icon.folderId || null, color: icon.color || null })),
-          folders: folders.map(f => ({ id: f.id, name: f.name, appIds: f.appIds, color: f.color || null })),
+          icons: desktopIcons.map(icon => ({ id: icon.id, type: icon.type, label: icon.label, file: icon.file || '', x: icon.x, y: icon.y, folderId: icon.folderId || null, color: icon.color || null, tags: icon.tags || [], isFavFolder: icon.isFavFolder || false })),
+          folders: folders.map(f => ({ id: f.id, name: f.name, appIds: f.appIds, color: f.color || null, isFavFolder: f.isFavFolder || false })),
           favorites: favorites,
           listView: listView,
           githubUser: GITHUB_USER
@@ -2040,8 +2033,8 @@
       function saveState() {
         const state = {
           windows: windows.map(win => ({ id: win.id, file: win.file, title: win.title, x: win.x, y: win.y, w: win.w, h: win.h, minimized: win.minimized, maximized: win.maximized, notes: win.notes, tags: win.tags, date: win.date })),
-          icons: desktopIcons.map(icon => ({ id: icon.id, type: icon.type, label: icon.label, file: icon.file || '', x: icon.x, y: icon.y, folderId: icon.folderId || null, color: icon.color || null })),
-          folders: folders.map(f => ({ id: f.id, name: f.name, appIds: f.appIds, color: f.color || null })),
+          icons: desktopIcons.map(icon => ({ id: icon.id, type: icon.type, label: icon.label, file: icon.file || '', x: icon.x, y: icon.y, folderId: icon.folderId || null, color: icon.color || null, tags: icon.tags || [], isFavFolder: icon.isFavFolder || false })),
+          folders: folders.map(f => ({ id: f.id, name: f.name, appIds: f.appIds, color: f.color || null, isFavFolder: f.isFavFolder || false })),
           nextId, nextFolderId,
           listView: listView,
           favorites: favorites,
@@ -2066,10 +2059,10 @@
             nextId = maxId + 1;
           }
           if (data.icons) {
-            desktopIcons = data.icons.map(icon => ({ id: icon.id, type: icon.type, label: icon.label, file: icon.file || '', x: icon.x || 100, y: icon.y || 60, folderId: icon.folderId || null, color: icon.color || null }));
+            desktopIcons = data.icons.map(icon => ({ id: icon.id, type: icon.type, label: icon.label, file: icon.file || '', x: icon.x || 100, y: icon.y || 60, folderId: icon.folderId || null, color: icon.color || null, tags: icon.tags || [], isFavFolder: icon.isFavFolder || false }));
           }
           if (data.folders) {
-            folders = data.folders.map(f => ({ id: f.id, name: f.name, appIds: f.appIds || [], color: f.color || '#7a5aff' }));
+            folders = data.folders.map(f => ({ id: f.id, name: f.name, appIds: f.appIds || [], color: f.color || '#7a5aff', isFavFolder: f.isFavFolder || false }));
           }
           if (data.nextId) nextId = data.nextId;
           if (data.nextFolderId) nextFolderId = data.nextFolderId;
@@ -2091,19 +2084,19 @@
         const loaded = loadState();
         await fetchAppList(GITHUB_USER);
         if (!loaded) {
-          // Create app icons (no social apps on desktop)
+          // Create app icons
           appList.forEach((app, idx) => {
             desktopIcons.push({ id: 'app_' + idx, type: 'app', label: app.file, file: app.file, x: 60 + (idx % 8) * 68, y: 30 + Math.floor(idx / 8) * 76, folderId: null });
           });
-          // No social apps on desktop
-          const folder = createFolder('My Favorites', '#ff6a8a');
+          // Create Favorites folder
+          const favFolder = createFolder('⭐ Favorites', '#ffcc00', true);
+          // Move some apps into favorites folder
           const favApps = ['CREATORBOARD', 'MUSICSHELL0', 'COSMICSHELL0'];
           favApps.forEach(file => {
             const icon = desktopIcons.find(i => i.file === file);
-            if (icon) moveIconToFolder(icon.id, folder.id);
+            if (icon) moveIconToFolder(icon.id, favFolder.id);
           });
           arrangeIcons();
-          // Do NOT open any windows on first load
           saveState();
           renderDesktopIcons();
           applyFilterAndSort();
@@ -2111,7 +2104,7 @@
           renderDesktopIcons();
           applyFilterAndSort();
         }
-        console.log('✨ Ai Desktop v15 ready!');
+        console.log('✨ Ai Desktop v16 ready!');
         console.log(`📦 ${appList.length} apps loaded from GitHub user: ${GITHUB_USER}`);
         console.log(`⭐ ${favorites.length} favorites.`);
       }
