@@ -656,40 +656,93 @@
         }
       }
 
-async function fetchAppList(user, repo) {
+// ===== FETCH APP LIST WITH FALLBACK & TIMESTAMPT =====
+      async function fetchAppList(user, repo) {
         const username = user || GITHUB_USER;
         const reponame = repo || GITHUB_REPO;
+        const lastUpdateNotice = "Last updated: 2026-03-30 (Offline/API Fallback Active)";
         
-        // Optional: Check cache first to save API calls during testing
-        const cached = localStorage.getItem(`app_list_${username}_${reponame}`);
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached);
-            if (Date.now() - parsed.time < 3600000) { // 1 hour cache
-              appList = parsed.data;
-              isAppListLoaded = true;
-              return appList;
-            }
-          } catch(e) {}
-        }
-
         try {
-          // Fetch root contents once
           const rootData = await fetchRepoContents(username, reponame);
+          if (!rootData || rootData.message || (Array.isArray(rootData) && rootData.length === 0)) {
+            throw new Error('API limit or unavailable, using fallback list.');
+          }
+          
           const htmlFiles = [];
+          for (const item of rootData) {
+            if (item.type === 'file' && item.name.endsWith('.html')) {
+              htmlFiles.push({
+                file: item.name.replace('.html', ''),
+                desc: item.name.replace('.html', ''),
+                url: item.url,
+                sha: item.sha,
+                size: item.size,
+                created_at: null,
+                updated_at: null,
+                last_modified: null,
+              });
+            }
+          }
 
-          if (Array.isArray(rootData)) {
-            for (const item of rootData) {
+          // Fetch SHELL folder contents dynamically if API is working
+          const shellData = await fetchRepoContents(username, reponame, 'SHELL');
+          if (shellData && !shellData.message && Array.isArray(shellData)) {
+            for (const item of shellData) {
               if (item.type === 'file' && item.name.endsWith('.html')) {
                 htmlFiles.push({
-                  file: item.name.replace('.html', ''),
-                  desc: item.name.replace('.html', ''),
+                  file: 'SHELL/' + item.name.replace('.html', ''),
+                  desc: 'SHELL/' + item.name.replace('.html', ''),
+                  url: item.url,
+                  sha: item.sha,
                   size: item.size,
-                  updated_at: item.commit?.committer?.date || null
                 });
               }
             }
           }
+
+          htmlFiles.sort((a, b) => a.file.localeCompare(b.file));
+          appList = htmlFiles;
+          isAppListLoaded = true;
+          return htmlFiles;
+
+        } catch (error) {
+          console.warn('GitHub API unavailable. Using standard repository fallback list. ' + lastUpdateNotice);
+          
+          // Fallback Complete Repository List for worldpeacebtn/Ai
+          const fallbackHtmlFiles = [
+            { file: 'index', desc: 'Main Gateway - ' + lastUpdateNotice },
+            { file: 'CREATORBOARD', desc: 'Digital Canvas' },
+            { file: 'MUSICSHELL0', desc: 'Audio Playground' },
+            { file: 'MUSICSHELLGEN', desc: 'Music Shell Generator' },
+            { file: 'SHELLCREATOR', desc: 'Shell Creator' },
+            { file: 'ULTRACREANODE', desc: 'Ultra Crea Node' },
+            { file: 'DEEPUCOCREA', desc: 'Deep Uco Crea' },
+            { file: 'UNIWAVEEDITOR', desc: 'Uniwave Editor' },
+            { file: 'COSMICSHELL0', desc: 'Cosmic Shell' },
+            { file: 'SANCTUARYC', desc: 'Sanctuary' },
+            { file: 'MIRAC', desc: 'Mirac UI' },
+            { file: 'MMRYROOMS', desc: 'Memory Rooms' },
+            { file: 'MS', desc: 'Mind System' },
+            { file: 'MS2', desc: 'Mind System 2' },
+            { file: 'MSNXTXPLORING', desc: 'MS Next Exploring' },
+            { file: 'WEBAPPANIMATOR', desc: 'Web App Animator' },
+            { file: 'WEBEDI', desc: 'Web Editor' },
+            { file: 'WEBEDITX', desc: 'Web Edit X' },
+            { file: 'UID', desc: 'UID Tool' },
+            { file: 'CYBERGIRLPOWA', desc: 'Cyber Girl Powah' },
+            { file: 'ADVCC', desc: 'Advanced Control Center' },
+            { file: 'CC', desc: 'Control Center' },
+            { file: 'COCD', desc: 'COCD Module' },
+            { file: 'OBERLAYHUD', desc: 'Overlay HUD' },
+            { file: 'UCOEDI', desc: 'Uco Editor' },
+            { file: 'SHELL/x42_anime_theatre/animelist', desc: 'Anime Theatre List' }
+          ];
+
+          appList = fallbackHtmlFiles;
+          isAppListLoaded = true;
+          return appList;
+        }
+      }
 
           // Helper for subfolders to avoid repetitive blocks
           async function fetchSubFolder(subpath) {
@@ -811,6 +864,31 @@ async function fetchAppList(user, repo) {
       }
 
       // ===== HELPERS =====
+function renderAppGrid(filter = '') {
+        const container = document.getElementById('appGridContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        const filtered = appList.filter(app => app.file.toLowerCase().includes(filter.toLowerCase()) || app.desc.toLowerCase().includes(filter.toLowerCase()));
+        
+        if (filtered.length === 0) {
+          container.innerHTML = '<div style="color:#8a8aba; text-align:center; grid-column:1/-1;">No apps found</div>';
+          return;
+        }
+
+        filtered.forEach(app => {
+          const item = document.createElement('div');
+          item.className = 'app-grid-item';
+          const emoji = getIconEmoji(app.file);
+          item.innerHTML = `<span class="app-icon">${emoji}</span><span class="app-name">${app.file.split('/').pop()}</span>`;
+          item.addEventListener('click', () => {
+            launchApp(app.file);
+            document.getElementById('appModal').classList.remove('active');
+          });
+          container.appendChild(item);
+        });
+      }
+    
       function getAppUrl(file) {
         if (file.startsWith('http') || file === 'browser') return file;
         let path = file;
