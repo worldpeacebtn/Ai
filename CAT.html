@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>⚡ Ai Desktop · v17</title>
+  <title>⚡ Ai Desktop · v16</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
     body {
@@ -57,26 +57,8 @@
     #hud .hud-group { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; }
     #fileUploadInput, #importFileInput { display: none; }
 
-    #socialPopup {
-      display: none;
-      position: fixed; right: 62px; top: 50%; transform: translateY(-50%);
-      background: rgba(10,10,30,0.95); backdrop-filter: blur(12px);
-      border: 1px solid #4a3a7a; border-radius: 16px;
-      padding: 0.8rem; z-index: 9999;
-      min-width: 140px; flex-direction: column; gap: 0.4rem;
-    }
-    #socialPopup.active { display: flex; }
-    #socialPopup .social-item {
-      display: flex; align-items: center; gap: 0.5rem;
-      padding: 0.3rem 0.6rem; border-radius: 8px; cursor: pointer;
-      transition: background 0.15s; color: #c8c0ff;
-      font-size: 0.8rem;
-    }
-    #socialPopup .social-item:hover { background: #2a2a5a; }
-    #socialPopup .social-item .si-icon { font-size: 1.2rem; width: 28px; text-align: center; }
-
     #desktop {
-      position: fixed; left: 0; top: 0; width: calc(100% - 56px); height: calc(100% - 80px);
+      position: fixed; left: 0; top: 0; width: calc(100% - 56px); height: calc(100% - 40px);
       overflow-y: auto; overflow-x: hidden; background: transparent; z-index: 1; padding: 8px;
     }
     #desktop::-webkit-scrollbar { width: 6px; }
@@ -237,7 +219,7 @@
     }
 
     #taskbar {
-      position: fixed; bottom: 40px; left: 0; width: calc(100% - 56px); height: 40px;
+      position: fixed; bottom: 0; left: 0; width: calc(100% - 56px); height: 40px;
       z-index: 2000; background: rgba(10,10,30,0.9); backdrop-filter: blur(8px);
       border-top: 1px solid #3a2a6a; display: flex; align-items: center;
       padding: 0 0.5rem; gap: 0.3rem; overflow-x: auto; flex-wrap: nowrap; white-space: nowrap;
@@ -252,33 +234,6 @@
     }
     .task-item:hover { background: #3a2a6a; border-color: #9a7aff; }
     .task-item .task-icon { font-size: 0.8rem; }
-
-    /* Bottom Dock */
-    #dockBar {
-      position: fixed; bottom: 0; left: 0; width: calc(100% - 56px); height: 40px;
-      background: rgba(10,10,30,0.85); backdrop-filter: blur(8px);
-      border-top: 1px solid #3a2a6a; z-index: 100;
-      display: flex; align-items: center; padding: 0 8px; gap: 6px;
-      overflow-x: auto; overflow-y: hidden;
-    }
-    #dockBar::-webkit-scrollbar { height: 3px; }
-    #dockBar::-webkit-scrollbar-thumb { background: #4a3a7a; border-radius: 3px; }
-    .dock-item {
-      flex-shrink: 0; width: 36px; height: 36px;
-      background: #1a1a3a; border-radius: 8px; border: 1px solid #4a3a7a;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px; cursor: pointer; transition: 0.15s;
-      position: relative;
-    }
-    .dock-item:hover { background: #3a2a6a; border-color: #9a7aff; transform: scale(1.1); }
-    .dock-item .dock-remove {
-      position: absolute; top: -6px; right: -6px;
-      background: #ff6a8a; color: #fff; border-radius: 50%;
-      width: 14px; height: 14px; font-size: 10px; line-height: 14px;
-      text-align: center; cursor: pointer; opacity: 0; transition: 0.15s;
-    }
-    .dock-item:hover .dock-remove { opacity: 1; }
-    .dock-item .dock-remove:hover { background: #ff3a5a; }
 
     .app-modal {
       display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -313,11 +268,12 @@
     }
     .app-modal-close:hover { color: #ff6a8a; }
 
+    /* NARROW FAVORITES PANEL (dock style) */
     #favoritesPanel {
-      position: fixed; left: -240px; top: 0; bottom: 0; width: 220px;
+      position: fixed; left: -180px; top: 0; bottom: 0; width: 160px;
       background: rgba(10,10,30,0.95); backdrop-filter: blur(12px);
       border-right: 1px solid #4a3a7a; z-index: 2000;
-      transition: left 0.3s ease; padding: 0.6rem 0.6rem;
+      transition: left 0.3s ease; padding: 0.6rem 0.4rem;
       display: flex; flex-direction: column; overflow: hidden;
     }
     #favoritesPanel.open { left: 0; }
@@ -325,13 +281,13 @@
       display: flex; justify-content: space-between; align-items: center;
       padding-bottom: 0.3rem; border-bottom: 1px solid #3a2a6a;
     }
-    #favoritesPanel .fav-header h2 { font-size: 0.8rem; font-weight: 300; color: #b8b0ff; }
+    #favoritesPanel .fav-header h2 { font-size: 0.7rem; font-weight: 300; color: #b8b0ff; }
     #favoritesPanel .fav-header button { background: none; border: none; color: #8a7aaa; font-size: 1rem; cursor: pointer; }
     #favoritesPanel .fav-header button:hover { color: #ff6a8a; }
     #favoritesPanel .fav-search {
       width: 100%; padding: 0.2rem 0.4rem; margin: 0.3rem 0;
       background: #0a0a1a; border: 1px solid #3a2a6a; border-radius: 20px;
-      color: #d0d0ff; outline: none; font-size: 0.7rem;
+      color: #d0d0ff; outline: none; font-size: 0.6rem;
     }
     #favoritesPanel .fav-search:focus { border-color: #9a7aff; }
     #favoritesPanel .fav-list {
@@ -345,12 +301,12 @@
       transition: background 0.15s;
     }
     .fav-item:hover { background: #2a2a5a; }
-    .fav-item .fav-icon { font-size: 1.2rem; width: 28px; text-align: center; flex-shrink: 0; }
+    .fav-item .fav-icon { font-size: 1.2rem; width: 24px; text-align: center; flex-shrink: 0; }
     .fav-item .fav-label {
-      font-size: 0.7rem; color: #c8c0ff; flex: 1; overflow: hidden;
+      font-size: 0.6rem; color: #c8c0ff; flex: 1; overflow: hidden;
       text-overflow: ellipsis; white-space: nowrap;
     }
-    .fav-item .fav-remove { color: #8a6a8a; cursor: pointer; font-size: 0.8rem; flex-shrink: 0; }
+    .fav-item .fav-remove { color: #8a6a8a; cursor: pointer; font-size: 0.7rem; flex-shrink: 0; }
     .fav-item .fav-remove:hover { color: #ff6a8a; }
 
     #cat-widget {
@@ -391,17 +347,16 @@
       #hud button, #hud select { width: 34px; height: 34px; font-size: 0.9rem; }
       #hud input[type="text"] { width: 26px; height: 26px; font-size: 0.5rem; }
       #hud .hud-title { font-size: 0.6rem; }
-      #desktop { left: 0; width: calc(100% - 48px); height: calc(100% - 76px); }
-      #taskbar { left: 0; width: calc(100% - 48px); height: 36px; bottom: 36px; }
-      #dockBar { left: 0; width: calc(100% - 48px); height: 36px; }
+      #desktop { left: 0; width: calc(100% - 48px); height: calc(100% - 36px); }
+      #taskbar { left: 0; width: calc(100% - 48px); height: 36px; }
       .desktop-icon { width: 54px; height: 62px; }
       .desktop-icon .icon-img { width: 38px; height: 38px; font-size: 18px; }
       .window { min-width: 180px; min-height: 140px; }
       .folder-window { min-width: 100px; min-height: 60px; }
       #cat-widget { font-size: 0.5rem; bottom: 42px; right: 56px; }
-      #favoritesPanel { width: 180px; left: -200px; }
+      #favoritesPanel { width: 130px; left: -150px; }
       #favoritesPanel.open { left: 0; }
-      #socialPopup { right: 54px; min-width: 120px; }
+      #favoritesPanel .fav-item .fav-label { font-size: 0.5rem; }
     }
   </style>
 </head>
@@ -415,7 +370,6 @@
     <button id="removeAppBtn" title="Remove Last App">➖</button>
     <button id="newFolderBtn" title="New Folder">📁</button>
     <button id="uploadBtn" title="Upload Media">📤</button>
-    <button id="socialBtn" title="Social">🌐</button>
     <input type="file" id="fileUploadInput" multiple />
     <button id="openAllBtn" title="Open All">🚀</button>
     <button id="closeAllBtn" title="Close All">✖</button>
@@ -442,14 +396,8 @@
     <input type="file" id="importFileInput" accept=".txt" style="display:none;" />
   </div>
 
-  <!-- SOCIAL POPUP -->
-  <div id="socialPopup"></div>
-
   <!-- DESKTOP -->
   <div id="desktop"></div>
-
-  <!-- BOTTOM DOCK -->
-  <div id="dockBar"></div>
 
   <!-- TASKBAR -->
   <div id="taskbar"></div>
@@ -464,10 +412,10 @@
     </div>
   </div>
 
-  <!-- FAVORITES PANEL -->
+  <!-- NARROW FAVORITES PANEL -->
   <div id="favoritesPanel">
     <div class="fav-header">
-      <h2>⭐ Favorites</h2>
+      <h2>⭐ Favs</h2>
       <button id="favPanelClose">✕</button>
     </div>
     <input type="text" class="fav-search" id="favSearch" placeholder="Search..." />
@@ -513,17 +461,14 @@
       let folders = [];
       let nextFolderId = 1;
       let favorites = [];
-      let dockedApps = []; // array of icon ids
-      const STORAGE_KEY = 'ai_desktop_state_v17';
+      const STORAGE_KEY = 'ai_desktop_state_v16';
       let listView = false;
       let _isRendering = false;
+      let _focusTimeout = null;
 
       // DOM refs
       const desktop = document.getElementById('desktop');
       const taskbar = document.getElementById('taskbar');
-      const dockBar = document.getElementById('dockBar');
-      const socialPopup = document.getElementById('socialPopup');
-      const socialBtn = document.getElementById('socialBtn');
       const openAppGridBtn = document.getElementById('openAppGridBtn');
       const addAppBtn = document.getElementById('addAppBtn');
       const removeAppBtn = document.getElementById('removeAppBtn');
@@ -640,7 +585,6 @@
         renderDesktopIcons();
         renderFavorites();
         updateWindowStarButtons();
-        updateDock();
       }
       function isFavorite(iconId) { return favorites.indexOf(iconId) > -1; }
 
@@ -654,7 +598,7 @@
         });
       }
 
-      // ----- TAGS -----
+      // ----- TAGS (per app) -----
       function getTagsForIcon(iconId) {
         const icon = desktopIcons.find(i => i.id === iconId);
         if (!icon) return [];
@@ -685,42 +629,6 @@
           icon.tags = icon.tags.filter(t => t !== tag);
           saveState();
           renderDesktopIcons();
-        }
-      }
-
-      // ----- DOCK -----
-      function updateDock() {
-        dockBar.innerHTML = '';
-        dockedApps.forEach(id => {
-          const icon = desktopIcons.find(i => i.id === id);
-          if (!icon) return;
-          const item = document.createElement('div');
-          item.className = 'dock-item';
-          const emoji = icon.type === 'app' ? getIconEmoji(icon.file) : '📄';
-          item.innerHTML = `<span>${emoji}</span><span class="dock-remove" data-id="${id}">✕</span>`;
-          item.addEventListener('click', (e) => {
-            if (e.target.classList.contains('dock-remove')) return;
-            if (icon.type === 'app') launchApp(icon.file);
-            else alert('File: ' + icon.label);
-          });
-          item.querySelector('.dock-remove').addEventListener('click', (e) => {
-            e.stopPropagation();
-            const idx = dockedApps.indexOf(id);
-            if (idx > -1) {
-              dockedApps.splice(idx, 1);
-              saveState();
-              updateDock();
-            }
-          });
-          dockBar.appendChild(item);
-        });
-      }
-
-      function addToDock(iconId) {
-        if (!dockedApps.includes(iconId)) {
-          dockedApps.push(iconId);
-          saveState();
-          updateDock();
         }
       }
 
@@ -816,7 +724,7 @@
           if (y > maxY) maxY = y;
         });
         const height = maxY + 80;
-        desktop.style.height = Math.max(height, window.innerHeight - 80) + 'px';
+        desktop.style.height = Math.max(height, window.innerHeight - 40) + 'px';
         desktop.style.minHeight = '100%';
       }
 
@@ -896,6 +804,7 @@
             }
             const isFav = isFavorite(icon.id);
             let starHtml = isFav ? '<span class="star-badge">⭐</span>' : '';
+            // tags
             const tags = icon.tags || [];
             let tagHtml = '';
             if (tags.length > 0) {
@@ -934,7 +843,7 @@
               lastTap = now;
             }, { passive: false });
 
-            // Context menu: favorites, tags, rename, delete, dock
+            // Context menu: favorites, tags, rename, delete
             div.addEventListener('contextmenu', (e) => {
               e.preventDefault();
               if (icon.type === 'folder') {
@@ -956,18 +865,17 @@
                 isFavorite(icon.id) ? 'Remove from favorites' : 'Add to favorites',
                 'Add tag...',
                 'Remove tag...',
-                'Move to folder...',
-                dockedApps.includes(icon.id) ? 'Remove from dock' : 'Add to dock'
+                'Move to folder...'
               ];
               const choice = prompt(
                 'Choose action:\n1. ' + actions[0] +
-                '\n2. Add tag...\n3. Remove tag...\n4. Move to folder...\n5. ' + actions[4],
+                '\n2. Add tag...\n3. Remove tag...\n4. Move to folder...',
                 '1'
               );
               if (choice === '1') {
                 toggleFavorite(icon.id);
               } else if (choice === '2') {
-                const tag = prompt('Enter tag (emoji or text, e.g. 🐋, ✨, ⚛️):', '');
+                const tag = prompt('Enter tag (emoji or text):', '');
                 if (tag && tag.trim()) {
                   addTagToIcon(icon.id, tag.trim());
                 }
@@ -988,17 +896,6 @@
                   if (folder) moveIconToFolder(icon.id, folder.id);
                   else alert('Folder not found.');
                 }
-              } else if (choice === '5') {
-                if (dockedApps.includes(icon.id)) {
-                  const idx = dockedApps.indexOf(icon.id);
-                  if (idx > -1) {
-                    dockedApps.splice(idx, 1);
-                    saveState();
-                    updateDock();
-                  }
-                } else {
-                  addToDock(icon.id);
-                }
               }
             });
           });
@@ -1008,7 +905,7 @@
         }
       }
 
-      // ----- DRAGGABLE (with dock detection) -----
+      // ----- DRAGGABLE -----
       function makeDraggable(element, iconData) {
         let startX, startY, origX, origY;
         let isDragging = false;
@@ -1075,7 +972,7 @@
               }
             }
 
-            // Preview near bottom (for dock)
+            // Preview
             const deskRect = desktop.getBoundingClientRect();
             const previewY = deskRect.height - 80;
             if (touch.clientY > previewY && iconData.type === 'app') {
@@ -1100,12 +997,6 @@
           if (isDragging) {
             const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
             const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-            const deskRect = desktop.getBoundingClientRect();
-            // Check if dropped near bottom (dock area)
-            if (clientY > deskRect.height - 60 && iconData.type === 'app') {
-              addToDock(iconData.id);
-            }
-
             const dropTarget = document.elementFromPoint(clientX, clientY);
             let moved = false;
 
@@ -1163,11 +1054,11 @@
             }
 
             if (!moved) {
-              const deskRect2 = desktop.getBoundingClientRect();
+              const deskRect = desktop.getBoundingClientRect();
               let newX = (iconData._tempX !== undefined) ? iconData._tempX : origX;
               let newY = (iconData._tempY !== undefined) ? iconData._tempY : origY;
-              newX = Math.max(0, Math.min(newX, deskRect2.width - 60));
-              newY = Math.max(0, Math.min(newY, deskRect2.height - 68));
+              newX = Math.max(0, Math.min(newX, deskRect.width - 60));
+              newY = Math.max(0, Math.min(newY, deskRect.height - 68));
               iconData.x = newX;
               iconData.y = newY;
               if (iconData.folderId) {
@@ -1238,12 +1129,14 @@
       function moveIconToFolder(iconId, folderId) {
         const icon = desktopIcons.find(i => i.id === iconId);
         if (!icon || icon.type === 'folder') return;
+        // If moving to a favorites folder, also add to favorites
         const targetFolder = folders.find(f => f.id === folderId);
         if (targetFolder && targetFolder.isFavFolder) {
           if (!favorites.includes(iconId)) {
             favorites.push(iconId);
           }
         } else {
+          // If moving out of favorites folder, remove from favorites
           if (icon.folderId) {
             const oldFolder = folders.find(f => f.id === icon.folderId);
             if (oldFolder && oldFolder.isFavFolder) {
@@ -1316,6 +1209,7 @@
         header.querySelector('.fw-open-all').addEventListener('click', () => {
           const appIds = folder.appIds || [];
           if (appIds.length === 0) return;
+          // Tile windows on screen
           const deskRect = desktop.getBoundingClientRect();
           const cols = Math.ceil(Math.sqrt(appIds.length));
           const rows = Math.ceil(appIds.length / cols);
@@ -1566,12 +1460,14 @@
         div.style.width = win.w + 'px';
         div.style.height = win.h + 'px';
         div.style.zIndex = 10 + windows.indexOf(win);
+        // Set focus
         if (windows.indexOf(win) === windows.length - 1) {
           div.classList.add('focused');
         }
 
         const header = document.createElement('div');
         header.className = 'window-header';
+        // Star button
         const starBtn = document.createElement('button');
         starBtn.className = 'star-btn';
         starBtn.dataset.file = win.file;
@@ -1663,6 +1559,7 @@
         }
         div.appendChild(content);
 
+        // Notes area (for non-browser)
         if (!isBrowser) {
           const notesArea = document.createElement('div');
           notesArea.className = 'window-notes-area';
@@ -1680,10 +1577,15 @@
 
         desktop.appendChild(div);
 
-        div.addEventListener('mousedown', () => { bringWindowToFront(win.id); });
-        div.addEventListener('touchstart', () => { bringWindowToFront(win.id); });
+        // ---- Focus management ----
+        div.addEventListener('mousedown', () => {
+          bringWindowToFront(win.id);
+        });
+        div.addEventListener('touchstart', () => {
+          bringWindowToFront(win.id);
+        });
 
-        // Drag
+        // ---- Drag ----
         let dragData = null;
         function onDragStart(e) {
           if (e.target.closest('.window-controls') || e.target.closest('.star-btn')) return;
@@ -1712,7 +1614,7 @@
         header.addEventListener('mousedown', onDragStart);
         header.addEventListener('touchstart', onDragStart, { passive: false });
 
-        // Resize
+        // ---- Resize ----
         let resizeData = null;
         function onResizeStart(e) {
           e.stopPropagation();
@@ -1741,6 +1643,7 @@
         resizeHandle.addEventListener('mousedown', onResizeStart);
         resizeHandle.addEventListener('touchstart', onResizeStart, { passive: false });
 
+        // ---- Controls ----
         controls.querySelector('.btn-minimize').addEventListener('click', (e) => {
           e.stopPropagation();
           win.minimized = true;
@@ -1781,9 +1684,11 @@
         if (el) {
           el.style.zIndex = maxZ + 1;
           el.classList.add('focused');
+          // Remove focus from others
           document.querySelectorAll('.window').forEach(w => {
             if (w !== el) w.classList.remove('focused');
           });
+          // Re-order windows array to put this at the end
           const idx = windows.indexOf(win);
           if (idx > -1) {
             windows.splice(idx, 1);
@@ -1813,7 +1718,9 @@
           item.innerHTML = `<span class="task-icon">${emoji}</span><span>${win.title}</span>`;
           item.addEventListener('click', () => {
             if (win.minimized) { win.minimized = false; renderWindow(win); }
-            else { bringWindowToFront(win.id); }
+            else {
+              bringWindowToFront(win.id);
+            }
             updateTaskbar();
             saveState();
           });
@@ -1873,29 +1780,6 @@
       appModalClose.addEventListener('click', () => appModal.classList.remove('active'));
       appModal.addEventListener('click', (e) => { if (e.target === appModal) appModal.classList.remove('active'); });
       appSearchInput.addEventListener('input', (e) => renderAppGrid(e.target.value));
-
-      // ----- SOCIAL POPUP -----
-      function renderSocialPopup() {
-        socialPopup.innerHTML = '';
-        socialApps.forEach(social => {
-          const item = document.createElement('div');
-          item.className = 'social-item';
-          item.innerHTML = `<span class="si-icon">${social.emoji}</span><span>${social.desc}</span>`;
-          item.addEventListener('click', () => {
-            launchApp(social.file);
-            socialPopup.classList.remove('active');
-          });
-          socialPopup.appendChild(item);
-        });
-      }
-      socialBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        socialPopup.classList.toggle('active');
-        renderSocialPopup();
-      });
-      document.addEventListener('click', () => {
-        socialPopup.classList.remove('active');
-      });
 
       // ----- REMOVE LAST APP -----
       removeAppBtn.addEventListener('click', () => {
@@ -1998,13 +1882,13 @@
       arrangeBtn.addEventListener('click', arrangeIcons);
       viewToggleBtn.addEventListener('click', toggleView);
 
-      // ----- FAVORITES PANEL -----
+      // ----- FAVORITES PANEL (narrow, icon + first word) -----
       function renderFavorites() {
         const search = favSearch.value.toLowerCase().trim();
         const favIcons = desktopIcons.filter(icon => favorites.includes(icon.id) && !icon.folderId);
         favList.innerHTML = '';
         if (favIcons.length === 0) {
-          favList.innerHTML = '<div style="color:#8a8aba; text-align:center; padding:0.5rem; font-size:0.7rem;">No favorites yet.</div>';
+          favList.innerHTML = '<div style="color:#8a8aba; text-align:center; padding:0.5rem; font-size:0.6rem;">No favs</div>';
           return;
         }
         const filtered = favIcons.filter(icon => icon.label.toLowerCase().includes(search));
@@ -2012,9 +1896,10 @@
           const item = document.createElement('div');
           item.className = 'fav-item';
           const emoji = icon.type === 'app' ? getIconEmoji(icon.file) : '📄';
+          const shortLabel = getFirstWord(icon.label);
           item.innerHTML = `
             <span class="fav-icon">${emoji}</span>
-            <span class="fav-label">${icon.label}</span>
+            <span class="fav-label">${shortLabel}</span>
             <span class="fav-remove" data-id="${icon.id}">✕</span>
           `;
           item.addEventListener('click', (e) => {
@@ -2051,7 +1936,6 @@
           icons: desktopIcons.map(icon => ({ id: icon.id, type: icon.type, label: icon.label, file: icon.file || '', x: icon.x, y: icon.y, folderId: icon.folderId || null, color: icon.color || null, tags: icon.tags || [], isFavFolder: icon.isFavFolder || false })),
           folders: folders.map(f => ({ id: f.id, name: f.name, appIds: f.appIds, color: f.color || null, isFavFolder: f.isFavFolder || false })),
           favorites: favorites,
-          dockedApps: dockedApps,
           listView: listView,
           githubUser: GITHUB_USER
         };
@@ -2091,7 +1975,6 @@
               });
             }
             if (data.favorites) favorites = data.favorites;
-            if (data.dockedApps) dockedApps = data.dockedApps;
             if (data.listView !== undefined) {
               listView = data.listView;
               if (listView) desktop.classList.add('list-view');
@@ -2106,7 +1989,6 @@
             saveState();
             renderDesktopIcons();
             renderFavorites();
-            updateDock();
             alert('Notes & settings imported!');
           } catch (err) { alert('Import failed: ' + err.message); }
         };
@@ -2156,7 +2038,6 @@
           nextId, nextFolderId,
           listView: listView,
           favorites: favorites,
-          dockedApps: dockedApps,
           githubUser: GITHUB_USER
         };
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
@@ -2190,11 +2071,9 @@
             if (listView) desktop.classList.add('list-view');
           }
           if (data.favorites) favorites = data.favorites;
-          if (data.dockedApps) dockedApps = data.dockedApps;
           if (data.githubUser) GITHUB_USER = data.githubUser;
           renderDesktopIcons();
           updateTaskbar();
-          updateDock();
           renderFavorites();
           return true;
         } catch(e) { return false; }
@@ -2205,10 +2084,13 @@
         const loaded = loadState();
         await fetchAppList(GITHUB_USER);
         if (!loaded) {
+          // Create app icons
           appList.forEach((app, idx) => {
             desktopIcons.push({ id: 'app_' + idx, type: 'app', label: app.file, file: app.file, x: 60 + (idx % 8) * 68, y: 30 + Math.floor(idx / 8) * 76, folderId: null });
           });
+          // Create Favorites folder
           const favFolder = createFolder('⭐ Favorites', '#ffcc00', true);
+          // Move some apps into favorites folder
           const favApps = ['CREATORBOARD', 'MUSICSHELL0', 'COSMICSHELL0'];
           favApps.forEach(file => {
             const icon = desktopIcons.find(i => i.file === file);
@@ -2218,16 +2100,13 @@
           saveState();
           renderDesktopIcons();
           applyFilterAndSort();
-          updateDock();
         } else {
           renderDesktopIcons();
           applyFilterAndSort();
-          updateDock();
         }
-        console.log('✨ Ai Desktop v17 ready!');
+        console.log('✨ Ai Desktop v16 ready!');
         console.log(`📦 ${appList.length} apps loaded from GitHub user: ${GITHUB_USER}`);
         console.log(`⭐ ${favorites.length} favorites.`);
-        console.log(`📌 ${dockedApps.length} docked apps.`);
       }
 
       init();
