@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>⚡ Ai Desktop · v19</title>
+  <title>⚡ Ai Desktop · v20</title>
   <style>
     /* === RESET & BASE === */
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -18,7 +18,7 @@
     body.theme-red    { background: #1a0a0a; color: #ffaaaa; }
     body.theme-cyber  { background: #0a0a12; color: #00ffcc; }
 
-    /* === HUD (right) === */
+    /* === HUD === */
     #hud {
       position: fixed; right: 0; top: 0; bottom: 0; width: 56px; z-index: 1000;
       background: rgba(10,10,30,0.85); backdrop-filter: blur(8px); border-left: 1px solid #3a2a6a;
@@ -78,16 +78,21 @@
     #socialPopup .social-item:hover { background: #2a2a5a; }
     #socialPopup .social-item .si-icon { font-size: 1.2rem; width: 28px; text-align: center; }
 
-    /* === REPO POPUP (for user switching) === */
+    /* === REPO BROWSER POPUP === */
     #repoPopup {
       display: none;
       position: fixed; right: 62px; top: 50%; transform: translateY(-50%);
       background: rgba(10,10,30,0.95); backdrop-filter: blur(12px);
       border: 1px solid #4a3a7a; border-radius: 16px;
       padding: 0.8rem; z-index: 9999;
-      min-width: 180px; flex-direction: column; gap: 0.4rem;
+      max-height: 70vh; overflow-y: auto;
+      min-width: 200px; flex-direction: column; gap: 0.4rem;
     }
     #repoPopup.active { display: flex; }
+    #repoPopup .repo-section-title {
+      font-size: 0.7rem; color: #8a8aba; border-bottom: 1px solid #3a2a6a;
+      padding-bottom: 0.2rem; margin-top: 0.2rem;
+    }
     #repoPopup .repo-item {
       display: flex; align-items: center; gap: 0.5rem;
       padding: 0.3rem 0.6rem; border-radius: 8px; cursor: pointer;
@@ -119,7 +124,7 @@
     #desktop::-webkit-scrollbar-track { background: rgba(10,10,30,0.3); border-radius: 3px; }
     #desktop::-webkit-scrollbar-thumb { background: #4a3a7a; border-radius: 3px; }
 
-    /* === DESKTOP ICONS (slightly smaller for more columns) === */
+    /* === DESKTOP ICONS === */
     .desktop-icon {
       position: absolute; width: 54px; height: 62px; display: flex; flex-direction: column;
       align-items: center; justify-content: center; cursor: pointer; border-radius: 10px; padding: 2px;
@@ -176,7 +181,7 @@
     /* === FOLDER WINDOW === */
     .folder-window { /* ... same as before ... */ }
 
-    /* === APP WINDOW (with tag‑colored header) === */
+    /* === APP WINDOW === */
     .window { /* ... same as before ... */ }
 
     /* === TASKBAR === */
@@ -191,14 +196,13 @@
     /* === FAVORITES PANEL === */
     #favoritesPanel { /* ... same as before ... */ }
 
-    /* === CAT WIDGET (draggable, visible) === */
+    /* === CAT WIDGET === */
     #cat-widget {
       position: fixed; bottom: 48px; right: 64px; font-size: 0.65rem; color: #6a6a9a;
       background: rgba(10,10,30,0.8); padding: 0.2rem 0.4rem; border-radius: 8px;
-      border: 1px solid #4a3a7a; backdrop-filter: blur(4px); z-index: 999; /* high */
+      border: 1px solid #4a3a7a; backdrop-filter: blur(4px); z-index: 999;
       cursor: grab; user-select: none; font-family: monospace; line-height: 1.1;
-      opacity: 0.9; transition: opacity 0.2s;
-      touch-action: none;
+      opacity: 0.9; transition: opacity 0.2s; touch-action: none;
     }
     #cat-widget:hover { opacity: 1; }
     #cat-widget:active { cursor: grabbing; }
@@ -218,7 +222,21 @@
     ::-webkit-scrollbar-thumb { background: #4a3a7a; border-radius: 3px; }
 
     @media (max-width: 600px) {
-      /* responsive adjustments */
+      #hud { width: 48px; padding: 0.3rem 0.1rem; gap: 0.2rem; }
+      #hud button, #hud select { width: 34px; height: 34px; font-size: 0.9rem; }
+      #hud input[type="text"] { width: 26px; height: 26px; font-size: 0.5rem; }
+      #hud .hud-title { font-size: 0.6rem; }
+      #desktop { left: 0; width: calc(100% - 48px); height: calc(100% - 76px); }
+      #taskbar { left: 0; width: calc(100% - 48px); height: 36px; bottom: 36px; }
+      #dockBar { left: 0; width: calc(100% - 48px); height: 36px; }
+      .desktop-icon { width: 48px; height: 56px; }
+      .desktop-icon .icon-img { width: 34px; height: 34px; font-size: 18px; }
+      .window { min-width: 180px; min-height: 140px; }
+      .folder-window { min-width: 100px; min-height: 60px; }
+      #cat-widget { font-size: 0.5rem; bottom: 42px; right: 56px; }
+      #favoritesPanel { width: 180px; left: -200px; }
+      #favoritesPanel.open { left: 0; }
+      #socialPopup, #repoPopup { right: 54px; min-width: 120px; max-height: 60vh; }
     }
   </style>
 </head>
@@ -293,7 +311,7 @@
     <div class="fav-list" id="favList"></div>
   </div>
 
-  <!-- CAT WIDGET (draggable) -->
+  <!-- CAT WIDGET -->
   <div id="cat-widget">
     <pre> /\_/\
 ( o.o )
@@ -313,7 +331,9 @@
     (function() {
       // ===== CONFIG =====
       let GITHUB_USER = 'worldpeacebtn';
-      const REPO_LIST = ['worldpeacebtn', 'DIVISIONX42']; // predefined users
+      let GITHUB_REPO = 'Ai'; // default repo
+      const PRE_DEFINED_USERS = ['worldpeacebtn', 'DIVISIONX42'];
+
       const socialApps = [
         { file: 'https://www.facebook.com', desc: 'Facebook', emoji: '📘', color: '#1877f2' },
         { file: 'https://www.instagram.com', desc: 'Instagram', emoji: '📸', color: '#e1306c' },
@@ -322,20 +342,13 @@
         { file: 'https://github.com/worldpeacebtn/Ai', desc: 'GitHub Repo', emoji: '🐙', color: '#24292e' },
         { file: 'browser', desc: 'Browser', emoji: '🌐', color: '#3a2a6a' }
       ];
-      // Tag color map
+
       const tagColors = {
-        '🐋': '#1e90ff',
-        '✨': '#ffd700',
-        '⚛️': '#9b59b6',
-        '🎨': '#e91e63',
-        '🎵': '#4caf50',
-        '🌠': '#00bcd4',
-        '🧠': '#ff5722',
-        '📄': '#795548'
+        '🐋': '#1e90ff', '✨': '#ffd700', '⚛️': '#9b59b6',
+        '🎨': '#e91e63', '🎵': '#4caf50', '🌠': '#00bcd4',
+        '🧠': '#ff5722', '📄': '#795548'
       };
-      function getTagColor(tag) {
-        return tagColors[tag] || '#7a5aff';
-      }
+      function getTagColor(tag) { return tagColors[tag] || '#7a5aff'; }
 
       let appList = [];
       let isAppListLoaded = false;
@@ -348,7 +361,7 @@
       let nextFolderId = 1;
       let favorites = [];
       let dockedApps = [];
-      const STORAGE_KEY = 'ai_desktop_state_v19';
+      const STORAGE_KEY = 'ai_desktop_state_v20';
       let listView = false;
       let _isRendering = false;
 
@@ -380,36 +393,48 @@
       const dockPreviewLabel = document.getElementById('dockPreviewLabel');
       const dockIframe = document.getElementById('dockIframe');
 
-      // ===== FETCH APP LIST =====
-      async function fetchAppList(user) {
-        const username = user || GITHUB_USER;
+      // ===== FETCH REPO CONTENTS (with subfolders) =====
+      async function fetchRepoContents(user, repo, path = '') {
+        const url = `https://api.github.com/repos/${user}/${repo}/contents${path ? '/' + path : ''}`;
         try {
-          const response = await fetch(`https://api.github.com/repos/${username}/Ai/contents`);
-          if (!response.ok) throw new Error('Failed to fetch');
-          const data = await response.json();
-          const htmlFiles = data
+          const response = await fetch(url);
+          if (!response.ok) throw new Error('Failed to fetch contents');
+          return await response.json();
+        } catch (e) {
+          console.error('Error fetching repo contents:', e);
+          return [];
+        }
+      }
+
+      // ===== FETCH APP LIST (from repo) =====
+      async function fetchAppList(user, repo) {
+        const username = user || GITHUB_USER;
+        const reponame = repo || GITHUB_REPO;
+        try {
+          // Get root contents
+          const rootData = await fetchRepoContents(username, reponame);
+          const htmlFiles = rootData
             .filter(item => item.type === 'file' && item.name.endsWith('.html'))
             .map(item => ({ file: item.name.replace('.html', ''), desc: item.name.replace('.html', '') }));
-          try {
-            const shellRes = await fetch(`https://api.github.com/repos/${username}/Ai/contents/SHELL`);
-            if (shellRes.ok) {
-              const shellData = await shellRes.json();
-              const shellHtml = shellData
-                .filter(item => item.type === 'file' && item.name.endsWith('.html'))
-                .map(item => ({ file: 'SHELL/' + item.name.replace('.html', ''), desc: 'SHELL/' + item.name.replace('.html', '') }));
-              htmlFiles.push(...shellHtml);
-            }
-          } catch(e) {}
-          try {
-            const animeRes = await fetch(`https://api.github.com/repos/${username}/Ai/contents/SHELL/x42_anime_theatre`);
-            if (animeRes.ok) {
-              const animeData = await animeRes.json();
-              const animeHtml = animeData
-                .filter(item => item.type === 'file' && item.name.endsWith('.html'))
-                .map(item => ({ file: 'SHELL/x42_anime_theatre/' + item.name.replace('.html', ''), desc: 'SHELL/x42_anime_theatre/' + item.name.replace('.html', '') }));
-              htmlFiles.push(...animeHtml);
-            }
-          } catch(e) {}
+
+          // Try SHELL folder
+          const shellData = await fetchRepoContents(username, reponame, 'SHELL');
+          if (shellData && !shellData.message) {
+            const shellHtml = shellData
+              .filter(item => item.type === 'file' && item.name.endsWith('.html'))
+              .map(item => ({ file: 'SHELL/' + item.name.replace('.html', ''), desc: 'SHELL/' + item.name.replace('.html', '') }));
+            htmlFiles.push(...shellHtml);
+          }
+
+          // Try SHELL/x42_anime_theatre
+          const animeData = await fetchRepoContents(username, reponame, 'SHELL/x42_anime_theatre');
+          if (animeData && !animeData.message) {
+            const animeHtml = animeData
+              .filter(item => item.type === 'file' && item.name.endsWith('.html'))
+              .map(item => ({ file: 'SHELL/x42_anime_theatre/' + item.name.replace('.html', ''), desc: 'SHELL/x42_anime_theatre/' + item.name.replace('.html', '') }));
+            htmlFiles.push(...animeHtml);
+          }
+
           htmlFiles.sort((a, b) => a.file.localeCompare(b.file));
           appList = htmlFiles;
           isAppListLoaded = true;
@@ -429,8 +454,26 @@
       // ===== HELPERS =====
       function getAppUrl(file) {
         if (file.startsWith('http') || file === 'browser') return file;
-        return `./${file}.html`;
+        // For repo files, we need to fetch from raw.githubusercontent.com
+        // We'll assume the file is at the root or in a subfolder.
+        // We'll construct the raw URL.
+        // But we need to know the path. Since we don't store path, we'll assume root or relative.
+        // Actually, the file names are like 'SHELL/index0' etc. We'll map them to the repo structure.
+        // For simplicity, we'll serve from the same repo using the raw URL.
+        // We'll use the current user/repo.
+        // However, we don't have the repo path stored. We'll assume the file is in the root or in SHELL/.
+        // We'll fetch from raw.githubusercontent.com.
+        // Let's construct based on file path.
+        let path = file;
+        if (!file.startsWith('SHELL/')) {
+          path = file + '.html';
+        } else {
+          path = file + '.html';
+        }
+        // Use raw URL
+        return `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${path}`;
       }
+
       function getIconEmoji(file) {
         const social = socialApps.find(s => s.file === file);
         if (social) return social.emoji;
@@ -446,9 +489,6 @@
           'OBERLAYHUD': '📟', 'UCOEDI': '📊',
         };
         return map[base] || '📄';
-      }
-      function getFirstWord(str) {
-        return str.split(/[\s_\-]/)[0] || str;
       }
 
       // ===== FAVORITES =====
@@ -477,19 +517,11 @@
         });
       }
 
-      // ===== TAGS (with color) =====
+      // ===== TAGS =====
       function getTagsForIcon(iconId) {
         const icon = desktopIcons.find(i => i.id === iconId);
         if (!icon) return [];
         return icon.tags || [];
-      }
-      function setTagsForIcon(iconId, tags) {
-        const icon = desktopIcons.find(i => i.id === iconId);
-        if (icon) {
-          icon.tags = tags;
-          saveState();
-          renderDesktopIcons();
-        }
       }
       function addTagToIcon(iconId, tag) {
         const icon = desktopIcons.find(i => i.id === iconId);
@@ -607,7 +639,7 @@
         renderDesktopIcons();
       }
 
-      // ===== ARRANGE (more columns, fewer rows) =====
+      // ===== ARRANGE =====
       function arrangeIcons() {
         if (listView) return;
         const icons = desktopIcons.filter(icon => !icon.folderId);
@@ -833,7 +865,7 @@
         }
       }
 
-      // ===== DRAGGABLE (with dock detection and cat drag) =====
+      // ===== DRAGGABLE (with dock detection) =====
       function makeDraggable(element, iconData) {
         let startX, startY, origX, origY;
         let isDragging = false;
@@ -1418,7 +1450,7 @@
         folderWindows.forEach(fw => renderFolderWindowContent(fw.folderId));
       }
 
-      // ===== APP WINDOWS (with tag color in header) =====
+      // ===== APP WINDOWS =====
       function createWindow(file, title, x, y, w, h, notes = '', tags = '', minimized = false, maximized = false) {
         const id = nextId++;
         const deskRect = desktop.getBoundingClientRect();
@@ -1455,7 +1487,7 @@
           div.classList.add('focused');
         }
 
-        // Determine header color from tag
+        // Determine header color
         let headerColor = null;
         const icon = desktopIcons.find(i => i.file === win.file);
         if (icon) {
@@ -1465,7 +1497,6 @@
             headerColor = getTagColor(firstTag);
           }
         }
-        // For social apps, use their color
         const social = socialApps.find(s => s.file === win.file);
         if (social) {
           headerColor = social.color;
@@ -1761,26 +1792,35 @@
         h = h || Math.min(400, deskRect.height * 0.7);
         const win = { id, file: 'browser', title: url, x, y, w, h, minimized: false, maximized: false, notes: '', tags: '', date: Date.now(), url: url };
         windows.push(win);
-        // Special render for this window
-        renderWindow(win); // it will be handled in renderWindow (we'll check win.url)
+        renderWindow(win);
         updateTaskbar();
         saveState();
       }
 
-      // ===== REPO POPUP =====
+      // ===== REPO BROWSER =====
+      let currentUser = GITHUB_USER;
+      let currentRepo = GITHUB_REPO;
+
       function renderRepoPopup() {
         repoPopup.innerHTML = '';
-        // Predefined users
-        REPO_LIST.forEach(user => {
+        // User section
+        const userTitle = document.createElement('div');
+        userTitle.className = 'repo-section-title';
+        userTitle.textContent = '👤 Users';
+        repoPopup.appendChild(userTitle);
+
+        PRE_DEFINED_USERS.forEach(user => {
           const item = document.createElement('div');
           item.className = 'repo-item';
-          const isActive = user === GITHUB_USER;
+          const isActive = user === currentUser;
           item.innerHTML = `<span class="repo-icon">${isActive ? '⭐' : '📁'}</span><span>${user}</span>`;
           item.addEventListener('click', () => {
-            switchRepo(user);
+            currentUser = user;
+            loadReposForUser(user);
           });
           repoPopup.appendChild(item);
         });
+
         // Custom user input
         const customDiv = document.createElement('div');
         customDiv.className = 'repo-custom';
@@ -1788,26 +1828,73 @@
         input.type = 'text';
         input.placeholder = 'Enter username...';
         const btn = document.createElement('button');
-        btn.textContent = 'Go';
+        btn.textContent = 'Load';
         btn.addEventListener('click', () => {
           const val = input.value.trim();
           if (val) {
-            switchRepo(val);
+            currentUser = val;
+            loadReposForUser(val);
           }
         });
         customDiv.appendChild(input);
         customDiv.appendChild(btn);
         repoPopup.appendChild(customDiv);
+
+        // Repo list section (will be filled by loadReposForUser)
+        const repoTitle = document.createElement('div');
+        repoTitle.className = 'repo-section-title';
+        repoTitle.textContent = '📦 Repositories';
+        repoTitle.id = 'repoListTitle';
+        repoPopup.appendChild(repoTitle);
+        const repoList = document.createElement('div');
+        repoList.id = 'repoList';
+        repoPopup.appendChild(repoList);
+
+        // If we already have a user, load repos
+        if (currentUser) {
+          loadReposForUser(currentUser);
+        }
       }
 
-      function switchRepo(user) {
-        if (user === GITHUB_USER) return;
+      async function loadReposForUser(user) {
+        const repoListDiv = document.getElementById('repoList');
+        if (!repoListDiv) return;
+        repoListDiv.innerHTML = 'Loading...';
+        try {
+          const response = await fetch(`https://api.github.com/users/${user}/repos`);
+          if (!response.ok) throw new Error('Failed to fetch repos');
+          const repos = await response.json();
+          repoListDiv.innerHTML = '';
+          repos.forEach(repo => {
+            const item = document.createElement('div');
+            item.className = 'repo-item';
+            const isActive = repo.name === currentRepo && user === currentUser;
+            item.innerHTML = `<span class="repo-icon">${isActive ? '⭐' : '📂'}</span><span>${repo.name}</span>`;
+            item.addEventListener('click', () => {
+              currentRepo = repo.name;
+              switchRepo(user, repo.name);
+            });
+            repoListDiv.appendChild(item);
+          });
+          if (repos.length === 0) {
+            repoListDiv.innerHTML = '<div style="color:#8a8aba; padding:0.5rem;">No repositories found.</div>';
+          }
+        } catch (e) {
+          repoListDiv.innerHTML = '<div style="color:#ff6a6a; padding:0.5rem;">Error loading repos.</div>';
+          console.error(e);
+        }
+      }
+
+      function switchRepo(user, repo) {
+        if (user === currentUser && repo === currentRepo) return;
+        currentUser = user;
+        currentRepo = repo;
         GITHUB_USER = user;
+        GITHUB_REPO = repo;
         saveState();
-        // Reload everything
-        fetchAppList(user).then(() => {
-          // Reset desktop icons and windows?
-          // We'll clear state and rebuild
+        // Reload desktop
+        fetchAppList(user, repo).then(() => {
+          // Reset state (keep windows? we'll keep but clear icons)
           windows = [];
           desktopIcons = [];
           folders = [];
@@ -1815,7 +1902,7 @@
           dockedApps = [];
           nextId = 1;
           nextFolderId = 1;
-          // Build new icons from appList
+          // Build new icons
           appList.forEach((app, idx) => {
             desktopIcons.push({ id: 'app_' + idx, type: 'app', label: app.file, file: app.file, x: 60 + (idx % 8) * 68, y: 30 + Math.floor(idx / 8) * 76, folderId: null });
           });
@@ -1832,7 +1919,7 @@
           applyFilterAndSort();
           updateDock();
           repoPopup.classList.remove('active');
-          alert('Switched to repository of user: ' + user);
+          alert(`Switched to ${user}/${repo}`);
         });
       }
 
@@ -2042,7 +2129,8 @@
           favorites: favorites,
           dockedApps: dockedApps,
           listView: listView,
-          githubUser: GITHUB_USER
+          githubUser: GITHUB_USER,
+          githubRepo: GITHUB_REPO
         };
         const text = JSON.stringify(data, null, 2);
         const blob = new Blob([text], { type: 'text/plain' });
@@ -2085,18 +2173,23 @@
               listView = data.listView;
               if (listView) desktop.classList.add('list-view');
             }
-            if (data.githubUser) {
+            if (data.githubUser && data.githubRepo) {
               GITHUB_USER = data.githubUser;
-              fetchAppList(GITHUB_USER).then(() => {
-                alert('GitHub user switched to: ' + GITHUB_USER);
+              GITHUB_REPO = data.githubRepo;
+              currentUser = data.githubUser;
+              currentRepo = data.githubRepo;
+              fetchAppList(GITHUB_USER, GITHUB_REPO).then(() => {
+                alert('Switched to ' + GITHUB_USER + '/' + GITHUB_REPO);
+                // reset and reload
                 location.reload();
               });
+            } else {
+              saveState();
+              renderDesktopIcons();
+              renderFavorites();
+              updateDock();
+              alert('Notes imported!');
             }
-            saveState();
-            renderDesktopIcons();
-            renderFavorites();
-            updateDock();
-            alert('Notes & settings imported!');
           } catch (err) { alert('Import failed: ' + err.message); }
         };
         reader.readAsText(file);
@@ -2136,7 +2229,6 @@
         setTimeout(() => { catSpeech.style.display = 'none'; }, 4000);
       });
 
-      // Make cat draggable
       makeCatDraggable();
 
       // ===== PERSISTENCE =====
@@ -2149,7 +2241,8 @@
           listView: listView,
           favorites: favorites,
           dockedApps: dockedApps,
-          githubUser: GITHUB_USER
+          githubUser: GITHUB_USER,
+          githubRepo: GITHUB_REPO
         };
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
       }
@@ -2184,6 +2277,9 @@
           if (data.favorites) favorites = data.favorites;
           if (data.dockedApps) dockedApps = data.dockedApps;
           if (data.githubUser) GITHUB_USER = data.githubUser;
+          if (data.githubRepo) GITHUB_REPO = data.githubRepo;
+          currentUser = GITHUB_USER;
+          currentRepo = GITHUB_REPO;
           renderDesktopIcons();
           updateTaskbar();
           updateDock();
@@ -2195,7 +2291,7 @@
       // ===== INIT =====
       async function init() {
         const loaded = loadState();
-        await fetchAppList(GITHUB_USER);
+        await fetchAppList(GITHUB_USER, GITHUB_REPO);
         if (!loaded) {
           appList.forEach((app, idx) => {
             desktopIcons.push({ id: 'app_' + idx, type: 'app', label: app.file, file: app.file, x: 60 + (idx % 8) * 68, y: 30 + Math.floor(idx / 8) * 76, folderId: null });
@@ -2216,8 +2312,8 @@
           applyFilterAndSort();
           updateDock();
         }
-        console.log('✨ Ai Desktop v19 ready!');
-        console.log(`📦 ${appList.length} apps loaded from GitHub user: ${GITHUB_USER}`);
+        console.log('✨ Ai Desktop v20 ready!');
+        console.log(`📦 ${appList.length} apps loaded from ${GITHUB_USER}/${GITHUB_REPO}`);
         console.log(`⭐ ${favorites.length} favorites.`);
         console.log(`📌 ${dockedApps.length} docked apps.`);
       }
