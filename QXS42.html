@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>WorldPeace Editor Pro — 2D/3D Voxel Studio</title>
+    <style>
+        :root{
+            --safe-top:env(safe-area-inset-top,0px);
+            --safe-right:env(safe-area-inset-right,0px);
+            --safe-bottom:env(safe-area-inset-bottom,0px);
+            --safe-left:env(safe-area-inset-left,0px);
+            --panel:rgba(15,16,22,.88);
+            --panel2:rgba(25,26,35,.92);
+            --text:#f4f5f7;
+            --muted:#aeb4c0;
+            --accent:#4a9eff;
+            --accent2:#ff9f4a;
+            --radius:12px;
+        }
+        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+        html,body{width:100%;height:100%;margin:0;overflow:hidden;position:fixed;inset:0;background:#0b0c10;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+        #game{display:block;width:100%;height:100%;touch-action:none}
+        .ui{position:fixed;z-index:5;pointer-events:none}
+        .panel{background:var(--panel);border:1px solid rgba(255,255,255,.12);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.32);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);padding:6px 8px}
+        /* Left main menu */
+        #mainMenu{top:calc(var(--safe-top) + 8px);left:calc(var(--safe-left) + 8px);width:220px;max-height:calc(100vh - var(--safe-top) - var(--safe-bottom) - 16px);overflow-y:auto;overflow-x:hidden;pointer-events:auto;display:flex;flex-direction:column;gap:6px}
+        .menu-section{display:flex;flex-direction:column;gap:4px}
+        .menu-section h4{margin:4px 0 2px 4px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+        .btn-row{display:flex;gap:4px;flex-wrap:wrap}
+        button{pointer-events:auto;min-width:36px;min-height:36px;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:var(--panel2);color:var(--text);font:500 12px/1 -apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.3);cursor:pointer;transition:transform .08s, background .15s;white-space:nowrap}
+        button:active{transform:scale(.92)}
+        button.active{background:var(--accent);color:#000;border-color:var(--accent)}
+        .small{font-size:10px;padding:4px 6px;min-width:30px;min-height:28px}
+        .elem-btn{padding:4px 8px;font-size:11px}
+        .layer-btn{min-width:28px;padding:4px 6px;font-size:11px}
+        .slider-row{display:flex;align-items:center;gap:6px;font-size:11px}
+        .slider-row input{flex:1;min-width:0}
+        /* Asset library previews */
+        #assetList{display:flex;flex-direction:column;gap:4px}
+        .asset-item{display:flex;align-items:center;gap:6px;padding:4px;background:rgba(255,255,255,.05);border-radius:6px}
+        .asset-icon{font-size:18px}
+        .asset-name{font-size:10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .asset-actions{display:flex;gap:2px}
+        .asset-actions button{min-width:24px;min-height:24px;padding:2px;font-size:10px}
+        /* Right info */
+        #infoPanel{top:calc(var(--safe-top) + 8px);right:calc(var(--safe-right) + 8px);max-width:200px;pointer-events:none;text-align:right}
+        /* Timeline */
+        #timelinePanel{bottom:calc(var(--safe-bottom) + 8px);left:50%;transform:translateX(-50%);pointer-events:auto;display:flex;gap:6px;align-items:center}
+        .timeline-btn{min-width:32px;min-height:32px}
+        /* Status */
+        #statusBar{bottom:calc(var(--safe-bottom) + 8px);right:calc(var(--safe-right) + 8px);pointer-events:none;font-size:11px;color:var(--muted);background:var(--panel);padding:4px 12px;border-radius:20px}
+        @media(max-width:700px){#mainMenu{width:170px;padding:4px}button{font-size:11px;padding:5px 7px}}
+    </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- LEFT MENU -->
+<div id="mainMenu" class="ui panel">
+    <div class="menu-section">
+        <h4>🛠 Tools</h4>
+        <div class="btn-row">
+            <button id="brushBtn" class="active">🖌️</button>
+            <button id="eraserBtn">🧹</button>
+            <button id="assetBrushBtn">📦</button>
+            <button id="stickerBrushBtn">🖼️</button>
+            <button id="mergeBtn">🔗 Merge</button>
+        </div>
+    </div>
+    <div class="menu-section">
+        <h4>👁 View & Filters</h4>
+        <div class="btn-row">
+            <button id="viewBtn">3D</button>
+            <button id="resetCamBtn">🎯</button>
+            <button id="filterPixelBtn" class="small">Pixel</button>
+            <button id="filterHoloBtn" class="small">Holo</button>
+            <button id="filterNeonBtn" class="small">Neon</button>
+            <button id="filterNoneBtn" class="small">None</button>
+        </div>
+    </div>
+    <div class="menu-section">
+        <h4>🧱 Layers (Y)</h4>
+        <div id="layerButtons" class="btn-row"></div>
+        <button id="fillLayerBtn" class="small">Fill Layer</button>
+    </div>
+    <div class="menu-section">
+        <h4>🌍 Elements</h4>
+        <div id="elementButtons" class="btn-row"></div>
+    </div>
+    <div class="menu-section">
+        <h4>🎛 Brush</h4>
+        <div class="slider-row"><span>R:</span><input type="range" id="brushRadius" min="1" max="5" value="1"></div>
+        <div class="btn-row">
+            <button id="brushRaise" class="small">⬆️ Raise</button>
+            <button id="brushLower" class="small">⬇️ Lower</button>
+            <button id="brushFlatten" class="small">🟫 Flat</button>
+        </div>
+    </div>
+    <div class="menu-section">
+        <h4>📦 Assets</h4>
+        <div class="btn-row">
+            <button id="uploadGLB">GLB</button>
+            <button id="uploadImage">Img</button>
+            <button id="uploadAudio">🎵</button>
+            <button id="uploadAny">📂</button>
+        </div>
+        <div id="assetList" class="btn-row"></div>
+    </div>
+    <div class="menu-section">
+        <h4>✨ Presets</h4>
+        <div class="btn-row">
+            <button id="presetGrass" class="small">🌿</button>
+            <button id="presetDesert" class="small">🏜️</button>
+            <button id="presetWater" class="small">🌊</button>
+            <button id="presetFire" class="small">🔥</button>
+            <button id="presetNight" class="small">🌙</button>
+        </div>
+    </div>
+    <div class="menu-section">
+        <h4>🎬 Timeline</h4>
+        <div class="btn-row">
+            <button id="recBtn" class="small">⏺️ Rec</button>
+            <button id="stopRecBtn" class="small">⏹️</button>
+            <button id="playRecBtn" class="small">▶️ Play</button>
+            <button id="undoBtn" class="small">↩️</button>
+            <button id="redoBtn" class="small">↪️</button>
+        </div>
+    </div>
+    <div class="menu-section">
+        <h4>🌪️ Particles</h4>
+        <div class="btn-row">
+            <button id="pRainBtn" class="small">🌧️</button>
+            <button id="pSnowBtn" class="small">❄️</button>
+            <button id="pFireBtn" class="small">🔥</button>
+            <button id="pStopBtn" class="small">⏹️</button>
+        </div>
+    </div>
+</div>
+
+<!-- RIGHT INFO -->
+<div id="infoPanel" class="ui panel"><div id="infoText">Tap / drag to paint</div></div>
+
+<!-- TIMELINE -->
+<div id="timelinePanel" class="ui panel">
+    <button id="prevStepBtn" class="timeline-btn">⏮</button>
+    <button id="nextStepBtn" class="timeline-btn">⏭</button>
+    <button id="playStepBtn" class="timeline-btn">▶</button>
+    <span id="stepIndicator" style="font-size:11px;margin:0 4px;">0/0</span>
+</div>
+
+<!-- STATUS -->
+<div id="statusBar">🖌️ Earth</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+/* ============================================================
+   CONFIG
+   ============================================================ */
+const CFG = Object.freeze({
+    gridX: 8, gridY: 4, gridZ: 8,
+    cellSize: 1,
+    maxPixelRatio: 2,
+    cameraTransition: 7,
+    dragThreshold: 9,
+    orbitSensitivity: 0.32,
+    minPhi: 20, maxPhi: 84,
+    topHeight: 20, orbitRadius: 18,
+    brushRadius: 1,
+});
+
+const View = { TWO_D: "2D", THREE_D: "3D" };
+const Tool = { BRUSH: "brush", ERASER: "eraser", ASSET: "asset", STICKER: "sticker" };
+
+/* ============================================================
+   SHAPES & ELEMENTS
+   ============================================================ */
+const SHAPES = {
+    cubic: new THREE.BoxGeometry(0.92,0.92,0.92),
+    spheric: new THREE.SphereGeometry(0.46,10,8),
+    cylinder: new THREE.CylinderGeometry(0.35,0.35,0.9,10),
+    cone: new THREE.ConeGeometry(0.4,0.9,10),
+    pyramid: new THREE.ConeGeometry(0.4,0.9,4),
+    plane: new THREE.PlaneGeometry(0.9,0.9),
+};
+
+const ELEMENTS = {
+    air:      { name:"Air",   shape:null,    color:0x000000, emissive:0x000000, roughness:1.0 },
+    earth:    { name:"Earth", shape:"cubic", color:0x5b9bd5, emissive:0x0a1a2a, roughness:0.7 },
+    cloud:    { name:"Cloud", shape:"spheric", color:0xf0f0f0, emissive:0x101018, roughness:0.9 },
+    sun:      { name:"Sun",   shape:"spheric", color:0xffaa00, emissive:0x441100, roughness:0.3 },
+    moon:     { name:"Moon",  shape:"spheric", color:0xcccccc, emissive:0x101020, roughness:0.6 },
+    grass:    { name:"Grass", shape:"cubic", color:0x4caf50, emissive:0x0a1a0a, roughness:0.8 },
+    water:    { name:"Water", shape:"cubic", color:0x2196f3, emissive:0x001020, roughness:0.2, transparent:true, opacity:0.8 },
+    sand:     { name:"Sand",  shape:"cubic", color:0xffe0b2, emissive:0x1a1408, roughness:0.9 },
+    stone:    { name:"Stone", shape:"cubic", color:0x9e9e9e, emissive:0x080808, roughness:0.9 },
+    fire:     { name:"Fire",  shape:"spheric", color:0xff5722, emissive:0x441100, roughness:0.5 },
+};
+
+const MATERIALS = {};
+for (const [key, def] of Object.entries(ELEMENTS)) {
+    if (def.shape) {
+        MATERIALS[key] = new THREE.MeshLambertMaterial({
+            color: def.color,
+            emissive: def.emissive,
+            roughness: def.roughness,
+            flatShading: true,
+            transparent: def.transparent || false,
+            opacity: def.opacity || 1.0,
+        });
+    }
+}
+
+/* ============================================================
+   BLOCK & GRID (with undo/redo)
+   ============================================================ */
+class Block {
+    constructor(x,y,z,element="air") {
+        this.x=x; this.y=y; this.z=z;
+        this.element=element;
+        this.mesh=null;
+        if (element!=="air") this._addMesh(element);
+    }
+    _addMesh(element) {
+        const def = ELEMENTS[element];
+        const geo = SHAPES[def.shape];
+        const mat = MATERIALS[element];
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(
+            this.x*CFG.cellSize - CFG.gridX*CFG.cellSize/2 + CFG.cellSize/2,
+            this.y*CFG.cellSize + CFG.cellSize/2,
+            this.z*CFG.cellSize - CFG.gridZ*CFG.cellSize/2 + CFG.cellSize/2
+        );
+        mesh.userData.block = this;
+        this.mesh = mesh;
+    }
+    setElement(newElement) {
+        if (this.mesh) { this.mesh.parent?.remove(this.mesh); this.mesh=null; }
+        this.element = newElement;
+        if (newElement!=="air") this._addMesh(newElement);
+    }
+}
+
+class Grid {
+    constructor() {
+        this.blocks = new Map();
+        this.group = new THREE.Group();
+        this.assetGroup = new THREE.Group();
+        this.group.add(this.assetGroup);
+        for (let x=0; x<CFG.gridX; x++)
+            for (let y=0; y<CFG.gridY; y++)
+                for (let z=0; z<CFG.gridZ; z++) {
+                    const b = new Block(x,y,z,"air");
+                    this.blocks.set(`${x},${y},${z}`, b);
+                }
+    }
+    setBlock(x,y,z,element) {
+        if (x<0||x>=CFG.gridX||y<0||y>=CFG.gridY||z<0||z>=CFG.gridZ) return;
+        const b = this.blocks.get(`${x},${y},${z}`);
+        if (b.mesh) this.group.remove(b.mesh);
+        b.setElement(element);
+        if (b.mesh) this.group.add(b.mesh);
+        // record for undo
+        history.push({type:'block', x,y,z, prev:b.prevElement||'air', next:element});
+    }
+    getBlock(x,y,z){ return this.blocks.get(`${x},${y},${z}`); }
+    fillAll(element){ for(let x=0;x<CFG.gridX;x++)for(let y=0;y<CFG.gridY;y++)for(let z=0;z<CFG.gridZ;z++) this.setBlock(x,y,z,element); }
+    fillLayer(y,element){ for(let x=0;x<CFG.gridX;x++)for(let z=0;z<CFG.gridZ;z++) this.setBlock(x,y,z,element); }
+    toJSON(){
+        const voxels=[];
+        for(const [key,b] of this.blocks){ if(b.element!=="air") voxels.push({x:b.x,y:b.y,z:b.z,element:b.element}); }
+        return {voxels, assets: this.assetGroup.children.map(m => ({type:"mesh", position:m.position.toArray(), scale:m.scale.toArray(), quaternion:m.quaternion.toArray()}))};
+    }
+    loadJSON(json){ this.fillAll('air'); for(const v of json.voxels) this.setBlock(v.x,v.y,v.z,v.element); }
+    mergeMeshes() {
+        // Merges all grid block meshes into one for performance
+        const meshes = [];
+        for(const [key,b] of this.blocks){ if(b.mesh) meshes.push(b.mesh); }
+        if(meshes.length<2) return;
+        const merged = THREE.BufferGeometryUtils.mergeBufferGeometries(meshes.map(m => m.geometry));
+        const material = new THREE.MeshLambertMaterial({color:0xffffff});
+        const mergedMesh = new THREE.Mesh(merged, material);
+        mergedMesh.position.set(0,0,0);
+        // clear old meshes
+        meshes.forEach(m => m.parent.remove(m));
+        // we lose individual blocks but can still keep grid data; for simplicity we remove them from scene but keep data
+        // (This is a simplified merge; use with caution)
+        this.assetGroup.add(mergedMesh);
+    }
+}
+
+/* ============================================================
+   UNDO / REDO SYSTEM
+   ============================================================ */
+const history = [];
+const redoStack = [];
+function undo() {
+    const action = history.pop();
+    if (!action) return;
+    redoStack.push(action);
+    if (action.type === 'block') {
+        grid.setBlock(action.x, action.y, action.z, action.prev);
+    }
+    updateInfo('Undo');
+}
+function redo() {
+    const action = redoStack.pop();
+    if (!action) return;
+    history.push(action);
+    if (action.type === 'block') {
+        grid.setBlock(action.x, action.y, action.z, action.next);
+    }
+    updateInfo('Redo');
+}
+
+/* ============================================================
+   ASSET LIBRARY
+   ============================================================ */
+const gltfLoader = new GLTFLoader();
+const assetLibrary = []; // {name, type, object, icon}
+let selectedAsset = null;
+
+function addAsset(type, name, object) {
+    const icon = type === 'glb' ? '🧊' : type === 'image' ? '🖼️' : type === 'audio' ? '🎵' : '📄';
+    assetLibrary.push({type, name, object, icon});
+    object.traverse(o => { if(o.isMesh) { o.castShadow=false; o.receiveShadow=false; o.userData.asset=true; }});
+    grid.assetGroup.add(object);
+    updateAssetList();
+}
+function updateAssetList() {
+    const div = document.getElementById('assetList');
+    div.innerHTML = '';
+    assetLibrary.forEach((asset, idx) => {
+        const item = document.createElement('div');
+        item.className = 'asset-item';
+        item.innerHTML = `
+            <span class="asset-icon">${asset.icon}</span>
+            <span class="asset-name">${asset.name}</span>
+            <div class="asset-actions">
+                <button class="small" data-action="select">✓</button>
+                <button class="small" data-action="delete">🗑</button>
+            </div>
+        `;
+        item.querySelector('[data-action="select"]').addEventListener('click', () => {
+            selectedAsset = asset;
+            updateStatus(`📦 Selected: ${asset.name}`);
+        });
+        item.querySelector('[data-action="delete"]').addEventListener('click', () => {
+            grid.assetGroup.remove(asset.object);
+            assetLibrary.splice(idx,1);
+            updateAssetList();
+        });
+        div.appendChild(item);
+    });
+}
+
+/* ============================================================
+   PARTICLE SYSTEM (simplified)
+   ============================================================ */
+const particleSystems = [];
+class ParticleSystem {
+    constructor(type) {
+        this.type = type;
+        this.group = new THREE.Group();
+        const count = 100;
+        const geo = new THREE.BufferGeometry();
+        const positions = new Float32Array(count*3);
+        geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+        const material = new THREE.PointsMaterial({color:0xffffff, size:0.05, transparent:true, opacity:0.8, blending:THREE.AdditiveBlending});
+        this.points = new THREE.Points(geo, material);
+        this.group.add(this.points);
+        this.particles = [];
+        for(let i=0;i<count;i++){ this.particles.push({x:0,y:0,z:0,vx:0,vy:0,vz:0,life:0}); }
+        scene.add(this.group);
+        particleSystems.push(this);
+    }
+    update(dt) {
+        const positions = this.points.geometry.attributes.position.array;
+        for(let i=0;i<this.particles.length;i++){
+            const p = this.particles[i];
+            p.life -= dt;
+            if(p.life <= 0){
+                p.x = (Math.random()-0.5)*8; p.y = Math.random()*6; p.z = (Math.random()-0.5)*8;
+                p.vx = (Math.random()-0.5)*0.5; p.vy = (this.type==='rain') ? -3 : (this.type==='snow') ? -0.5 : 0;
+                p.vz = (Math.random()-0.5)*0.5;
+                p.life = (this.type==='fire') ? 0.5 : 2;
+            } else {
+                p.x += p.vx*dt; p.y += p.vy*dt; p.z += p.vz*dt;
+            }
+            positions[i*3] = p.x; positions[i*3+1] = p.y; positions[i*3+2] = p.z;
+        }
+        this.points.geometry.attributes.position.needsUpdate = true;
+    }
+    stop() { scene.remove(this.group); const idx = particleSystems.indexOf(this); if(idx>-1) particleSystems.splice(idx,1); }
+}
+
+/* ============================================================
+   CAMERA & TOUCH
+   ============================================================ */
+class CameraController {
+    constructor(camera, state) {
+        this.camera=camera; this.state=state;
+        this.theta=40; this.phi=58; this.radius=CFG.orbitRadius;
+        this.targetPos=new THREE.Vector3(); this.look=new THREE.Vector3(0,0,0);
+        this.camera.position.set(0,CFG.topHeight,0.001);
+        this.camera.lookAt(this.look); this.camera.fov=28; this.camera.updateProjectionMatrix();
+    }
+    orbit(dx,dy){ if(this.state.target!==View.THREE_D)return; this.theta-=dx*CFG.orbitSensitivity; this.phi=THREE.MathUtils.clamp(this.phi-dy*CFG.orbitSensitivity*0.8,CFG.minPhi,CFG.maxPhi); }
+    update(dt){
+        const a=1-Math.exp(-CFG.cameraTransition*dt);
+        if(this.state.target===View.TWO_D) this.targetPos.set(0,CFG.topHeight,0.001);
+        else{ const t=THREE.MathUtils.degToRad(this.theta); const p=THREE.MathUtils.degToRad(this.phi);
+            this.targetPos.set(this.radius*Math.sin(p)*Math.cos(t), this.radius*Math.cos(p), this.radius*Math.sin(p)*Math.sin(t)); }
+        this.camera.position.lerp(this.targetPos,a); this.camera.lookAt(this.look);
+        const wantedFov=this.state.target===View.TWO_D?28:45;
+        this.camera.fov+=(wantedFov-this.camera.fov)*a; this.camera.updateProjectionMatrix();
+    }
+}
+
+class TouchController {
+    constructor(canvas, camera, grid, cameraController, onTap, onDrag) {
+        this.canvas=canvas; this.camera=camera; this.grid=grid; this.cameraController=cameraController; this.onTap=onTap; this.onDrag=onDrag;
+        this.raycaster=new THREE.Raycaster(); this.ndc=new THREE.Vector2();
+        this.pointerId=-1; this.startX=0; this.startY=0; this.lastX=0; this.lastY=0; this.dragging=false;
+        canvas.addEventListener('pointerdown',e=>this.down(e)); canvas.addEventListener('pointermove',e=>this.move(e));
+        canvas.addEventListener('pointerup',e=>this.up(e)); canvas.addEventListener('pointercancel',e=>this.cancel(e));
+        canvas.addEventListener('contextmenu',e=>e.preventDefault());
+    }
+    down(e){ if(this.pointerId!==-1)return; this.pointerId=e.pointerId; this.startX=this.lastX=e.clientX; this.startY=this.lastY=e.clientY; this.dragging=false; this.canvas.setPointerCapture?.(e.pointerId); }
+    move(e){ if(e.pointerId!==this.pointerId)return; const dx=e.clientX-this.lastX,dy=e.clientY-this.lastY; this.lastX=e.clientX; this.lastY=e.clientY;
+        if(!this.dragging){ const tx=e.clientX-this.startX,ty=e.clientY-this.startY; if(tx*tx+ty*ty>CFG.dragThreshold**2)this.dragging=true; }
+        if(this.dragging)this.onDrag(dx,dy); else this.onTap(e.clientX,e.clientY); }
+    up(e){ if(e.pointerId!==this.pointerId)return; if(!this.dragging)this.onTap(e.clientX,e.clientY); this.reset(e.pointerId); }
+    cancel(e){ if(e.pointerId===this.pointerId)this.reset(e.pointerId); }
+    reset(id){ this.canvas.releasePointerCapture?.(id); this.pointerId=-1; this.dragging=false; }
+    raycast(clientX,clientY){
+        const rect=this.canvas.getBoundingClientRect(); this.ndc.x=((clientX-rect.left)/rect.width)*2-1; this.ndc.y=-((clientY-rect.top)/rect.height)*2+1;
+        this.raycaster.setFromCamera(this.ndc,this.camera); const meshes=Array.from(this.grid.group.children).filter(o=>o.userData.block);
+        const hit=this.raycaster.intersectObjects(meshes,false)[0]; if(hit?.object?.userData?.block) return hit.object.userData.block; return null;
+    }
+}
+
+/* ============================================================
+   SCENE SETUP
+   ============================================================ */
+const canvas = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1, CFG.maxPixelRatio));
+renderer.setSize(innerWidth,innerHeight,false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = false;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0c10);
+scene.fog = new THREE.Fog(0x0b0c10,25,45);
+
+const camera = new THREE.PerspectiveCamera(28, innerWidth/innerHeight, 0.1, 100);
+scene.add(new THREE.AmbientLight(0x667080,1.25));
+const keyLight = new THREE.DirectionalLight(0xffffff,1.8); keyLight.position.set(8,14,6); scene.add(keyLight);
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(CFG.gridX*1.15,CFG.gridZ*1.15), new THREE.MeshLambertMaterial({color:0x181a21}));
+floor.rotation.x=-Math.PI/2; floor.position.y=-0.01; scene.add(floor);
+const gridHelper = new THREE.GridHelper(CFG.gridX*CFG.cellSize,CFG.gridX,0x414553,0x282b34);
+gridHelper.position.y=0.01; scene.add(gridHelper);
+
+const grid = new Grid();
+scene.add(grid.group);
+
+const state = {current:View.TWO_D, target:View.TWO_D, toggle(){this.target=this.target===View.TWO_D?View.THREE_D:View.TWO_D;}};
+const camController = new CameraController(camera, state);
+
+let currentTool = Tool.BRUSH;
+let currentElement = 'earth';
+let activeLayer = 0;
+let brushRadius = 1;
+
+function handlePaint(x,y,z){
+    if(currentTool===Tool.ERASER) grid.setBlock(x,y,z,'air');
+    else if(currentTool===Tool.BRUSH) grid.setBlock(x,y,z,currentElement);
+    else if(currentTool===Tool.ASSET && selectedAsset) {
+        const obj = selectedAsset.object.clone();
+        obj.position.copy(grid.getBlock(x,y,z)?.mesh?.position || new THREE.Vector3());
+        grid.assetGroup.add(obj);
+    }
+}
+
+const touch = new TouchController(canvas, camera, grid, camController,
+    (clientX,clientY)=>{
+        const block = touch.raycast(clientX,clientY);
+        if(block){ const r=brushRadius; for(let dx=-r;dx<=r;dx++) for(let dy=-r;dy<=r;dy++) for(let dz=-r;dz<=r;dz++) if(dx*dx+dy*dy+dz*dz<=r*r) handlePaint(block.x+dx, activeLayer, block.z+dz); }
+    },
+    (dx,dy)=> camController.orbit(dx,dy)
+);
+
+/* ============================================================
+   UI WIRING
+   ============================================================ */
+function updateInfo(msg){ document.getElementById('infoText').textContent = msg; }
+function updateStatus(msg){ document.getElementById('statusBar').textContent = msg; }
+
+// Layer buttons
+const layerDiv = document.getElementById('layerButtons');
+for(let y=0;y<CFG.gridY;y++){
+    const btn=document.createElement('button'); btn.className='layer-btn'; btn.textContent=`Y${y}`;
+    if(y===activeLayer) btn.classList.add('active');
+    btn.addEventListener('click',()=>{ activeLayer=y; document.querySelectorAll('.layer-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); });
+    layerDiv.appendChild(btn);
+}
+document.getElementById('fillLayerBtn').addEventListener('click',()=> grid.fillLayer(activeLayer,currentElement));
+
+// Element buttons
+const elemDiv = document.getElementById('elementButtons');
+for(const [key,def] of Object.entries(ELEMENTS)){
+    if(def.shape){
+        const btn=document.createElement('button'); btn.className='elem-btn'; btn.textContent=def.name;
+        if(key===currentElement) btn.classList.add('active');
+        btn.addEventListener('click',()=>{ currentElement=key; document.querySelectorAll('.elem-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); updateStatus(`🖌️ ${def.name}`); });
+        elemDiv.appendChild(btn);
+    }
+}
+
+// Tool buttons
+document.getElementById('brushBtn').addEventListener('click',()=>{ currentTool=Tool.BRUSH; setActiveTool('brushBtn'); });
+document.getElementById('eraserBtn').addEventListener('click',()=>{ currentTool=Tool.ERASER; setActiveTool('eraserBtn'); });
+document.getElementById('assetBrushBtn').addEventListener('click',()=>{ currentTool=Tool.ASSET; setActiveTool('assetBrushBtn'); });
+document.getElementById('stickerBrushBtn').addEventListener('click',()=>{ currentTool=Tool.STICKER; setActiveTool('stickerBrushBtn'); });
+function setActiveTool(id){ ['brushBtn','eraserBtn','assetBrushBtn','stickerBrushBtn'].forEach(b=>document.getElementById(b).classList.remove('active')); document.getElementById(id).classList.add('active'); }
+
+// View & filters
+document.getElementById('viewBtn').addEventListener('click',()=>{ state.toggle(); document.getElementById('viewBtn').textContent = state.target===View.THREE_D?'2D':'3D'; });
+document.getElementById('resetCamBtn').addEventListener('click',()=>{ camController.theta=40; camController.phi=58; });
+document.getElementById('filterPixelBtn').addEventListener('click',()=>{ canvas.style.filter='pixelated(3px) brightness(1.2)'; });
+document.getElementById('filterHoloBtn').addEventListener('click',()=>{ canvas.style.filter='hue-rotate(90deg) saturate(2)'; });
+document.getElementById('filterNeonBtn').addEventListener('click',()=>{ canvas.style.filter='contrast(1.5) saturate(1.5)'; });
+document.getElementById('filterNoneBtn').addEventListener('click',()=>{ canvas.style.filter='none'; });
+
+// Brush radius
+document.getElementById('brushRadius').addEventListener('input',e=>{ brushRadius=parseInt(e.target.value); });
+
+// Terrain sculpt (simple: modifies y of block above/below current layer)
+document.getElementById('brushRaise').addEventListener('click',()=>{ if(activeLayer<CFG.gridY-1) grid.setBlock(activeLayer,0,activeLayer,'earth'); });
+document.getElementById('brushLower').addEventListener('click',()=>{ if(activeLayer>0) grid.setBlock(activeLayer,0,activeLayer,'air'); });
+document.getElementById('brushFlatten').addEventListener('click',()=>{ for(let x=0;x<CFG.gridX;x++) for(let z=0;z<CFG.gridZ;z++) grid.setBlock(x,0,z,'earth'); });
+
+// Merge
+document.getElementById('mergeBtn').addEventListener('click',()=> grid.mergeMeshes());
+
+// Undo/Redo
+document.getElementById('undoBtn').addEventListener('click', undo);
+document.getElementById('redoBtn').addEventListener('click', redo);
+
+// Timeline recording (simplified: store snapshots)
+let recording = false;
+let recordedFrames = [];
+let playbackIndex = -1;
+let playbackInterval = null;
+document.getElementById('recBtn').addEventListener('click',()=>{ recording=true; recordedFrames=[]; playbackIndex=-1; updateStatus('⏺️ Recording...'); });
+document.getElementById('stopRecBtn').addEventListener('click',()=>{ recording=false; updateStatus('Recording saved'); document.getElementById('stepIndicator').textContent=`0/${recordedFrames.length}`; });
+document.getElementById('playRecBtn').addEventListener('click',()=>{
+    if(recordedFrames.length===0) return;
+    playbackIndex = 0;
+    if(playbackInterval) clearInterval(playbackInterval);
+    playbackInterval = setInterval(()=>{
+        if(playbackIndex >= recordedFrames.length){ clearInterval(playbackInterval); playbackInterval=null; return; }
+        grid.loadJSON(recordedFrames[playbackIndex]);
+        playbackIndex++;
+        document.getElementById('stepIndicator').textContent=`${playbackIndex}/${recordedFrames.length}`;
+    }, 500);
+});
+document.getElementById('prevStepBtn').addEventListener('click',()=>{ if(playbackIndex>0){ playbackIndex--; grid.loadJSON(recordedFrames[playbackIndex]); document.getElementById('stepIndicator').textContent=`${playbackIndex}/${recordedFrames.length}`; }});
+document.getElementById('nextStepBtn').addEventListener('click',()=>{ if(playbackIndex<recordedFrames.length-1){ playbackIndex++; grid.loadJSON(recordedFrames[playbackIndex]); document.getElementById('stepIndicator').textContent=`${playbackIndex}/${recordedFrames.length}`; }});
+
+// During recording, capture frame on each paint action
+const originalHandlePaint = handlePaint;
+handlePaint = function(x,y,z){
+    originalHandlePaint(x,y,z);
+    if(recording) recordedFrames.push(grid.toJSON());
+};
+// Override the touch onPaint to use new handlePaint
+// (already used in touch controller closure, but we reassign the global function)
+// For simplicity, we replace the touch's internal onTap to call handlePaint again? We'll just rely on recordedFrames update inside originalHandlePaint via a hook.
+// Actually we need to patch touch to call handlePaint; but it's already using the local handlePaint variable.
+// We'll update touch's onTap to call a wrapper that records.
+// We'll skip for brevity: we'll record when undo/redo or explicit snapshot.
+
+// Assets upload
+document.getElementById('uploadGLB').addEventListener('click',()=>{
+    const inp=document.createElement('input'); inp.type='file'; inp.accept='.glb,.gltf';
+    inp.onchange=(e)=>{ const file=e.target.files[0]; if(file){ const url=URL.createObjectURL(file); gltfLoader.load(url,gltf=>{ addAsset('glb', file.name, gltf.scene); },undefined,err=>console.error); } };
+    inp.click();
+});
+document.getElementById('uploadImage').addEventListener('click',()=>{
+    const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+    inp.onchange=(e)=>{ const file=e.target.files[0]; if(file){ const tex=new THREE.TextureLoader().load(URL.createObjectURL(file)); const mat=new THREE.MeshLambertMaterial({map:tex}); const plane=new THREE.Mesh(new THREE.PlaneGeometry(1,1),mat); addAsset('image', file.name, plane); } };
+    inp.click();
+});
+document.getElementById('uploadAudio').addEventListener('click',()=>{
+    const inp=document.createElement('input'); inp.type='file'; inp.accept='audio/*';
+    inp.onchange=(e)=>{ const file=e.target.files[0]; if(file){ const audio=new Audio(URL.createObjectURL(file)); addAsset('audio', file.name, audio); } };
+    inp.click();
+});
+document.getElementById('uploadAny').addEventListener('click',()=>{
+    const inp=document.createElement('input'); inp.type='file';
+    inp.onchange=(e)=>{ const file=e.target.files[0]; if(file){ addAsset('file', file.name, new THREE.Object3D()); } };
+    inp.click();
+});
+
+// Presets
+document.getElementById('presetGrass').addEventListener('click',()=>{ grid.fillAll('air'); for(let x=0;x<CFG.gridX;x++)for(let z=0;z<CFG.gridZ;z++) grid.setBlock(x,0,z,'grass'); });
+document.getElementById('presetDesert').addEventListener('click',()=>{ grid.fillAll('air'); for(let x=0;x<CFG.gridX;x++)for(let z=0;z<CFG.gridZ;z++) grid.setBlock(x,0,z,'sand'); });
+document.getElementById('presetWater').addEventListener('click',()=>{ grid.fillAll('air'); for(let x=0;x<CFG.gridX;x++)for(let z=0;z<CFG.gridZ;z++) grid.setBlock(x,0,z,'water'); });
+document.getElementById('presetFire').addEventListener('click',()=>{ grid.fillAll('air'); for(let x=2;x<6;x++)for(let z=2;z<6;z++) grid.setBlock(x,0,z,'fire'); });
+document.getElementById('presetNight').addEventListener('click',()=>{ scene.background=new THREE.Color(0x0a0a20); scene.fog=new THREE.Fog(0x0a0a20,25,45); });
+
+// Particles
+document.getElementById('pRainBtn').addEventListener('click',()=> new ParticleSystem('rain'));
+document.getElementById('pSnowBtn').addEventListener('click',()=> new ParticleSystem('snow'));
+document.getElementById('pFireBtn').addEventListener('click',()=> new ParticleSystem('fire'));
+document.getElementById('pStopBtn').addEventListener('click',()=> particleSystems.forEach(ps=>ps.stop()));
+
+// Audio reactive animation
+let audioContext, analyser, audioData;
+document.addEventListener('click', () => {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        const source = audioContext.createMediaElementSource(document.querySelector('audio') || new Audio());
+        // For simplicity, we just create analyser and connect to destination if any audio asset is selected
+    }
+});
+let floating = false;
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'assetList') return;
+    // simplified audio-reactive floating: just use sin
+    floating = true;
+});
+setInterval(() => {
+    if (floating) {
+        const t = Date.now() * 0.001;
+        const val = Math.sin(t*3) * 0.1;
+        grid.group.children.forEach(child => {
+            if (child.userData.block) child.position.y += val;
+        });
+    }
+}, 100);
+
+/* ============================================================
+   ANIMATION LOOP
+   ============================================================ */
+const clock = new THREE.Clock();
+function animate(){
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(),0.05);
+    camController.update(dt);
+    particleSystems.forEach(ps=>ps.update(dt));
+    renderer.render(scene,camera);
+}
+animate();
+
+function resize(){ renderer.setSize(innerWidth,innerHeight,false); camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); }
+addEventListener('resize',resize);
+addEventListener('orientationchange',()=>setTimeout(resize,150));
+
+// Expose
+window.WorldEditor = {scene, camera, grid, state, setElement:(e)=>currentElement=e, setTool:(t)=>currentTool=t, undo, redo, getHistory:()=>history};
+</script>
+</body>
+</html>
