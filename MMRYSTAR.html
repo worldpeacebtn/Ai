@@ -1,0 +1,1877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>✨ Stardust 3D Figure Creator ✨</title>
+    <style>
+        :root {
+            --bg: #0a0a12;
+            --panel: rgba(20, 20, 35, 0.85);
+            --glass: rgba(255, 255, 255, 0.06);
+            --border: rgba(255, 255, 255, 0.12);
+            --accent: #7c5cff;
+            --accent2: #00d4ff;
+            --accent3: #ff6ec7;
+            --gold: #ffd700;
+            --text: #e0e0f0;
+            --text-dim: #8888aa;
+            --danger: #ff4757;
+            --success: #2ed573;
+            --radius: 16px;
+            --radius-sm: 10px;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --glow: 0 0 20px rgba(124, 92, 255, 0.5);
+            --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            font-family: var(--font);
+            color: var(--text);
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            position: fixed;
+            inset: 0;
+        }
+
+        #scene-container {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #scene-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .ui-overlay>* {
+            pointer-events: auto;
+        }
+
+        .top-bar {
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            gap: 6px;
+            flex-wrap: wrap;
+            background: linear-gradient(180deg, rgba(10, 10, 18, 0.95) 60%, transparent);
+        }
+        .top-bar .title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 0.5px;
+            text-shadow: none;
+            flex: 1;
+            min-width: 120px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .btn {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 14px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            justify-content: center;
+            min-height: 34px;
+            touch-action: manipulation;
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+        .btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .btn.primary {
+            background: linear-gradient(135deg, rgba(124, 92, 255, 0.5), rgba(0, 212, 255, 0.4));
+            border-color: rgba(124, 92, 255, 0.5);
+            color: #fff;
+        }
+        .btn.primary:active {
+            box-shadow: 0 0 25px rgba(124, 92, 255, 0.7);
+        }
+        .btn.danger {
+            border-color: rgba(255, 71, 87, 0.4);
+            color: #ff6b81;
+        }
+        .btn.gold {
+            border-color: rgba(255, 215, 0, 0.4);
+            color: var(--gold);
+        }
+        .btn.small {
+            padding: 5px 9px;
+            font-size: 0.65rem;
+            min-height: 26px;
+            border-radius: 7px;
+        }
+        .btn .icon {
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .bottom-bar {
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 8px 6px;
+            gap: 4px;
+            flex-wrap: wrap;
+            background: linear-gradient(0deg, rgba(10, 10, 18, 0.95) 60%, transparent);
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
+        }
+        .mode-btn {
+            flex: 1;
+            min-width: 50px;
+            max-width: 90px;
+            text-align: center;
+            flex-direction: column;
+            gap: 2px;
+            padding: 7px 4px;
+            font-size: 0.6rem;
+            letter-spacing: 0.5px;
+        }
+        .mode-btn .icon {
+            font-size: 1.3rem;
+        }
+        .mode-btn.active {
+            background: rgba(124, 92, 255, 0.3);
+            border-color: rgba(124, 92, 255, 0.7);
+            box-shadow: 0 0 15px rgba(124, 92, 255, 0.4);
+            color: #fff;
+        }
+
+        .floating-panel {
+            position: absolute;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: var(--shadow);
+            padding: 16px;
+            z-index: 20;
+            pointer-events: auto;
+            max-height: 70vh;
+            overflow-y: auto;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .floating-panel.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(20px) scale(0.95);
+        }
+        .panel-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--accent2), var(--accent3));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+        .panel-section {
+            margin-bottom: 12px;
+        }
+        .panel-section label {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+        .slider {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.15);
+            outline: none;
+            margin: 6px 0;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(124, 92, 255, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        .slider::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 12px rgba(124, 92, 255, 0.6);
+        }
+        .value-display {
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--accent2);
+            margin-top: 2px;
+        }
+
+        .keyframe-bar {
+            position: absolute;
+            bottom: 70px;
+            left: 10px;
+            right: 10px;
+            z-index: 8;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 8px 10px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            flex-wrap: wrap;
+        }
+        .keyframe-bar .timeline-slider {
+            flex: 1;
+            min-width: 80px;
+        }
+        .keyframe-bar .time-display {
+            font-size: 0.7rem;
+            color: var(--accent2);
+            font-weight: 700;
+            min-width: 40px;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(20, 20, 35, 0.95);
+            border: 1px solid rgba(124, 92, 255, 0.5);
+            border-radius: var(--radius);
+            padding: 16px 24px;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            box-shadow: 0 0 40px rgba(124, 92, 255, 0.5);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .toast .toast-icon {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .photo-upload-area {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 25;
+            pointer-events: auto;
+            text-align: center;
+            background: var(--panel);
+            border: 2px dashed rgba(124, 92, 255, 0.5);
+            border-radius: var(--radius);
+            padding: 30px 20px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: var(--shadow);
+            max-width: 90vw;
+        }
+        .photo-upload-area.hidden {
+            display: none;
+        }
+        .photo-upload-area .upload-icon {
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 10px;
+            animation: float 2s ease-in-out infinite;
+        }
+        .photo-upload-area input[type="file"] {
+            display: none;
+        }
+        .photo-upload-area .upload-btn {
+            display: inline-block;
+            margin-top: 8px;
+        }
+
+        @keyframes float {
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+        @keyframes shimmer {
+            0% {
+                background-position: -200% center;
+            }
+            100% {
+                background-position: 200% center;
+            }
+        }
+        @keyframes pulse-glow {
+            0%,
+            100% {
+                box-shadow: 0 0 15px rgba(124, 92, 255, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(124, 92, 255, 0.8);
+            }
+        }
+
+        .btn.pulse {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        .joint-label {
+            position: absolute;
+            color: #fff;
+            font-size: 0.55rem;
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(124, 92, 255, 0.9), 0 0 20px rgba(124, 92, 255, 0.5);
+            pointer-events: none;
+            letter-spacing: 0.5px;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+
+        @media(max-width:480px) {
+            .btn {
+                padding: 6px 10px;
+                font-size: 0.65rem;
+                min-height: 30px;
+            }
+            .mode-btn {
+                font-size: 0.5rem;
+                padding: 5px 3px;
+                gap: 1px;
+            }
+            .mode-btn .icon {
+                font-size: 1rem;
+            }
+            .top-bar .title {
+                font-size: 0.85rem;
+            }
+            .floating-panel {
+                padding: 10px;
+                border-radius: 12px;
+                max-height: 60vh;
+                max-width: 88vw;
+            }
+            .keyframe-bar {
+                bottom: 62px;
+                padding: 5px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 3D Scene Container -->
+    <div id="scene-container"></div>
+
+    <!-- Joint Labels Container -->
+    <div id="joint-labels" style="position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden;"></div>
+
+    <!-- Top Bar -->
+    <div class="ui-overlay top-bar" id="topBar">
+        <div class="title">✨ Stardust 3D</div>
+        <button class="btn small" id="btnUpload" title="Upload Photo">📸 <span class="hide-mobile">Photo</span></button>
+        <button class="btn small" id="btnSave" title="Save Scene">💾 <span class="hide-mobile">Save</span></button>
+        <button class="btn small" id="btnLoad" title="Load Scene">📂 <span class="hide-mobile">Load</span></button>
+        <button class="btn small gold" id="btnExport" title="Export HTML">🌐 <span class="hide-mobile">Export</span></button>
+        <button class="btn small" id="btnSettings">⚙️ <span class="hide-mobile">Settings</span></button>
+    </div>
+
+    <!-- Bottom Mode Bar -->
+    <div class="ui-overlay bottom-bar" id="bottomBar">
+        <button class="btn mode-btn active" data-mode="view"><span class="icon">🔄</span>View</button>
+        <button class="btn mode-btn" data-mode="pose"><span class="icon">🦴</span>Pose</button>
+        <button class="btn mode-btn" data-mode="animate"><span class="icon">🎬</span>Animate</button>
+        <button class="btn mode-btn" data-mode="photo"><span class="icon">✨</span>Particles</button>
+    </div>
+
+    <!-- Keyframe Timeline -->
+    <div class="keyframe-bar" id="keyframeBar" style="display:none;">
+        <span style="font-size:0.6rem;color:var(--text-dim);font-weight:600;">⏱️</span>
+        <input type="range" class="slider timeline-slider" id="timelineSlider" min="0" max="100" value="0" step="0.5">
+        <span class="time-display" id="timeDisplay">0.0s</span>
+        <button class="btn small primary" id="btnAddKeyframe">🔑 Key</button>
+        <button class="btn small" id="btnPlayPause">▶️</button>
+        <button class="btn small danger" id="btnClearKeyframes">🗑️</button>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="floating-panel hidden" id="settingsPanel" style="top:60px;right:10px;left:10px;max-width:300px;margin-left:auto;">
+        <div class="panel-title">⚙️ Settings</div>
+        <div class="panel-section">
+            <label>Particle Size</label>
+            <input type="range" class="slider" id="particleSizeSlider" min="0.5" max="8" value="2.5" step="0.1">
+            <div class="value-display" id="particleSizeVal">2.5</div>
+        </div>
+        <div class="panel-section">
+            <label>Particle Density</label>
+            <input type="range" class="slider" id="densitySlider" min="1" max="20" value="6" step="1">
+            <div class="value-display" id="densityVal">6</div>
+        </div>
+        <div class="panel-section">
+            <label>Depth Spread</label>
+            <input type="range" class="slider" id="depthSlider" min="0" max="30" value="10" step="1">
+            <div class="value-display" id="depthVal">10</div>
+        </div>
+        <div class="panel-section">
+            <label>Holographic Shimmer</label>
+            <input type="range" class="slider" id="shimmerSlider" min="0" max="100" value="60" step="1">
+            <div class="value-display" id="shimmerVal">60%</div>
+        </div>
+        <div class="panel-section">
+            <label>Animation Speed</label>
+            <input type="range" class="slider" id="animSpeedSlider" min="0.1" max="3" value="1" step="0.1">
+            <div class="value-display" id="animSpeedVal">1.0x</div>
+        </div>
+        <div class="panel-section" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
+            <button class="btn small" id="btnResetCamera">🎯 Reset View</button>
+            <button class="btn small danger" id="btnClearParticles">🧹 Clear</button>
+        </div>
+    </div>
+
+    <!-- Photo Upload Modal -->
+    <div class="photo-upload-area hidden" id="photoUploadArea">
+        <span class="upload-icon">📸✨</span>
+        <div style="font-weight:700;font-size:1rem;margin-bottom:4px;">Upload Photo → Stardust</div>
+        <div style="font-size:0.7rem;color:var(--text-dim);margin-bottom:12px;">Converts any image into a 3D holographic particle cloud</div>
+        <label class="btn primary upload-btn" for="photoFileInput">📁 Choose Image</label>
+        <input type="file" id="photoFileInput" accept="image/*">
+        <button class="btn small" id="btnCloseUpload" style="margin-top:8px;width:100%;">Cancel</button>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <span class="toast-icon" id="toastIcon">✨</span>
+        <span id="toastText">Done!</span>
+    </div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
+    </script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ─── DOM Elements ───
+            const container = document.getElementById('scene-container');
+            const jointLabelsEl = document.getElementById('joint-labels');
+            const topBar = document.getElementById('topBar');
+            const bottomBar = document.getElementById('bottomBar');
+            const keyframeBar = document.getElementById('keyframeBar');
+            const settingsPanel = document.getElementById('settingsPanel');
+            const photoUploadArea = document.getElementById('photoUploadArea');
+            const photoFileInput = document.getElementById('photoFileInput');
+            const toast = document.getElementById('toast');
+            const toastText = document.getElementById('toastText');
+            const toastIcon = document.getElementById('toastIcon');
+            const timelineSlider = document.getElementById('timelineSlider');
+            const timeDisplay = document.getElementById('timeDisplay');
+            const particleSizeSlider = document.getElementById('particleSizeSlider');
+            const particleSizeVal = document.getElementById('particleSizeVal');
+            const densitySlider = document.getElementById('densitySlider');
+            const densityVal = document.getElementById('densityVal');
+            const depthSlider = document.getElementById('depthSlider');
+            const depthVal = document.getElementById('depthVal');
+            const shimmerSlider = document.getElementById('shimmerSlider');
+            const shimmerVal = document.getElementById('shimmerVal');
+            const animSpeedSlider = document.getElementById('animSpeedSlider');
+            const animSpeedVal = document.getElementById('animSpeedVal');
+
+            // ─── State ───
+            let mode = 'view'; // 'view' | 'pose' | 'animate' | 'photo'
+            let selectedJoint = null;
+            let particleSize = 2.5;
+            let particleDensity = 6;
+            let depthSpread = 10;
+            let shimmerIntensity = 0.6;
+            let animSpeed = 1.0;
+            let currentTime = 0;
+            let isPlaying = false;
+            let keyframes = [];
+            let photoParticles = null;
+            let photoTexture = null;
+            let animationId = null;
+            let lastFrameTime = 0;
+            let toastTimeout = null;
+
+            // ─── Three.js Setup ───
+            const scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x0a0a12, 0.015);
+
+            const camera = new THREE.PerspectiveCamera(55, container.clientWidth / container.clientHeight, 0.1, 200);
+            camera.position.set(0, 1.5, 18);
+            camera.lookAt(0, 1, 0);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setClearColor(0x0a0a12, 1);
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            container.appendChild(renderer.domElement);
+
+            // ─── Lighting ───
+            const ambientLight = new THREE.AmbientLight(0x222244, 1.5);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            scene.add(directionalLight);
+            const pointLight1 = new THREE.PointLight(0x7c5cff, 1.5, 30);
+            pointLight1.position.set(-3, 3, 3);
+            scene.add(pointLight1);
+            const pointLight2 = new THREE.PointLight(0x00d4ff, 1.2, 25);
+            pointLight2.position.set(3, -1, 2);
+            scene.add(pointLight2);
+
+            // ─── Glow Texture for Particles ───
+            function createGlowTexture() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+                gradient.addColorStop(0, 'rgba(255,255,255,1)');
+                gradient.addColorStop(0.15, 'rgba(255,255,255,0.9)');
+                gradient.addColorStop(0.4, 'rgba(255,255,255,0.5)');
+                gradient.addColorStop(0.7, 'rgba(255,255,255,0.15)');
+                gradient.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 64, 64);
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.needsUpdate = true;
+                return tex;
+            }
+            const glowTexture = createGlowTexture();
+
+            // ─── Custom Particle Shader ───
+            const particleVertexShader = `
+            attribute float aSize;
+            attribute vec3 aColor;
+            attribute float aTwinkle;
+            varying vec3 vColor;
+            varying float vTwinkle;
+            uniform float uTime;
+            uniform float uShimmer;
+            void main() {
+              vColor = aColor;
+              vTwinkle = aTwinkle;
+              vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+              float dist = length(mvPosition.xyz);
+              float size = aSize * (180.0 / dist);
+              gl_PointSize = size;
+              gl_Position = projectionMatrix * mvPosition;
+            }
+          `;
+            const particleFragmentShader = `
+            varying vec3 vColor;
+            varying float vTwinkle;
+            uniform float uTime;
+            uniform float uShimmer;
+            uniform sampler2D uTexture;
+            void main() {
+              vec4 texColor = texture2D(uTexture, gl_PointCoord);
+              float dist = length(gl_PointCoord - vec2(0.5));
+              if (dist > 0.5) discard;
+              float twinkle = 0.7 + 0.3 * sin(uTime * 3.0 + vTwinkle * 50.0);
+              float shimmer = 0.6 + 0.4 * sin(uTime * 2.5 + vTwinkle * 30.0 + dist * 15.0);
+              float alpha = texColor.a * twinkle;
+              vec3 col = vColor * (1.0 + (shimmer - 0.6) * uShimmer * 1.5);
+              gl_FragColor = vec4(col, alpha);
+            }
+          `;
+
+            function createParticleMaterial() {
+                return new THREE.ShaderMaterial({
+                    vertexShader: particleVertexShader,
+                    fragmentShader: particleFragmentShader,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false,
+                    depthTest: true,
+                    uniforms: {
+                        uTime: { value: 0 },
+                        uShimmer: { value: shimmerIntensity },
+                        uTexture: { value: glowTexture }
+                    }
+                });
+            }
+
+            // ─── Background Stars ───
+            function createBackgroundStars() {
+                const starGeo = new THREE.BufferGeometry();
+                const starCount = 400;
+                const positions = new Float32Array(starCount * 3);
+                const colors = new Float32Array(starCount * 3);
+                const sizes = new Float32Array(starCount);
+                const twinkles = new Float32Array(starCount);
+                for (let i = 0; i < starCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 40;
+                    positions[i * 3 + 1] = (Math.random() - 0.5) * 30;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 30 - 5;
+                    const c = new THREE.Color().setHSL(Math.random() * 0.2 + 0.5, 0.3, 0.5 + Math.random() * 0.5);
+                    colors[i * 3] = c.r;
+                    colors[i * 3 + 1] = c.g;
+                    colors[i * 3 + 2] = c.b;
+                    sizes[i] = Math.random() * 2 + 0.5;
+                    twinkles[i] = Math.random() * Math.PI * 2;
+                }
+                starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                starGeo.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
+                starGeo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+                starGeo.setAttribute('aTwinkle', new THREE.BufferAttribute(twinkles, 1));
+                const mat = createParticleMaterial();
+                const stars = new THREE.Points(starGeo, mat);
+                stars.name = 'backgroundStars';
+                scene.add(stars);
+                return stars;
+            }
+            const bgStars = createBackgroundStars();
+
+            // ─── Skeleton System ───
+            const skeletonDef = {
+                root: { name: 'Root', parent: null, pos: [0, 0.5, 0], color: 0xffd700 },
+                spine: { name: 'Spine', parent: 'root', pos: [0, 0.5, 0], color: 0xffaa00 },
+                chest: { name: 'Chest', parent: 'spine', pos: [0, 0.5, 0], color: 0xff8800 },
+                neck: { name: 'Neck', parent: 'chest', pos: [0, 0.35, 0], color: 0xff6600 },
+                head: { name: 'Head', parent: 'neck', pos: [0, 0.3, 0], color: 0xff4400 },
+                lShoulder: { name: 'LShoulder', parent: 'chest', pos: [-0.45, 0.1, 0], color: 0x7c5cff },
+                lElbow: { name: 'LElbow', parent: 'lShoulder', pos: [-0.35, -0.15, 0], color: 0x8b6cff },
+                lWrist: { name: 'LWrist', parent: 'lElbow', pos: [-0.3, -0.15, 0], color: 0x9b7cff },
+                rShoulder: { name: 'RShoulder', parent: 'chest', pos: [0.45, 0.1, 0], color: 0x00d4ff },
+                rElbow: { name: 'RElbow', parent: 'rShoulder', pos: [0.35, -0.15, 0], color: 0x10e4ff },
+                rWrist: { name: 'RWrist', parent: 'rElbow', pos: [0.3, -0.15, 0], color: 0x20f4ff },
+                lHip: { name: 'LHip', parent: 'root', pos: [-0.25, -0.1, 0], color: 0xff6ec7 },
+                lKnee: { name: 'LKnee', parent: 'lHip', pos: [0, -0.45, 0], color: 0xff7ed7 },
+                lAnkle: { name: 'LAnkle', parent: 'lKnee', pos: [0, -0.4, 0], color: 0xff8ee7 },
+                rHip: { name: 'RHip', parent: 'root', pos: [0.25, -0.1, 0], color: 0x2ed573 },
+                rKnee: { name: 'RKnee', parent: 'rHip', pos: [0, -0.45, 0], color: 0x3ee583 },
+                rAnkle: { name: 'RAnkle', parent: 'rKnee', pos: [0, -0.4, 0], color: 0x4ef593 },
+            };
+
+            let joints = {};
+            let jointMeshes = {};
+            let boneLines = {};
+            let jointGroup = new THREE.Group();
+            jointGroup.name = 'skeleton';
+            scene.add(jointGroup);
+            let labelDivs = {};
+
+            function buildSkeleton() {
+                // Clear existing
+                while (jointGroup.children.length > 0) {
+                    const child = jointGroup.children[0];
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                    jointGroup.remove(child);
+                }
+                joints = {};
+                jointMeshes = {};
+                boneLines = {};
+                labelDivs = {};
+                jointLabelsEl.innerHTML = '';
+
+                // Create joints
+                for (const [id, def] of Object.entries(skeletonDef)) {
+                    const geo = new THREE.SphereGeometry(0.09, 16, 16);
+                    const mat = new THREE.MeshStandardMaterial({
+                        color: def.color,
+                        emissive: def.color,
+                        emissiveIntensity: 0.8,
+                        roughness: 0.2,
+                        metalness: 0.7,
+                    });
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.userData.jointId = id;
+                    mesh.position.set(def.pos[0], def.pos[1], def.pos[2]);
+                    mesh.name = 'joint_' + id;
+                    jointGroup.add(mesh);
+                    joints[id] = { ...def, localPos: new THREE.Vector3(def.pos[0], def.pos[1], def.pos[2]) };
+                    jointMeshes[id] = mesh;
+
+                    // Label div
+                    const div = document.createElement('div');
+                    div.className = 'joint-label';
+                    div.textContent = def.name;
+                    div.style.display = 'none';
+                    jointLabelsEl.appendChild(div);
+                    labelDivs[id] = div;
+                }
+
+                // Create bone connections (lines)
+                for (const [id, def] of Object.entries(skeletonDef)) {
+                    if (!def.parent) continue;
+                    const lineGeo = new THREE.BufferGeometry();
+                    const lineMat = new THREE.LineBasicMaterial({
+                        color: def.color,
+                        transparent: true,
+                        opacity: 0.7,
+                        blending: THREE.AdditiveBlending,
+                        depthWrite: false,
+                        linewidth: 1,
+                    });
+                    const positions = new Float32Array(6);
+                    lineGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                    const line = new THREE.Line(lineGeo, lineMat);
+                    line.name = 'bone_' + def.parent + '_' + id;
+                    line.userData.boneId = id;
+                    line.userData.parentId = def.parent;
+                    jointGroup.add(line);
+                    boneLines[id] = line;
+                }
+
+                computeWorldPositions();
+                updateBoneLines();
+                updateJointLabels();
+            }
+
+            function computeWorldPositions() {
+                for (const id of Object.keys(skeletonDef)) {
+                    const def = skeletonDef[id];
+                    if (!def.parent) {
+                        joints[id].worldPos = joints[id].localPos.clone();
+                    } else {
+                        const parentWorld = joints[def.parent].worldPos;
+                        joints[id].worldPos = parentWorld.clone().add(joints[id].localPos);
+                    }
+                    jointMeshes[id].position.copy(joints[id].worldPos);
+                }
+            }
+
+            function updateBoneLines() {
+                for (const id of Object.keys(boneLines)) {
+                    const line = boneLines[id];
+                    const parentId = line.userData.parentId;
+                    const parentPos = joints[parentId].worldPos;
+                    const childPos = joints[id].worldPos;
+                    const positions = line.geometry.attributes.position.array;
+                    positions[0] = parentPos.x;
+                    positions[1] = parentPos.y;
+                    positions[2] = parentPos.z;
+                    positions[3] = childPos.x;
+                    positions[4] = childPos.y;
+                    positions[5] = childPos.z;
+                    line.geometry.attributes.position.needsUpdate = true;
+                }
+            }
+
+            function updateJointLabels() {
+                for (const id of Object.keys(joints)) {
+                    const worldPos = joints[id].worldPos;
+                    const screenPos = worldPos.clone().project(camera);
+                    const x = (screenPos.x * 0.5 + 0.5) * container.clientWidth;
+                    const y = (-screenPos.y * 0.5 + 0.5) * container.clientHeight;
+                    const div = labelDivs[id];
+                    if (screenPos.z > 1 || screenPos.z < -1) {
+                        div.style.display = 'none';
+                    } else {
+                        div.style.display = 'block';
+                        div.style.left = x + 'px';
+                        div.style.top = y + 'px';
+                        const dist = camera.position.distanceTo(worldPos);
+                        const labelSize = Math.max(0.4, Math.min(0.7, 3 / dist));
+                        div.style.fontSize = labelSize + 'rem';
+                    }
+                }
+            }
+
+            function getJointAtScreen(x, y) {
+                const raycaster = new THREE.Raycaster();
+                const mouse = new THREE.Vector2(
+                    (x / container.clientWidth) * 2 - 1,
+                    -(y / container.clientHeight) * 2 + 1
+                );
+                raycaster.setFromCamera(mouse, camera);
+                const meshes = Object.values(jointMeshes);
+                const intersects = raycaster.intersectObjects(meshes, false);
+                if (intersects.length > 0) {
+                    return intersects[0].object.userData.jointId;
+                }
+                return null;
+            }
+
+            function getDragPlane(jointWorldPos) {
+                const camDir = camera.getWorldDirection(new THREE.Vector3());
+                const planeNormal = camDir.clone().negate();
+                const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(planeNormal, jointWorldPos);
+                return plane;
+            }
+
+            function getPointOnPlane(clientX, clientY, plane) {
+                const raycaster = new THREE.Raycaster();
+                const mouse = new THREE.Vector2(
+                    (clientX / container.clientWidth) * 2 - 1,
+                    -(clientY / container.clientHeight) * 2 + 1
+                );
+                raycaster.setFromCamera(mouse, camera);
+                const intersection = new THREE.Vector3();
+                raycaster.ray.intersectPlane(plane, intersection);
+                return intersection;
+            }
+
+            function moveJointToWorld(jointId, worldPos) {
+                const def = skeletonDef[jointId];
+                if (!def.parent) {
+                    joints[jointId].localPos.copy(worldPos);
+                } else {
+                    const parentWorld = joints[def.parent].worldPos;
+                    joints[jointId].localPos.copy(worldPos.clone().sub(parentWorld));
+                }
+                computeWorldPositions();
+                updateBoneLines();
+                updateJointLabels();
+            }
+
+            // ─── Photo to Particles ───
+            function processPhoto(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        createParticleCloud(img);
+                        showToast('✨', 'Photo transformed into stardust!');
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function createParticleCloud(img) {
+                // Remove existing photo particles
+                if (photoParticles) {
+                    scene.remove(photoParticles);
+                    if (photoParticles.geometry) photoParticles.geometry.dispose();
+                    if (photoParticles.material) photoParticles.material.dispose();
+                    photoParticles = null;
+                }
+
+                const canvas = document.createElement('canvas');
+                const maxDim = 200;
+                const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+                canvas.width = Math.floor(img.width * scale);
+                canvas.height = Math.floor(img.height * scale);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+
+                const step = Math.max(1, Math.floor(particleDensity));
+                const positions = [];
+                const colors = [];
+                const sizes = [];
+                const twinkles = [];
+
+                const aspect = canvas.width / canvas.height;
+                const displayWidth = 8;
+                const displayHeight = displayWidth / aspect;
+                const centerX = 0;
+                const centerY = 1.2;
+                const centerZ = -0.5;
+
+                for (let y = 0; y < canvas.height; y += step) {
+                    for (let x = 0; x < canvas.width; x += step) {
+                        const idx = (y * canvas.width + x) * 4;
+                        const r = data[idx];
+                        const g = data[idx + 1];
+                        const b = data[idx + 2];
+                        const a = data[idx + 3];
+                        if (a < 30) continue;
+                        const brightness = (r + g + b) / 3;
+                        if (brightness < 5) continue;
+
+                        const px = ((x / canvas.width) - 0.5) * displayWidth + centerX;
+                        const py = -((y / canvas.height) - 0.5) * displayHeight + centerY;
+                        const pz = centerZ + (Math.random() - 0.5) * depthSpread * 0.3;
+                        const depthBias = (brightness / 255) * depthSpread * 0.5;
+                        const finalZ = centerZ + (Math.random() - 0.5) * depthSpread * 0.4 + depthBias * 0.2;
+
+                        positions.push(px, py, finalZ);
+                        colors.push(r / 255, g / 255, b / 255);
+                        const sz = particleSize * (0.7 + brightness / 255 * 0.8) * (Math.random() * 0.4 + 0.8);
+                        sizes.push(sz);
+                        twinkles.push(Math.random() * Math.PI * 2);
+                    }
+                }
+
+                if (positions.length === 0) {
+                    showToast('⚠️', 'Image too dark or small');
+                    return;
+                }
+
+                const geo = new THREE.BufferGeometry();
+                geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geo.setAttribute('aColor', new THREE.Float32BufferAttribute(colors, 3));
+                geo.setAttribute('aSize', new THREE.Float32BufferAttribute(sizes, 1));
+                geo.setAttribute('aTwinkle', new THREE.Float32BufferAttribute(twinkles, 1));
+
+                const mat = createParticleMaterial();
+                photoParticles = new THREE.Points(geo, mat);
+                photoParticles.name = 'photoParticles';
+                scene.add(photoParticles);
+                showToast('✨', `${positions.length / 3} particles created!`);
+            }
+
+            function clearPhotoParticles() {
+                if (photoParticles) {
+                    scene.remove(photoParticles);
+                    if (photoParticles.geometry) photoParticles.geometry.dispose();
+                    if (photoParticles.material) photoParticles.material.dispose();
+                    photoParticles = null;
+                    showToast('🧹', 'Particles cleared');
+                }
+            }
+
+            // ─── Camera Controls (Touch) ───
+            let touchState = {
+                mode: 'none', // 'rotate' | 'pinch' | 'dragJoint' | 'pan'
+                touches: [],
+                startDist: 0,
+                startCamPos: new THREE.Vector3(),
+                startCamTarget: new THREE.Vector3(),
+                spherical: null,
+                dragJointId: null,
+                dragPlane: null,
+                lastTapTime: 0,
+                tapCount: 0,
+                lastTapPos: null,
+            };
+
+            let camTarget = new THREE.Vector3(0, 1, 0);
+            let camSpherical = (function() {
+                const offset = camera.position.clone().sub(camTarget);
+                const r = offset.length();
+                const theta = Math.atan2(offset.x, offset.z);
+                const phi = Math.acos(Math.max(-1, Math.min(1, offset.y / r)));
+                return { r, theta, phi };
+            })();
+
+            function updateCameraFromSpherical() {
+                const sinPhi = Math.sin(camSpherical.phi);
+                camera.position.set(
+                    camTarget.x + camSpherical.r * sinPhi * Math.sin(camSpherical.theta),
+                    camTarget.y + camSpherical.r * Math.cos(camSpherical.phi),
+                    camTarget.z + camSpherical.r * sinPhi * Math.cos(camSpherical.theta)
+                );
+                camera.lookAt(camTarget);
+            }
+
+            function resetCamera() {
+                camTarget.set(0, 1, 0);
+                camSpherical.r = 18;
+                camSpherical.theta = 0;
+                camSpherical.phi = Math.PI / 2 * 0.7;
+                updateCameraFromSpherical();
+                showToast('🎯', 'View reset');
+            }
+
+            function handleTouchStart(e) {
+                e.preventDefault();
+                const touches = e.touches;
+                touchState.touches = Array.from(touches).map(t => ({ x: t.clientX, y: t.clientY, id: t.identifier }));
+
+                if (touches.length === 1) {
+                    const t = touches[0];
+                    // Check for joint hit in pose mode
+                    if (mode === 'pose') {
+                        const jointId = getJointAtScreen(t.clientX, t.clientY);
+                        if (jointId) {
+                            touchState.mode = 'dragJoint';
+                            touchState.dragJointId = jointId;
+                            selectedJoint = jointId;
+                            const worldPos = joints[jointId].worldPos;
+                            touchState.dragPlane = getDragPlane(worldPos);
+                            highlightJoint(jointId, true);
+                            showToast('🦴', `${skeletonDef[jointId].name} selected`);
+                            return;
+                        }
+                    }
+                    // Double-tap detection for joint selection
+                    const now = Date.now();
+                    if (now - touchState.lastTapTime < 300 && mode === 'pose') {
+                        const jointId = getJointAtScreen(t.clientX, t.clientY);
+                        if (jointId) {
+                            selectedJoint = jointId;
+                            touchState.dragJointId = jointId;
+                            const worldPos = joints[jointId].worldPos;
+                            touchState.dragPlane = getDragPlane(worldPos);
+                            touchState.mode = 'dragJoint';
+                            highlightJoint(jointId, true);
+                            showToast('🦴', `${skeletonDef[jointId].name}`);
+                            return;
+                        }
+                    }
+                    touchState.lastTapTime = now;
+                    touchState.mode = 'rotate';
+                    touchState.startCamPos = camera.position.clone();
+                    touchState.startCamTarget = camTarget.clone();
+                    touchState.spherical = { ...camSpherical };
+                } else if (touches.length === 2) {
+                    touchState.mode = 'pinch';
+                    const dx = touches[0].clientX - touches[1].clientX;
+                    const dy = touches[0].clientY - touches[1].clientY;
+                    touchState.startDist = Math.sqrt(dx * dx + dy * dy);
+                    touchState.startCamPos = camera.position.clone();
+                    touchState.startSpherical = { ...camSpherical };
+                }
+            }
+
+            function handleTouchMove(e) {
+                e.preventDefault();
+                const touches = e.touches;
+                touchState.touches = Array.from(touches).map(t => ({ x: t.clientX, y: t.clientY, id: t.identifier }));
+
+                if (touchState.mode === 'rotate' && touches.length === 1) {
+                    const dx = touches[0].clientX - touchState.touches[0].x;
+                    const dy = touches[0].clientY - touchState.touches[0].y;
+                    touchState.touches = [{ x: touches[0].clientX, y: touches[0].clientY }];
+                    const sensitivity = 0.005;
+                    camSpherical.theta -= dx * sensitivity;
+                    camSpherical.phi = Math.max(0.15, Math.min(Math.PI - 0.15,
+                        touchState.spherical.phi + dy * sensitivity));
+                    updateCameraFromSpherical();
+                } else if (touchState.mode === 'pinch' && touches.length === 2) {
+                    const dx = touches[0].clientX - touches[1].clientX;
+                    const dy = touches[0].clientY - touches[1].clientY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const scale = touchState.startDist / dist;
+                    camSpherical.r = Math.max(3, Math.min(50, touchState.startSpherical.r * scale));
+                    updateCameraFromSpherical();
+                } else if (touchState.mode === 'dragJoint' && touches.length === 1) {
+                    const t = touches[0];
+                    const worldPos = getPointOnPlane(t.clientX, t.clientY, touchState.dragPlane);
+                    if (worldPos) {
+                        moveJointToWorld(touchState.dragJointId, worldPos);
+                        if (mode === 'animate') {
+                            autoKeyframe();
+                        }
+                    }
+                }
+            }
+
+            function handleTouchEnd(e) {
+                if (touchState.mode === 'dragJoint') {
+                    highlightJoint(touchState.dragJointId, false);
+                    touchState.dragJointId = null;
+                    touchState.dragPlane = null;
+                }
+                touchState.mode = 'none';
+                touchState.touches = [];
+            }
+
+            function highlightJoint(jointId, on) {
+                if (jointMeshes[jointId]) {
+                    const mat = jointMeshes[jointId].material;
+                    mat.emissiveIntensity = on ? 2.0 : 0.8;
+                    if (on) {
+                        jointMeshes[jointId].scale.set(1.5, 1.5, 1.5);
+                    } else {
+                        jointMeshes[jointId].scale.set(1, 1, 1);
+                    }
+                }
+            }
+
+            // Mouse controls for desktop
+            function handleMouseDown(e) {
+                if (e.button !== 0) return;
+                if (mode === 'pose') {
+                    const jointId = getJointAtScreen(e.clientX, e.clientY);
+                    if (jointId) {
+                        touchState.mode = 'dragJoint';
+                        touchState.dragJointId = jointId;
+                        selectedJoint = jointId;
+                        const worldPos = joints[jointId].worldPos;
+                        touchState.dragPlane = getDragPlane(worldPos);
+                        highlightJoint(jointId, true);
+                        return;
+                    }
+                }
+                touchState.mode = 'rotate';
+                touchState.startCamPos = camera.position.clone();
+                touchState.startCamTarget = camTarget.clone();
+                touchState.spherical = { ...camSpherical };
+                touchState.touches = [{ x: e.clientX, y: e.clientY }];
+            }
+
+            function handleMouseMove(e) {
+                if (touchState.mode === 'rotate') {
+                    const dx = e.clientX - touchState.touches[0].x;
+                    const dy = e.clientY - touchState.touches[0].y;
+                    touchState.touches = [{ x: e.clientX, y: e.clientY }];
+                    const sensitivity = 0.005;
+                    camSpherical.theta -= dx * sensitivity;
+                    camSpherical.phi = Math.max(0.15, Math.min(Math.PI - 0.15,
+                        touchState.spherical.phi + dy * sensitivity));
+                    updateCameraFromSpherical();
+                } else if (touchState.mode === 'dragJoint') {
+                    const worldPos = getPointOnPlane(e.clientX, e.clientY, touchState.dragPlane);
+                    if (worldPos) {
+                        moveJointToWorld(touchState.dragJointId, worldPos);
+                        if (mode === 'animate') autoKeyframe();
+                    }
+                }
+            }
+
+            function handleMouseUp(e) {
+                if (touchState.mode === 'dragJoint') {
+                    highlightJoint(touchState.dragJointId, false);
+                    touchState.dragJointId = null;
+                }
+                touchState.mode = 'none';
+            }
+
+            function handleWheel(e) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 1.1 : 0.9;
+                camSpherical.r = Math.max(3, Math.min(50, camSpherical.r * delta));
+                updateCameraFromSpherical();
+            }
+
+            // ─── Animation System ───
+            function autoKeyframe() {
+                // Simple auto-key: add keyframe at current time if not already present
+                const roundedTime = Math.round(currentTime * 10) / 10;
+                const existing = keyframes.find(k => Math.abs(k.time - roundedTime) < 0.05);
+                if (!existing) {
+                    addKeyframe(roundedTime);
+                } else {
+                    // Update existing
+                    existing.poses = capturePose();
+                }
+            }
+
+            function capturePose() {
+                const pose = {};
+                for (const id of Object.keys(joints)) {
+                    pose[id] = joints[id].localPos.toArray();
+                }
+                return pose;
+            }
+
+            function applyPose(pose) {
+                for (const id of Object.keys(pose)) {
+                    if (joints[id]) {
+                        joints[id].localPos.fromArray(pose[id]);
+                    }
+                }
+                computeWorldPositions();
+                updateBoneLines();
+                updateJointLabels();
+            }
+
+            function addKeyframe(time) {
+                const pose = capturePose();
+                const existing = keyframes.find(k => Math.abs(k.time - time) < 0.05);
+                if (existing) {
+                    existing.poses = pose;
+                } else {
+                    keyframes.push({ time, poses: pose });
+                    keyframes.sort((a, b) => a.time - b.time);
+                }
+                updateTimelineRange();
+                showToast('🔑', `Keyframe at ${time.toFixed(1)}s`);
+            }
+
+            function clearKeyframes() {
+                keyframes = [];
+                updateTimelineRange();
+                showToast('🗑️', 'Keyframes cleared');
+            }
+
+            function updateTimelineRange() {
+                const maxTime = keyframes.length > 0 ? Math.max(...keyframes.map(k => k.time)) : 10;
+                timelineSlider.max = Math.max(maxTime, 10);
+                timelineSlider.value = Math.min(currentTime, timelineSlider.max);
+                updateTimeDisplay();
+            }
+
+            function updateTimeDisplay() {
+                timeDisplay.textContent = currentTime.toFixed(1) + 's';
+            }
+
+            function getPoseAtTime(time) {
+                if (keyframes.length === 0) return null;
+                if (time <= keyframes[0].time) return keyframes[0].poses;
+                if (time >= keyframes[keyframes.length - 1].time) return keyframes[keyframes.length - 1].poses;
+
+                for (let i = 0; i < keyframes.length - 1; i++) {
+                    const k1 = keyframes[i];
+                    const k2 = keyframes[i + 1];
+                    if (time >= k1.time && time <= k2.time) {
+                        const t = (time - k1.time) / (k2.time - k1.time);
+                        const smoothT = t * t * (3 - 2 * t);
+                        const result = {};
+                        for (const id of Object.keys(k1.poses)) {
+                            const p1 = k1.poses[id];
+                            const p2 = k2.poses[id];
+                            result[id] = [
+                                p1[0] + (p2[0] - p1[0]) * smoothT,
+                                p1[1] + (p2[1] - p1[1]) * smoothT,
+                                p1[2] + (p2[2] - p1[2]) * smoothT,
+                            ];
+                        }
+                        return result;
+                    }
+                }
+                return keyframes[keyframes.length - 1].poses;
+            }
+
+            function playAnimation() {
+                if (isPlaying) {
+                    isPlaying = false;
+                    document.getElementById('btnPlayPause').textContent = '▶️';
+                    return;
+                }
+                isPlaying = true;
+                document.getElementById('btnPlayPause').textContent = '⏸️';
+            }
+
+            function updateAnimation(deltaTime) {
+                if (isPlaying && keyframes.length > 0) {
+                    const maxTime = Math.max(...keyframes.map(k => k.time));
+                    currentTime += deltaTime * animSpeed;
+                    if (currentTime > maxTime) {
+                        currentTime = 0;
+                    }
+                    timelineSlider.value = currentTime;
+                    updateTimeDisplay();
+                    const pose = getPoseAtTime(currentTime);
+                    if (pose) applyPose(pose);
+                }
+            }
+
+            function resetPose() {
+                for (const id of Object.keys(skeletonDef)) {
+                    const def = skeletonDef[id];
+                    joints[id].localPos.set(def.pos[0], def.pos[1], def.pos[2]);
+                }
+                computeWorldPositions();
+                updateBoneLines();
+                updateJointLabels();
+                showToast('🔄', 'Pose reset');
+            }
+
+            // ─── Save / Load ───
+            function saveScene() {
+                const data = {
+                    version: 1,
+                    keyframes: keyframes,
+                    currentTime: currentTime,
+                    particleSize: particleSize,
+                    particleDensity: particleDensity,
+                    depthSpread: depthSpread,
+                    shimmerIntensity: shimmerIntensity,
+                    animSpeed: animSpeed,
+                    camSpherical: camSpherical,
+                    camTarget: camTarget.toArray(),
+                    hasPhotoParticles: !!photoParticles,
+                    photoData: null,
+                };
+                if (photoParticles) {
+                    const geo = photoParticles.geometry;
+                    data.photoData = {
+                        positions: Array.from(geo.attributes.position.array),
+                        colors: Array.from(geo.attributes.aColor.array),
+                        sizes: Array.from(geo.attributes.aSize.array),
+                        twinkles: Array.from(geo.attributes.aTwinkle.array),
+                    };
+                }
+                try {
+                    localStorage.setItem('stardust3d_scene', JSON.stringify(data));
+                    showToast('💾', 'Scene saved!');
+                } catch (e) {
+                    showToast('⚠️', 'Save failed: ' + e.message);
+                }
+            }
+
+            function loadScene() {
+                try {
+                    const dataStr = localStorage.getItem('stardust3d_scene');
+                    if (!dataStr) {
+                        showToast('⚠️', 'No saved scene found');
+                        return;
+                    }
+                    const data = JSON.parse(dataStr);
+                    keyframes = data.keyframes || [];
+                    currentTime = data.currentTime || 0;
+                    particleSize = data.particleSize || 2.5;
+                    particleDensity = data.particleDensity || 6;
+                    depthSpread = data.depthSpread || 10;
+                    shimmerIntensity = data.shimmerIntensity || 0.6;
+                    animSpeed = data.animSpeed || 1;
+                    camSpherical = data.camSpherical || { r: 18, theta: 0, phi: 1.1 };
+                    camTarget.fromArray(data.camTarget || [0, 1, 0]);
+                    updateCameraFromSpherical();
+
+                    // Restore photo particles
+                    if (data.photoData && data.photoData.positions && data.photoData.positions.length > 0) {
+                        if (photoParticles) {
+                            scene.remove(photoParticles);
+                            photoParticles.geometry.dispose();
+                            photoParticles.material.dispose();
+                            photoParticles = null;
+                        }
+                        const geo = new THREE.BufferGeometry();
+                        geo.setAttribute('position', new THREE.Float32BufferAttribute(data.photoData.positions, 3));
+                        geo.setAttribute('aColor', new THREE.Float32BufferAttribute(data.photoData.colors, 3));
+                        geo.setAttribute('aSize', new THREE.Float32BufferAttribute(data.photoData.sizes, 1));
+                        geo.setAttribute('aTwinkle', new THREE.Float32BufferAttribute(data.photoData.twinkles, 1));
+                        const mat = createParticleMaterial();
+                        photoParticles = new THREE.Points(geo, mat);
+                        photoParticles.name = 'photoParticles';
+                        scene.add(photoParticles);
+                    }
+
+                    // Restore pose from first keyframe or default
+                    const pose = getPoseAtTime(currentTime);
+                    if (pose) {
+                        applyPose(pose);
+                    } else {
+                        resetPose();
+                    }
+
+                    updateSliders();
+                    updateTimelineRange();
+                    timelineSlider.value = currentTime;
+                    updateTimeDisplay();
+                    showToast('📂', 'Scene loaded!');
+                } catch (e) {
+                    showToast('⚠️', 'Load failed: ' + e.message);
+                }
+            }
+
+            function updateSliders() {
+                particleSizeSlider.value = particleSize;
+                particleSizeVal.textContent = particleSize.toFixed(1);
+                densitySlider.value = particleDensity;
+                densityVal.textContent = particleDensity;
+                depthSlider.value = depthSpread;
+                depthVal.textContent = depthSpread;
+                shimmerSlider.value = shimmerIntensity * 100;
+                shimmerVal.textContent = Math.round(shimmerIntensity * 100) + '%';
+                animSpeedSlider.value = animSpeed;
+                animSpeedVal.textContent = animSpeed.toFixed(1) + 'x';
+            }
+
+            // ─── Export HTML ───
+            function exportHTML() {
+                const sceneData = {
+                    particles: null,
+                    skeleton: {},
+                    keyframes: keyframes,
+                    camSpherical: camSpherical,
+                    camTarget: camTarget.toArray(),
+                    particleSize: particleSize,
+                    shimmerIntensity: shimmerIntensity,
+                };
+                if (photoParticles) {
+                    const geo = photoParticles.geometry;
+                    sceneData.particles = {
+                        positions: Array.from(geo.attributes.position.array),
+                        colors: Array.from(geo.attributes.aColor.array),
+                        sizes: Array.from(geo.attributes.aSize.array),
+                        twinkles: Array.from(geo.attributes.aTwinkle.array),
+                    };
+                }
+                for (const id of Object.keys(skeletonDef)) {
+                    sceneData.skeleton[id] = {
+                        name: skeletonDef[id].name,
+                        parent: skeletonDef[id].parent,
+                        color: '#' + skeletonDef[id].color.toString(16).padStart(6, '0'),
+                        localPos: joints[id].localPos.toArray(),
+                    };
+                }
+
+                const html = generateExportHTML(sceneData);
+                const blob = new Blob([html], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'stardust_scene.html';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('🌐', 'HTML exported!');
+            }
+
+            function generateExportHTML(data) {
+                const dataJSON = JSON.stringify(data);
+                return `<!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>✨ Stardust Scene ✨</title>
+        <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#0a0a12;overflow:hidden;width:100%;height:100%;position:fixed;font-family:system-ui,sans-serif;
+        touch-action:none;user-select:none;-webkit-user-select:none}
+        canvas{display:block;width:100%!important;height:100%!important}
+        .hint{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.5);
+        font-size:0.7rem;text-align:center;pointer-events:none;z-index:10;letter-spacing:0.5px}
+        </style>
+        </head>
+        <body>
+        <div class="hint">✨ Stardust Scene — drag to orbit • pinch/scroll to zoom ✨</div>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
+        <script>
+        (function(){
+        const SCENE_DATA = ${dataJSON};
+        const container = document.body;
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x0a0a12, 0.015);
+        const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 200);
+        const renderer = new THREE.WebGLRenderer({antialias:true,alpha:true});
+        renderer.setSize(innerWidth,innerHeight);
+        renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+        renderer.setClearColor(0x0a0a12,1);
+        container.appendChild(renderer.domElement);
+        scene.add(new THREE.AmbientLight(0x222244,1.5));
+        const pl1=new THREE.PointLight(0x7c5cff,1.5,30);pl1.position.set(-3,3,3);scene.add(pl1);
+        const pl2=new THREE.PointLight(0x00d4ff,1.2,25);pl2.position.set(3,-1,2);scene.add(pl2);
+        function makeGlow(){
+          const c=document.createElement('canvas');c.width=64;c.height=64;
+          const ctx=c.getContext('2d');
+          const g=ctx.createRadialGradient(32,32,0,32,32,32);
+          g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.2,'rgba(255,255,255,0.8)');
+          g.addColorStop(0.5,'rgba(255,255,255,0.4)');g.addColorStop(1,'rgba(255,255,255,0)');
+          ctx.fillStyle=g;ctx.fillRect(0,0,64,64);
+          return new THREE.CanvasTexture(c);
+        }
+        const glowTex=makeGlow();
+        const vs=\`
+        attribute float aSize;attribute vec3 aColor;attribute float aTwinkle;
+        varying vec3 vColor;varying float vTwinkle;uniform float uTime;uniform float uShimmer;
+        void main(){vColor=aColor;vTwinkle=aTwinkle;
+          vec4 mv=modelViewMatrix*vec4(position,1.0);
+          gl_PointSize=aSize*(180.0/length(mv.xyz));
+          gl_Position=projectionMatrix*mv;}\`;
+        const fs=\`
+        varying vec3 vColor;varying float vTwinkle;uniform float uTime;uniform float uShimmer;uniform sampler2D uTexture;
+        void main(){vec4 tc=texture2D(uTexture,gl_PointCoord);
+          float d=length(gl_PointCoord-vec2(0.5));if(d>0.5)discard;
+          float tw=0.7+0.3*sin(uTime*3.0+vTwinkle*50.0);
+          float sh=0.6+0.4*sin(uTime*2.5+vTwinkle*30.0+d*15.0);
+          vec3 col=vColor*(1.0+(sh-0.6)*uShimmer*1.5);
+          gl_FragColor=vec4(col,tc.a*tw);}\`;
+        function makeMat(){return new THREE.ShaderMaterial({vertexShader:vs,fragmentShader:fs,
+          transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,
+          uniforms:{uTime:{value:0},uShimmer:{value:SCENE_DATA.shimmerIntensity||0.6},uTexture:{value:glowTex}}});}
+        let photoPts=null;
+        if(SCENE_DATA.particles&&SCENE_DATA.particles.positions.length>0){
+          const g=new THREE.BufferGeometry();
+          g.setAttribute('position',new THREE.Float32BufferAttribute(SCENE_DATA.particles.positions,3));
+          g.setAttribute('aColor',new THREE.Float32BufferAttribute(SCENE_DATA.particles.colors,3));
+          g.setAttribute('aSize',new THREE.Float32BufferAttribute(SCENE_DATA.particles.sizes,1));
+          g.setAttribute('aTwinkle',new THREE.Float32BufferAttribute(SCENE_DATA.particles.twinkles,1));
+          photoPts=new THREE.Points(g,makeMat());scene.add(photoPts);
+        }
+        const jointGroup=new THREE.Group();scene.add(jointGroup);
+        const jointMeshes={};const jointData={};const boneLines={};
+        for(const[id,def]of Object.entries(SCENE_DATA.skeleton)){
+          const color=parseInt(def.color.slice(1),16);
+          const geo=new THREE.SphereGeometry(0.09,16,16);
+          const mat=new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:0.8,
+            roughness:0.2,metalness:0.7});
+          const mesh=new THREE.Mesh(geo,mat);mesh.position.fromArray(def.localPos);
+          mesh.name='joint_'+id;jointGroup.add(mesh);jointMeshes[id]=mesh;
+          jointData[id]={localPos:new THREE.Vector3(...def.localPos),parent:def.parent,color};
+        }
+        for(const[id,def]of Object.entries(SCENE_DATA.skeleton)){
+          if(!def.parent)continue;
+          const lg=new THREE.BufferGeometry();
+          const lm=new THREE.LineBasicMaterial({color:jointData[id].color,transparent:true,
+            opacity:0.7,blending:THREE.AdditiveBlending,depthWrite:false});
+          const lp=new Float32Array(6);lg.setAttribute('position',new THREE.BufferAttribute(lp,3));
+          const line=new THREE.Line(lg,lm);line.userData={id,parent:def.parent};
+          jointGroup.add(line);boneLines[id]=line;
+        }
+        function computeWorld(){
+          for(const[id,d]of Object.entries(jointData)){
+            if(!d.parent){d.worldPos=d.localPos.clone();}
+            else{d.worldPos=jointData[d.parent].worldPos.clone().add(d.localPos);}
+            jointMeshes[id].position.copy(d.worldPos);
+          }
+        }
+        function updateBones(){
+          for(const[id,line]of Object.entries(boneLines)){
+            const pp=jointData[line.userData.parent].worldPos;
+            const cp=jointData[id].worldPos;
+            const arr=line.geometry.attributes.position.array;
+            arr[0]=pp.x;arr[1]=pp.y;arr[2]=pp.z;
+            arr[3]=cp.x;arr[4]=cp.y;arr[5]=cp.z;
+            line.geometry.attributes.position.needsUpdate=true;
+          }
+        }
+        computeWorld();updateBones();
+        const camTarget=new THREE.Vector3(...(SCENE_DATA.camTarget||[0,1,0]));
+        const camSph={r:(SCENE_DATA.camSpherical&&SCENE_DATA.camSpherical.r)||18,
+          theta:(SCENE_DATA.camSpherical&&SCENE_DATA.camSpherical.theta)||0,
+          phi:(SCENE_DATA.camSpherical&&SCENE_DATA.camSpherical.phi)||1.1};
+        function updateCam(){
+          const sp=camSph;const sinP=Math.sin(sp.phi);
+          camera.position.set(camTarget.x+sp.r*sinP*Math.sin(sp.theta),
+            camTarget.y+sp.r*Math.cos(sp.phi),
+            camTarget.z+sp.r*sinP*Math.cos(sp.theta));
+          camera.lookAt(camTarget);
+        }
+        updateCam();
+        const keyframes=SCENE_DATA.keyframes||[];
+        let currentTime=0;let lastFrame=Date.now();let playing=true;
+        function getPoseAt(t){
+          if(keyframes.length===0)return null;
+          if(t<=keyframes[0].time)return keyframes[0].poses;
+          if(t>=keyframes[keyframes.length-1].time)return keyframes[keyframes.length-1].poses;
+          for(let i=0;i<keyframes.length-1;i++){
+            const k1=keyframes[i],k2=keyframes[i+1];
+            if(t>=k1.time&&t<=k2.time){
+              const tt=(t-k1.time)/(k2.time-k1.time);
+              const st=tt*tt*(3-2*tt);
+              const result={};
+              for(const id of Object.keys(k1.poses)){
+                const p1=k1.poses[id],p2=k2.poses[id];
+                result[id]=[p1[0]+(p2[0]-p1[0])*st,p1[1]+(p2[1]-p1[1])*st,p1[2]+(p2[2]-p1[2])*st];
+              }
+              return result;
+            }
+          }
+          return keyframes[keyframes.length-1].poses;
+        }
+        function applyPose(pose){
+          for(const[id,p]of Object.entries(pose)){jointData[id].localPos.fromArray(p);}
+          computeWorld();updateBones();
+        }
+        let dragging=false,lastX=0,lastY=0;
+        addEventListener('touchstart',e=>{if(e.touches.length===1){dragging=true;
+          lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;}e.preventDefault();},{passive:false});
+        addEventListener('touchmove',e=>{if(dragging&&e.touches.length===1){
+          const dx=e.touches[0].clientX-lastX,dy=e.touches[0].clientY-lastY;
+          lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;
+          camSph.theta-=dx*0.005;
+          camSph.phi=Math.max(0.15,Math.min(Math.PI-0.15,camSph.phi+dy*0.005));
+          updateCam();}e.preventDefault();},{passive:false});
+        addEventListener('touchend',()=>{dragging=false;},{passive:true});
+        addEventListener('mousedown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;});
+        addEventListener('mousemove',e=>{if(dragging){
+          const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;
+          camSph.theta-=dx*0.005;
+          camSph.phi=Math.max(0.15,Math.min(Math.PI-0.15,camSph.phi+dy*0.005));
+          updateCam();}});
+        addEventListener('mouseup',()=>{dragging=false;});
+        addEventListener('wheel',e=>{camSph.r=Math.max(3,Math.min(50,camSph.r*(e.deltaY>0?1.1:0.9)));
+          updateCam();e.preventDefault();},{passive:false});
+        function animate(){
+          requestAnimationFrame(animate);
+          const now=Date.now();const delta=(now-lastFrame)/1000;lastFrame=now;
+          if(playing&&keyframes.length>0){
+            currentTime+=delta;
+            const maxT=Math.max(...keyframes.map(k=>k.time));
+            if(currentTime>maxT)currentTime=0;
+            const pose=getPoseAt(currentTime);if(pose)applyPose(pose);
+          }
+          const time=now*0.001;
+          if(photoPts&&photoPts.material)photoPts.material.uniforms.uTime.value=time;
+          renderer.render(scene,camera);
+        }
+        animate();
+        addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+          renderer.setSize(innerWidth,innerHeight);});
+        })();
+        <\/script>
+        </body>
+        </html>`;
+            }
+
+            // ─── Toast ───
+            function showToast(icon, text) {
+                toastIcon.textContent = icon;
+                toastText.textContent = text;
+                toast.classList.add('show');
+                clearTimeout(toastTimeout);
+                toastTimeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 1800);
+            }
+
+            // ─── UI Event Handlers ───
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    mode = btn.dataset.mode;
+                    keyframeBar.style.display = (mode === 'animate') ? 'flex' : 'none';
+                    if (mode === 'animate') {
+                        updateTimelineRange();
+                    }
+                    if (mode === 'pose' || mode === 'animate') {
+                        document.getElementById('btnResetCamera').textContent = '🔄 Reset Pose';
+                    } else {
+                        document.getElementById('btnResetCamera').textContent = '🎯 Reset View';
+                    }
+                    showToast(
+                        mode === 'view' ? '🔄' : mode === 'pose' ? '🦴' : mode === 'animate' ? '🎬' : '✨',
+                        mode.charAt(0).toUpperCase() + mode.slice(1) + ' Mode'
+                    );
+                });
+            });
+
+            document.getElementById('btnUpload').addEventListener('click', () => {
+                photoUploadArea.classList.toggle('hidden');
+            });
+            document.getElementById('btnCloseUpload').addEventListener('click', () => {
+                photoUploadArea.classList.add('hidden');
+            });
+            photoFileInput.addEventListener('change', (e) => {
+                if (e.target.files[0]) {
+                    processPhoto(e.target.files[0]);
+                    photoUploadArea.classList.add('hidden');
+                    photoFileInput.value = '';
+                }
+            });
+
+            document.getElementById('btnSave').addEventListener('click', saveScene);
+            document.getElementById('btnLoad').addEventListener('click', loadScene);
+            document.getElementById('btnExport').addEventListener('click', exportHTML);
+
+            document.getElementById('btnSettings').addEventListener('click', () => {
+                settingsPanel.classList.toggle('hidden');
+                updateSliders();
+            });
+
+            particleSizeSlider.addEventListener('input', () => {
+                particleSize = parseFloat(particleSizeSlider.value);
+                particleSizeVal.textContent = particleSize.toFixed(1);
+                if (photoParticles) {
+                    const sizes = photoParticles.geometry.attributes.aSize;
+                    const baseSize = particleSize;
+                    for (let i = 0; i < sizes.count; i++) {
+                        const orig = sizes.getX(i);
+                        const ratio = orig / (orig / (particleSize * 0.8));
+                        sizes.setX(i, particleSize * (0.5 + Math.random() * 0.6));
+                    }
+                    sizes.needsUpdate = true;
+                }
+            });
+
+            densitySlider.addEventListener('input', () => {
+                particleDensity = parseInt(densitySlider.value);
+                densityVal.textContent = particleDensity;
+            });
+
+            depthSlider.addEventListener('input', () => {
+                depthSpread = parseFloat(depthSlider.value);
+                depthVal.textContent = depthSpread;
+            });
+
+            shimmerSlider.addEventListener('input', () => {
+                shimmerIntensity = parseFloat(shimmerSlider.value) / 100;
+                shimmerVal.textContent = Math.round(shimmerIntensity * 100) + '%';
+                if (photoParticles && photoParticles.material) {
+                    photoParticles.material.uniforms.uShimmer.value = shimmerIntensity;
+                }
+                if (bgStars && bgStars.material) {
+                    bgStars.material.uniforms.uShimmer.value = shimmerIntensity;
+                }
+            });
+
+            animSpeedSlider.addEventListener('input', () => {
+                animSpeed = parseFloat(animSpeedSlider.value);
+                animSpeedVal.textContent = animSpeed.toFixed(1) + 'x';
+            });
+
+            document.getElementById('btnResetCamera').addEventListener('click', () => {
+                if (mode === 'pose' || mode === 'animate') {
+                    resetPose();
+                } else {
+                    resetCamera();
+                }
+            });
+
+            document.getElementById('btnClearParticles').addEventListener('click', clearPhotoParticles);
+
+            timelineSlider.addEventListener('input', () => {
+                currentTime = parseFloat(timelineSlider.value);
+                updateTimeDisplay();
+                const pose = getPoseAtTime(currentTime);
+                if (pose && keyframes.length > 0) applyPose(pose);
+            });
+
+            document.getElementById('btnAddKeyframe').addEventListener('click', () => {
+                addKeyframe(currentTime);
+            });
+
+            document.getElementById('btnPlayPause').addEventListener('click', playAnimation);
+            document.getElementById('btnClearKeyframes').addEventListener('click', clearKeyframes);
+
+            // ─── Touch Events ───
+            renderer.domElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+            renderer.domElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+            renderer.domElement.addEventListener('touchend', handleTouchEnd, { passive: true });
+            renderer.domElement.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+
+            // ─── Mouse Events ───
+            renderer.domElement.addEventListener('mousedown', handleMouseDown);
+            renderer.domElement.addEventListener('mousemove', handleMouseMove);
+            renderer.domElement.addEventListener('mouseup', handleMouseUp);
+            renderer.domElement.addEventListener('mouseleave', handleMouseUp);
+            renderer.domElement.addEventListener('wheel', handleWheel, { passive: false });
+
+            // ─── Resize ───
+            function handleResize() {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+                updateJointLabels();
+            }
+            window.addEventListener('resize', handleResize);
+            window.addEventListener('orientationchange', () => setTimeout(handleResize, 300));
+
+            // ─── Main Loop ───
+            function animate() {
+                animationId = requestAnimationFrame(animate);
+                const now = Date.now();
+                const delta = (now - lastFrameTime) / 1000;
+                lastFrameTime = now;
+                const time = now * 0.001;
+
+                // Update uniforms
+                if (photoParticles && photoParticles.material) {
+                    photoParticles.material.uniforms.uTime.value = time;
+                    photoParticles.material.uniforms.uShimmer.value = shimmerIntensity;
+                }
+                if (bgStars && bgStars.material) {
+                    bgStars.material.uniforms.uTime.value = time;
+                    bgStars.material.uniforms.uShimmer.value = shimmerIntensity;
+                }
+
+                // Update point lights for dynamic feel
+                pointLight1.position.x = Math.sin(time * 0.7) * 4;
+                pointLight1.position.z = Math.cos(time * 0.5) * 3;
+                pointLight2.position.x = Math.cos(time * 0.4) * 3.5;
+                pointLight2.position.z = Math.sin(time * 0.6) * 3.5;
+
+                // Update animation
+                updateAnimation(delta);
+
+                // Update joint labels
+                updateJointLabels();
+
+                renderer.render(scene, camera);
+            }
+
+            // ─── Init ───
+            function init() {
+                buildSkeleton();
+                resetCamera();
+                updateCameraFromSpherical();
+                updateSliders();
+                updateTimelineRange();
+                updateTimeDisplay();
+                lastFrameTime = Date.now();
+                animate();
+                showToast('✨', 'Stardust 3D Creator Ready!');
+                // Try auto-load
+                setTimeout(() => {
+                    const saved = localStorage.getItem('stardust3d_scene');
+                    if (saved) {
+                        showToast('💾', 'Saved scene found — tap Load!');
+                    }
+                }, 500);
+            }
+
+            // Handle initial resize
+            setTimeout(handleResize, 50);
+            init();
+
+        })();
+    </script>
+</body>
+</html>
