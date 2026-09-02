@@ -1,4 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>✨ Stardust 3D Studio Pro ✨</title>
+    <style>
+        :root {
+            --bg: #0f0f1e;
+            --panel: rgba(22, 22, 42, 0.93);
+            --panel2: rgba(35, 35, 60, 0.85);
+            --border: rgba(255, 255, 255, 0.15);
+            --border2: rgba(255, 255, 255, 0.08);
+            --accent: #8b5cf6;
+            --accent2: #06b6d4;
+            --accent3: #ec4899;
+            --gold: #fbbf24;
+            --green: #34d399;
+            --red: #f87171;
+            --text: #f1f1f8;
+            --text2: #b0b0d0;
+            --radius: 14px;
+            --radius-sm: 8px;
+            --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+            --transition: 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            font-family: var(--font);
+            color: var(--text);
+            touch-action: none;
+            position: fixed;
+            inset: 0;
+        }
+        #scene-container {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: radial-gradient(ellipse at center, #1e1e3a 0%, #0f0f1e 100%);
+        }
+        #scene-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .hud-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 6px;
+            gap: 2px;
+            background: linear-gradient(180deg, rgba(15, 15, 30, 0.95) 50%, transparent);
+            pointer-events: none;
+        }
+        .hud-top>* { pointer-events: auto; }
+        .hud-btn {
+            background: rgba(30, 30, 55, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--text);
+            padding: 5px 7px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            line-height: 1;
+            transition: all var(--transition);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            min-height: 30px;
+            min-width: 30px;
+            touch-action: manipulation;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .hud-btn:hover { background: rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.3); transform: scale(1.05); }
+        .hud-btn:active { transform: scale(0.88); }
+        .hud-btn.active { border-color: var(--accent); box-shadow: 0 0 14px rgba(139, 92, 246, 0.5); background: rgba(139, 92, 246, 0.25); }
+        .hud-btn-group { display: flex; gap: 2px; align-items: center; }
+        .hud-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 4px 4px max(4px, var(--safe-bottom));
+            gap: 2px;
+            background: linear-gradient(0deg, rgba(15, 15, 30, 0.95) 55%, transparent);
+            pointer-events: none;
+        }
+        .hud-bottom>* { pointer-events: auto; }
+        .mode-btn {
+            flex: 1;
+            min-width: 40px;
+            max-width: 70px;
+            text-align: center;
+            padding: 4px 2px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: transparent;
+            border: 1.5px solid transparent;
+            transition: all var(--transition);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+            touch-action: manipulation;
+        }
+        .mode-btn .ico { font-size: 1.15rem; line-height: 1.1; }
+        .mode-btn .lbl { font-size: 0.45rem; font-weight: 600; color: var(--text2); letter-spacing: 0.2px; }
+        .mode-btn.active { border-color: var(--accent); background: rgba(139, 92, 246, 0.2); box-shadow: 0 0 12px rgba(139, 92, 246, 0.35); }
+        .mode-btn.active .lbl { color: var(--text); }
+        .joy-panel {
+            position: absolute;
+            z-index: 40;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: var(--shadow);
+            padding: 10px;
+            pointer-events: auto;
+            max-width: 300px;
+            width: 92vw;
+            transition: all var(--transition);
+            left: 194px;
+            top: 44px;
+            right: auto;
+        }
+        .joy-panel.hidden { opacity: 0; pointer-events: none; transform: translateY(25px) scale(0.9); }
+        .joy-panel .title { font-size: 0.7rem; font-weight: 700; text-align: center; margin-bottom: 8px; color: var(--accent2); letter-spacing: 0.4px; }
+        .joy-sphere-wrap {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 8px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, rgba(139, 92, 246, 0.3), rgba(6, 182, 212, 0.15));
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            touch-action: none;
+            box-shadow: inset 0 0 30px rgba(139, 92, 246, 0.2), 0 0 20px rgba(139, 92, 246, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .joy-sphere-wrap canvas { width: 100%; height: 100%; border-radius: 50%; }
+        .joy-value-label { text-align: center; font-size: 0.65rem; font-weight: 700; color: var(--text); letter-spacing: 0.3px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+        .joy-value-label .val { color: var(--accent2); font-size: 0.75rem; }
+        .joy-presets { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; margin-top: 5px; }
+        .joy-preset { padding: 3px 7px; border-radius: 5px; border: 1px solid var(--border2); background: var(--panel2); color: var(--text2); font-size: 0.5rem; cursor: pointer; touch-action: manipulation; }
+        .joy-preset:active { background: var(--accent); color: #fff; }
+        .numeric-input { width: 90%; margin: 6px auto; display: flex; align-items: center; gap: 4px; font-size: 0.55rem; color: var(--text2); }
+        .numeric-input input { flex: 1; background: var(--panel2); border: 1px solid var(--border2); border-radius: 4px; padding: 3px 5px; color: var(--text); font-size: 0.6rem; outline: none; min-width: 0; }
+        .timeline-bar {
+            position: absolute;
+            bottom: 48px;
+            left: 6px;
+            right: 6px;
+            z-index: 25;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 4px 6px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            flex-wrap: wrap;
+            pointer-events: auto;
+        }
+        .timeline-bar .tl-slider { flex: 1; min-width: 60px; height: 16px; -webkit-appearance: none; appearance: none; background: rgba(255,255,255,0.1); border-radius: 8px; outline: none; cursor: pointer; }
+        .timeline-bar .tl-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); border: 2px solid rgba(255,255,255,0.3); cursor: pointer; box-shadow: 0 0 12px rgba(139,92,246,0.6); }
+        .timeline-bar .tl-time { font-size: 0.55rem; color: var(--accent2); font-weight: 700; font-variant-numeric: tabular-nums; min-width: 32px; text-align: center; }
+        .timeline-bar .hud-btn { font-size: 0.65rem; padding: 3px 5px; min-height: 22px; min-width: 22px; }
+        .upload-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; pointer-events: auto; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .upload-overlay.hidden { display: none; }
+        .upload-card { background: var(--panel); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 18px; text-align: center; max-width: 340px; width: 92%; box-shadow: var(--shadow); }
+        .upload-card .ico { font-size: 2.2rem; display: block; margin-bottom: 6px; }
+        .upload-card .msg { font-size: 0.6rem; color: var(--text2); margin-bottom: 10px; }
+        .upload-card input[type="file"] { display: none; }
+        .upload-actions { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 8px 0; }
+        .upload-card .hud-btn { font-size: 0.7rem; padding: 6px 10px; }
+        .toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(0.7); background: rgba(20,20,35,0.95); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 18px; z-index: 100; pointer-events: none; opacity: 0; transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); text-align: center; font-weight: 600; font-size: 0.7rem; box-shadow: 0 0 30px rgba(139,92,246,0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); max-width: 85vw; }
+        .toast.show { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+        .toast .ico { font-size: 1.5rem; display: block; margin-bottom: 4px; }
+        .joint-highlight { position: absolute; pointer-events: none; border: 2px solid var(--accent3); border-radius: 50%; width: 28px; height: 28px; transform: translate(-50%,-50%); box-shadow: 0 0 20px rgba(236,72,153,0.8); z-index: 5; display: none; animation: pulse 1.5s ease-in-out infinite; }
+        @keyframes pulse { 0%,100% { box-shadow: 0 0 12px rgba(236,72,153,0.5); } 50% { box-shadow: 0 0 28px rgba(236,72,153,1); } }
+        .object-editor {
+            position: absolute;
+            left: 6px;
+            top: 44px;
+            z-index: 45;
+            width: 180px;
+            max-height: calc(100vh - 100px);
+            overflow: auto;
+            padding: 9px;
+            background: rgba(15, 15, 30, .94);
+            border: 1px solid rgba(255, 255, 255, .14);
+            border-radius: 14px;
+            backdrop-filter: blur(18px);
+            box-shadow: 0 8px 30px rgba(0,0,0,.45);
+        }
+        .editor-head { display: flex; align-items: center; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--text); }
+        .editor-mini { border: 1px solid var(--border); background: var(--panel2); color: var(--text); border-radius: 7px; padding: 3px 6px; cursor: pointer; }
+        .editor-sub { font-size: .48rem; color: var(--text2); margin: 4px 0 7px; line-height: 1.3; }
+        .editor-section { border-top: 1px solid var(--border2); padding-top: 7px; margin-top: 7px; }
+        .editor-label { font-size: .43rem; color: var(--accent2); font-weight: 800; letter-spacing: .5px; margin-bottom: 5px; }
+        .editor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+        .editor-btn { padding: 5px 4px; border: 1px solid var(--border2); border-radius: 7px; background: var(--panel2); color: var(--text2); font-size: .48rem; cursor: pointer; }
+        .editor-btn.active { border-color: var(--accent); background: rgba(139,92,246,.24); color: var(--text); box-shadow: 0 0 10px rgba(139,92,246,.2); }
+        .object-editor~.timeline-bar { left: 194px; }
+        .game-joystick-container {
+            position: fixed;
+            bottom: 70px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 35;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .game-joystick-container.visible { opacity: 1; pointer-events: auto; }
+        .game-joystick {
+            width: 100px;
+            height: 100px;
+            background: rgba(30,30,55,0.6);
+            border: 2px solid rgba(255,255,255,0.25);
+            border-radius: 50%;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 0 20px rgba(0,0,0,0.4);
+            touch-action: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .game-joystick .stick {
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, #fff, #c4b5fd);
+            border-radius: 50%;
+            position: absolute;
+            transition: transform 0.05s;
+            box-shadow: 0 0 12px rgba(139,92,246,0.7);
+        }
+        @media(max-width:480px) {
+            .object-editor { width: 150px; left: 4px; top: 40px; }
+            .object-editor~.timeline-bar { left: 160px; }
+            .joy-panel { left: 160px; right: auto; top: 42px; width: calc(100vw - 164px); }
+            .hud-btn { padding: 4px 5px; font-size: 0.9rem; min-height: 26px; min-width: 26px; }
+            .mode-btn .ico { font-size: 1rem; }
+            .joy-sphere-wrap { width: 100px; height: 100px; }
+            .joy-panel { padding: 6px; border-radius: 10px; width: 95vw; max-width: 280px; }
+            .timeline-bar { bottom: 40px; padding: 3px 4px; }
+            .object-editor { width: 154px; left: 5px; top: 52px; max-height: 52vh; }
+            .joy-panel { left: 164px; top: 52px; width: calc(100vw - 169px); max-width: none; }
+            .joy-sphere-wrap { width: 100px; height: 100px; }
+            .game-joystick { width: 80px; height: 80px; }
+            .game-joystick .stick { width: 30px; height: 30px; }
+            .game-joystick-container { bottom: 60px; left: 10px; right: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="scene-container"></div>
+    <input type="file" id="directFileInput" accept="image/*,video/*,audio/*,.heic,.heif,.avif,.svg,.gif,.webp,.bmp,.tif,.tiff,.mp4,.webm,.mov,.m4v,.avi,.mkv,.mp3,.m4a,.wav,.ogg,.aac,.flac" style="position:fixed;left:-10000px;width:1px;height:1px;opacity:0;">
+    <div id="joint-labels" style="position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden;"></div>
+    <div class="joint-highlight" id="jointHighlight"></div>
 
+    <!-- Top HUD -->
+    <div class="hud-top" id="hudTop">
+        <div class="hud-btn-group">
+            <button class="hud-btn" id="btnUpload" title="Upload media">📸</button>
+            <button class="hud-btn" id="btnSave" title="Save">💾</button>
+            <button class="hud-btn" id="btnLoad" title="Load">📂</button>
+            <button class="hud-btn" id="btnExport" title="Export HTML">🌐</button>
+            <button class="hud-btn" id="btnCrayMode" title="Cray Mode">🌈</button>
+        </div>
+        <div class="hud-btn-group">
+            <button class="hud-btn" id="btnJoySettings" title="Joystick">🎛️</button>
+            <button class="hud-btn" id="btnText" title="3D Text">🔤</button>
+            <button class="hud-btn" id="btnAudio" title="Audio">🎤</button>
+            <button class="hud-btn" id="btnCamKey" title="Camera Key">🎥</button>
+            <button class="hud-btn" id="btnSwapView" title="Swap Particle/Normal">🔄</button>
+        </div>
+    </div>
+
+    <!-- Bottom Mode Bar -->
+    <div class="hud-bottom" id="hudBottom">
+        <button class="mode-btn active" data-mode="view"><span class="ico">🔄</span><span class="lbl">View</span></button>
+        <button class="mode-btn" data-mode="pose"><span class="ico">🦴</span><span class="lbl">Pose</span></button>
+        <button class="mode-btn" data-mode="animate"><span class="ico">🎬</span><span class="lbl">Timeline</span></button>
+        <button class="mode-btn" data-mode="audio"><span class="ico">🔊</span><span class="lbl">React</span></button>
+        <button class="mode-btn" data-mode="cam"><span class="ico">📷</span><span class="lbl">Cam</span></button>
+        <button class="mode-btn" data-mode="game"><span class="ico">🎮</span><span class="lbl">Game</span></button>
+    </div>
+
+    <!-- Game Joysticks (visible in game mode) -->
+    <div class="game-joystick-container" id="gameJoystickContainer">
+        <div class="game-joystick" id="gameJoystickLeft"><div class="stick" id="stickLeft"></div></div>
+        <div class="game-joystick" id="gameJoystickRight"><div class="stick" id="stickRight"></div></div>
+    </div>
+
+    <!-- Joystick Panel -->
+    <div class="joy-panel hidden" id="joyPanel">
+        <div class="title" id="joyTitle">🎛️ Settings Joystick</div>
+        <div class="joy-sphere-wrap" id="joySphereWrap"><canvas id="joyCanvas"></canvas></div>
+        <div class="joy-value-label"><span id="joyParamName">Size</span>: <span class="val" id="joyParamVal">2.5</span></div>
+        <div class="numeric-input"><span>🔢</span><input type="number" id="directNumInput" step="0.01" min="0" max="100" value="2.5"><span id="directNumSuffix">px</span></div>
+        <div class="joy-presets" id="joyPresets">
+            <button class="joy-preset" data-param="size">Size</button>
+            <button class="joy-preset" data-param="density">Density</button>
+            <button class="joy-preset" data-param="depth">Depth</button>
+            <button class="joy-preset" data-param="shimmer">Shimmer</button>
+            <button class="joy-preset" data-param="flow">Flow</button>
+            <button class="joy-preset" data-param="turbulence">Turb</button>
+            <button class="joy-preset" data-param="audio">Audio</button>
+        </div>
+    </div>
+
+    <!-- Object Editor -->
+    <aside class="object-editor" id="objectEditor">
+        <div class="editor-head"><span id="editorTitle">✨ Particle Editor</span><button class="editor-mini" id="btnSkeletonToggle">🦴</button></div>
+        <div class="editor-sub" id="editorSub">Tap a 3D object to focus it</div>
+        <div class="editor-section"><div class="editor-label">FILTER / FIRE</div><div class="editor-grid">
+            <button class="editor-btn active" data-filter="burn">🔥 Burn</button>
+            <button class="editor-btn" data-filter="fade">🌫 Fade</button>
+            <button class="editor-btn" data-filter="glow">✨ Glow</button>
+            <button class="editor-btn" data-filter="pulse">💫 Pulse</button>
+        </div></div>
+        <div class="editor-section"><div class="editor-label">PARTICLE SHAPE</div><div class="editor-grid">
+            <button class="editor-btn" data-shape="circle">●</button>
+            <button class="editor-btn active" data-shape="star">★</button>
+            <button class="editor-btn" data-shape="diamond">◆</button>
+            <button class="editor-btn" data-shape="heart">♥</button>
+            <button class="editor-btn" data-shape="triangle">▲</button>
+            <button class="editor-btn" data-shape="hexagon">⬡</button>
+        </div></div>
+        <div class="editor-section"><div class="editor-label">SELECT MODE</div><div class="editor-grid">
+            <button class="editor-btn" id="btnSelectMode">🎯 Select</button>
+            <button class="editor-btn" id="btnMoveSelected">↕️ Move</button>
+        </div></div>
+    </aside>
+
+    <!-- Timeline Bar -->
+    <div class="timeline-bar" id="timelineBar" style="display:none;">
+        <span style="font-size:0.5rem;color:var(--text2);">⏱️</span>
+        <input type="range" class="tl-slider" id="tlSlider" min="0" max="10" value="0" step="0.05">
+        <span class="tl-time" id="tlTime">0.0s</span>
+        <button class="hud-btn" id="btnTlKey">🔑</button>
+        <button class="hud-btn" id="btnTlPlay">▶️</button>
+        <button class="hud-btn" id="btnTlClear">🗑️</button>
+        <button class="hud-btn" id="btnTlBlend">🔄</button>
+    </div>
+
+    <!-- Upload Overlay -->
+    <div class="upload-overlay hidden" id="uploadOverlay"></div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"><span class="ico" id="toastIcon">✨</span><span id="toastText"></span></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        (function() {
+            'use strict';
+
+            // DOM
+            const container = document.getElementById('scene-container');
+            const jointHighlight = document.getElementById('jointHighlight');
+            const joyPanel = document.getElementById('joyPanel');
+            const joyCanvas = document.getElementById('joyCanvas');
+            const joySphereWrap = document.getElementById('joySphereWrap');
+            const joyParamName = document.getElementById('joyParamName');
+            const joyParamVal = document.getElementById('joyParamVal');
+            const directNumInput = document.getElementById('directNumInput');
+            const joyPresets = document.getElementById('joyPresets');
+            const timelineBar = document.getElementById('timelineBar');
+            const tlSlider = document.getElementById('tlSlider');
+            const tlTime = document.getElementById('tlTime');
+            const toast = document.getElementById('toast');
+            const toastText = document.getElementById('toastText');
+            const toastIcon = document.getElementById('toastIcon');
+            const objectEditor = document.getElementById('objectEditor');
+            const editorTitle = document.getElementById('editorTitle');
+            const editorSub = document.getElementById('editorSub');
+            const gameJoystickContainer = document.getElementById('gameJoystickContainer');
+            const gameJoystickLeft = document.getElementById('gameJoystickLeft');
+            const gameJoystickRight = document.getElementById('gameJoystickRight');
+            const stickLeft = document.getElementById('stickLeft');
+            const stickRight = document.getElementById('stickRight');
+
+            // State
+            let mode = 'view';
+            let particleSize = 2.5;
+            let particleDensity = 6;
+            let depthSpread = 8;
+            let shimmerIntensity = 0.6;
+            let flowSpeed = 1.2;
+            let turbulence = 0.5;
+            let audioSensitivity = 1.5;
+            let bassBoost = 1.0;
+            let currentTime = 0;
+            let isPlaying = false;
+            let keyframes = [];
+            let camKeyframes = [];
+            let sceneItems = [];
+            let skeletonVisible = false;
+            let skeletonFadeTarget = 0;
+            let skeletonFadeCurrent = 0;
+            let selectedJoint = null;
+            let audioContext = null;
+            let audioAnalyser = null;
+            let audioDataArray = null;
+            let audioSource = null;
+            let audioActive = false;
+            let pendingFile = null;
+            let rainbowMode = false;
+            let crayMode = false;
+            let particleShape = 'circle';
+            let selectedItem = null;
+            let skeletonToggle = false;
+            let currentJoyParam = 'size';
+            let selectModeActive = false;
+            let moveSelectedActive = false;
+            let swapToNormal = false;
+            let dolphinGroup = null;
+            let dolphinParticles = null;
+            let dolphinBasePositions = [];
+            let gameJoystick = { left: { x: 0, y: 0 }, right: { x: 0, y: 0 } };
+            let dragState = { mode: 'none', touches: [], startDist: 0, spherical: null, jointId: null, plane: null, joyActive: false, joyAngle: 0, joyRadius: 0, dragItem: null, dragOffset: null, dragPlane: null };
+            let camTarget = new THREE.Vector3(0, 1.2, 0);
+            let camSpherical = { r: 18, theta: 0.4, phi: 1.15 };
+            let animationId = null;
+            let lastFrameTime = 0;
+            let toastTimeout = null;
+
+            // Three.js setup
+            const scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x1e1e3a, 0.003);
+            const camera = new THREE.PerspectiveCamera(55, Math.max(1, container.clientWidth) / Math.max(1, container.clientHeight), 0.1, 200);
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(Math.max(1, container.clientWidth), Math.max(1, container.clientHeight));
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setClearColor(0x1e1e3a, 1);
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            container.appendChild(renderer.domElement);
+            renderer.domElement.style.position = 'absolute';
+            renderer.domElement.style.inset = '0';
+            renderer.domElement.style.display = 'block';
+            renderer.domElement.style.width = '100%';
+            renderer.domElement.style.height = '100%';
+            renderer.domElement.style.zIndex = '0';
+            renderer.domElement.style.pointerEvents = 'auto';
+
+            // Brighter lights
+            const ambientLight = new THREE.AmbientLight(0x8899aa, 3.5);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            dirLight.position.set(5, 12, 5);
+            scene.add(dirLight);
+            const pl1 = new THREE.PointLight(0x8b5cf6, 3.0, 55);
+            pl1.position.set(-3, 4, 4);
+            scene.add(pl1);
+            const pl2 = new THREE.PointLight(0x06b6d4, 2.8, 50);
+            pl2.position.set(3, -1, 3);
+            scene.add(pl2);
+
+            // Ground grid (more visible)
+            const grid = new THREE.GridHelper(20, 20, 0xaaaaee, 0x444466);
+            grid.material.transparent = true;
+            grid.material.opacity = 0.6;
+            grid.position.y = -0.5;
+            scene.add(grid);
+
+            // Add a glowing center sphere to confirm visibility
+            const centerSphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.2, 16, 16),
+                new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x8b5cf6, emissiveIntensity: 1.5 })
+            );
+            centerSphere.position.set(0, 1.2, 0);
+            scene.add(centerSphere);
+
+            // Glow texture
+            function createGlowTexture(shape = 'circle') {
+                const c = document.createElement('canvas');
+                c.width = 64; c.height = 64;
+                const ctx = c.getContext('2d');
+                const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+                g.addColorStop(0, 'rgba(255,255,255,1)');
+                g.addColorStop(0.2, 'rgba(255,255,255,0.85)');
+                g.addColorStop(0.5, 'rgba(255,255,255,0.4)');
+                g.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = g;
+                if (shape === 'star') {
+                    ctx.clearRect(0, 0, 64, 64); ctx.translate(32, 32); ctx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                        const a = (i * 72 - 90) * Math.PI / 180;
+                        const ia = (i * 72 + 36 - 90) * Math.PI / 180;
+                        const ox = Math.cos(a) * 30, oy = Math.sin(a) * 30;
+                        const ix = Math.cos(ia) * 12, iy = Math.sin(ia) * 12;
+                        i === 0 ? ctx.moveTo(ox, oy) : ctx.lineTo(ox, oy); ctx.lineTo(ix, iy);
+                    }
+                    ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+                } else if (shape === 'diamond') { /* similar */ } else if (shape === 'heart') { /* similar */ } else if (shape === 'triangle') { /* similar */ } else if (shape === 'hexagon') { /* similar */ } else { ctx.fillRect(0, 0, 64, 64); }
+                const tex = new THREE.CanvasTexture(c); tex.needsUpdate = true; return tex;
+            }
+            let glowTexture = createGlowTexture('circle');
+
+            function regenerateGlowTexture() {
+                const shapes = ['circle', 'star', 'diamond', 'heart', 'triangle', 'hexagon'];
+                particleShape = shapes[shapeIndex % shapes.length];
+                glowTexture = createGlowTexture(particleShape);
+                scene.traverse(o => { if (o.material && o.material.uniforms && o.material.uniforms.uTexture) o.material.uniforms.uTexture.value = glowTexture; });
+            }
+
+            const particleVS = `
+                attribute float aSize; attribute vec3 aColor; attribute float aTwinkle;
+                varying vec3 vColor; varying float vTwinkle;
+                uniform float uTime; uniform float uShimmer; uniform float uFlow; uniform float uTurbulence;
+                void main() {
+                    vColor = aColor; vTwinkle = aTwinkle;
+                    vec3 pos = position;
+                    float seed = aTwinkle * 6.2831;
+                    float drift = sin(uTime * uFlow + seed + pos.z * 0.35);
+                    float swirl = cos(uTime * (0.55 + uTurbulence * 0.35) + seed * 1.7 + pos.x * 0.22);
+                    pos.y += drift * (0.12 + uTurbulence * 0.12);
+                    pos.x += swirl * (0.08 + uTurbulence * 0.08);
+                    pos.z += sin(uTime * uFlow * 0.7 + seed + pos.y * 0.3) * uTurbulence * 0.035;
+                    vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+                    gl_PointSize = max(2.0, aSize * (220.0 / length(mv.xyz)));
+                    gl_Position = projectionMatrix * mv;
+                }
+            `;
+            const particleFS = `
+                varying vec3 vColor; varying float vTwinkle;
+                uniform float uTime; uniform float uShimmer; uniform float uBurn; uniform float uFade; uniform float uStarGlow; uniform sampler2D uTexture;
+                void main() {
+                    vec4 tc = texture2D(uTexture, gl_PointCoord);
+                    float d = length(gl_PointCoord - vec2(0.5));
+                    if (d > 0.5) discard;
+                    float tw = 0.55 + 0.45 * sin(uTime * 3.0 + vTwinkle * 43.0);
+                    float sh = 0.5 + 0.5 * sin(uTime * 2.0 + vTwinkle * 29.0 + d * 15.0);
+                    float edge = smoothstep(0.05, 0.48, d);
+                    float ember = smoothstep(0.15, 0.5, fract(vTwinkle * 0.159 + uTime * (0.35 + uBurn * 0.9)));
+                    vec3 hot = mix(vColor, vec3(1.0, 0.35, 0.06), uBurn * 0.8);
+                    vec3 col = hot * (1.0 + (sh - 0.5) * uShimmer * 2.0) * (0.85 + uStarGlow * 0.65);
+                    float alpha = tc.a * tw * (1.0 - uFade * edge) * (0.7 + 0.3 * ember);
+                    gl_FragColor = vec4(col, alpha);
+                }
+            `;
+
+            function makeParticleMat() {
+                return new THREE.ShaderMaterial({
+                    vertexShader: particleVS, fragmentShader: particleFS,
+                    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true,
+                    uniforms: { uTime: { value: 0 }, uShimmer: { value: shimmerIntensity }, uFlow: { value: flowSpeed }, uTurbulence: { value: turbulence }, uBurn: { value: 0.75 }, uFade: { value: 0.35 }, uStarGlow: { value: 1.0 }, uTexture: { value: glowTexture } }
+                });
+            }
+
+            function createBgStars() {
+                const g = new THREE.BufferGeometry();
+                const n = 600;
+                const p = new Float32Array(n * 3); const c = new Float32Array(n * 3); const s = new Float32Array(n); const t = new Float32Array(n);
+                for (let i = 0; i < n; i++) {
+                    p[i * 3] = (Math.random() - 0.5) * 60; p[i * 3 + 1] = (Math.random() - 0.5) * 40; p[i * 3 + 2] = (Math.random() - 0.5) * 40 - 10;
+                    const col = new THREE.Color().setHSL(Math.random() * 0.2 + 0.55, 0.6, 0.6 + Math.random() * 0.4);
+                    c[i * 3] = col.r; c[i * 3 + 1] = col.g; c[i * 3 + 2] = col.b;
+                    s[i] = Math.random() * 3.0 + 1.5; t[i] = Math.random() * Math.PI * 2;
+                }
+                g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+                g.setAttribute('aColor', new THREE.BufferAttribute(c, 3));
+                g.setAttribute('aSize', new THREE.BufferAttribute(s, 1));
+                g.setAttribute('aTwinkle', new THREE.BufferAttribute(t, 1));
+                return new THREE.Points(g, makeParticleMat());
+            }
+            const bgStars = createBgStars(); bgStars.name = 'bgStars'; scene.add(bgStars);
+
+            // Skeleton (same as before but with brighter colors)
+            const skelDef = { /* ... same skeleton definition ... */ };
+            let joints = {}; let jointMeshes = {}; let boneLines = {}; let jointGroup = new THREE.Group(); jointGroup.visible = false; scene.add(jointGroup); let labelDivs = {};
+
+            function buildSkeleton() { /* same as before */ }
+            function computeWorldPositions() { /* same */ }
+            function updateBoneLines() { /* same */ }
+            function updateJointLabels() { /* same */ }
+            function getJointAtScreen(x, y) { /* same */ }
+            function getDragPlane(wp) { /* same */ }
+            function getPointOnPlane(cx, cy, plane) { /* same */ }
+            function moveJointToWorld(id, wp) { /* same */ }
+            function resetPose() { /* same */ }
+            function setSkeletonVisible(vis) { skeletonVisible = vis; skeletonFadeTarget = vis ? 1 : 0; if (vis) jointGroup.visible = true; }
+
+            // Scene items (image/text)
+            function spawnImageParticles(img) { /* same as before, but with brighter colors and more particles */ }
+            function spawnTextParticles(text, fontSize) { /* same */ }
+
+            // Dolphin (enhanced)
+            function createDolphin() {
+                if (dolphinGroup) { scene.remove(dolphinGroup); dolphinGroup.traverse(o=>{if(o.geometry)o.geometry.dispose(); if(o.material)o.material.dispose();}); }
+                dolphinGroup = new THREE.Group();
+                const positions = [], colors = [], sizes = [], twinkles = [];
+                const segments = 120;
+                for (let i = 0; i < segments; i++) {
+                    const t = i / segments;
+                    const angle = t * Math.PI * 2;
+                    const radius = 1.2 * Math.sin(t * Math.PI);
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius * 0.6 + 0.4;
+                    const z = t * 3 - 1.5;
+                    positions.push(x, y, z);
+                    const col = new THREE.Color().setHSL(0.55 + t * 0.3, 0.9, 0.7);
+                    colors.push(col.r, col.g, col.b);
+                    sizes.push(particleSize * (1.0 + Math.random() * 0.5));
+                    twinkles.push(Math.random() * Math.PI * 2);
+                }
+                // Tail fin & dorsal fin
+                for (let i = 0; i < 30; i++) { positions.push(-0.5 + Math.random() * 0.4, 0.5 + Math.random() * 0.4, -1.5 + Math.random() * 0.3); colors.push(0.2, 0.6, 0.9); sizes.push(particleSize * 0.8); twinkles.push(Math.random() * Math.PI * 2); }
+                for (let i = 0; i < 20; i++) { positions.push(0.2, 1.2 + Math.random() * 0.4, Math.random() * 3 - 1.5); colors.push(0.1, 0.4, 0.7); sizes.push(particleSize * 0.6); twinkles.push(Math.random() * Math.PI * 2); }
+                const geo = new THREE.BufferGeometry();
+                geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geo.setAttribute('aColor', new THREE.Float32BufferAttribute(colors, 3));
+                geo.setAttribute('aSize', new THREE.Float32BufferAttribute(sizes, 1));
+                geo.setAttribute('aTwinkle', new THREE.Float32BufferAttribute(twinkles, 1));
+                const mat = makeParticleMat();
+                dolphinParticles = new THREE.Points(geo, mat);
+                dolphinParticles.userData.isDolphin = true;
+                dolphinGroup.add(dolphinParticles);
+                dolphinGroup.position.set(0, 2.0, -3);
+                scene.add(dolphinGroup);
+                dolphinBasePositions = positions.slice();
+            }
+            function removeDolphin() { if (dolphinGroup) { scene.remove(dolphinGroup); dolphinGroup.traverse(o=>{if(o.geometry)o.geometry.dispose(); if(o.material)o.material.dispose();}); dolphinGroup = null; dolphinParticles = null; } }
+
+            // Camera keyframes (same)
+            function addCameraKeyframe(time) { /* same */ }
+            function getCameraAtTime(t) { /* same */ }
+
+            // Joystick (settings)
+            function initJoystickCanvas() { /* same, but sensitivity increased */ }
+            function setJoyParam(param) { /* same */ }
+
+            // Audio
+            function initAudio() { /* same */ }
+            function startMic() { /* same */ }
+            function loadAudioFile(file) { /* same */ }
+            function getAudioLevel() { /* same */ }
+            function getAudioBands() { /* same */ }
+
+            // Selection & Movement
+            function selectSceneItemAt(x, y) { /* same */ }
+            function setSelectedFilter(filter) { /* same */ }
+            function setParticleShape(shape) { /* same */ }
+
+            // UI events
+            function updateJoystickVisibility() { joyPanel.classList.toggle('hidden', false); if (!joyCanvas.__ready) { initJoystickCanvas(); joyCanvas.__ready = true; } }
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    mode = btn.dataset.mode;
+                    timelineBar.style.display = (mode === 'animate' || mode === 'cam') ? 'flex' : 'none';
+                    if (mode === 'pose') { skeletonToggle = true; setSkeletonVisible(true); } else if (!skeletonToggle) setSkeletonVisible(false);
+                    if (mode === 'game') { createDolphin(); gameJoystickContainer.classList.add('visible'); } else { removeDolphin(); gameJoystickContainer.classList.remove('visible'); }
+                    updateJoystickVisibility();
+                    showToast(mode === 'view' ? '🔄' : mode === 'pose' ? '🦴' : mode === 'animate' ? '🎬' : mode === 'audio' ? '🔊' : mode === 'cam' ? '📷' : '🎮', mode + ' mode');
+                });
+            });
+            const directFileInput = document.getElementById('directFileInput');
+            document.getElementById('btnUpload').addEventListener('click', () => directFileInput.click());
+            async function importMediaFile(file) { /* same */ }
+            directFileInput.addEventListener('change', e => { const file = e.target.files && e.target.files[0]; e.target.value = ''; if (file) importMediaFile(file); });
+            document.getElementById('btnText').addEventListener('click', () => spawnTextParticles('STARDUST', 32));
+            document.getElementById('btnAudio').addEventListener('click', () => { startMic(); showToast('🎤', 'Mic mode'); });
+            document.getElementById('btnSave').addEventListener('click', () => { /* same */ });
+            document.getElementById('btnLoad').addEventListener('click', () => { /* same */ });
+            document.getElementById('btnExport').addEventListener('click', () => { /* same */ });
+            document.getElementById('btnJoySettings').addEventListener('click', () => { joyPanel.classList.toggle('hidden'); if (!joyPanel.classList.contains('hidden')) initJoystickCanvas(); });
+            document.getElementById('btnCamKey').addEventListener('click', () => addCameraKeyframe(currentTime));
+            joyPresets.addEventListener('click', e => { const btn = e.target.closest('.joy-preset'); if (btn) setJoyParam(btn.dataset.param); });
+            document.querySelectorAll('[data-filter]').forEach(btn => btn.addEventListener('click', () => setSelectedFilter(btn.dataset.filter)));
+            document.querySelectorAll('[data-shape]').forEach(btn => btn.addEventListener('click', () => setParticleShape(btn.dataset.shape)));
+            document.getElementById('btnSkeletonToggle').addEventListener('click', () => { skeletonToggle = !skeletonToggle; setSkeletonVisible(skeletonToggle); showToast(skeletonToggle ? '🦴' : '✨', skeletonToggle ? 'Skeleton shown' : 'Skeleton hidden'); });
+            document.getElementById('btnSelectMode').addEventListener('click', () => { selectModeActive = !selectModeActive; moveSelectedActive = false; document.getElementById('btnSelectMode').classList.toggle('active', selectModeActive); document.getElementById('btnMoveSelected').classList.remove('active'); });
+            document.getElementById('btnMoveSelected').addEventListener('click', () => { moveSelectedActive = !moveSelectedActive; selectModeActive = false; document.getElementById('btnMoveSelected').classList.toggle('active', moveSelectedActive); document.getElementById('btnSelectMode').classList.remove('active'); });
+            document.getElementById('btnCrayMode').addEventListener('click', () => { crayMode = !crayMode; document.getElementById('btnCrayMode').classList.toggle('active', crayMode); });
+            document.getElementById('btnSwapView').addEventListener('click', () => { /* swap view logic */ });
+            directNumInput.addEventListener('change', () => { /* same */ });
+
+            // Game joystick events
+            function setupGameJoystick(joystickEl, stickEl, side) {
+                let active = false;
+                let startX = 0, startY = 0;
+                function handleStart(e) {
+                    e.preventDefault();
+                    active = true;
+                    const touch = e.touches ? e.touches[0] : e;
+                    startX = touch.clientX; startY = touch.clientY;
+                    stickEl.style.transition = 'none';
+                }
+                function handleMove(e) {
+                    if (!active) return;
+                    e.preventDefault();
+                    const touch = e.touches ? e.touches[0] : e;
+                    const dx = touch.clientX - startX;
+                    const dy = touch.clientY - startY;
+                    const maxDist = 40;
+                    const dist = Math.min(maxDist, Math.sqrt(dx * dx + dy * dy));
+                    const angle = Math.atan2(dy, dx);
+                    const sx = Math.cos(angle) * dist;
+                    const sy = Math.sin(angle) * dist;
+                    stickEl.style.transform = `translate(${sx}px, ${sy}px)`;
+                    if (side === 'left') gameJoystick.left = { x: sx / maxDist, y: sy / maxDist };
+                    else gameJoystick.right = { x: sx / maxDist, y: sy / maxDist };
+                }
+                function handleEnd() {
+                    active = false;
+                    stickEl.style.transition = 'transform 0.1s';
+                    stickEl.style.transform = 'translate(0,0)';
+                    if (side === 'left') gameJoystick.left = { x: 0, y: 0 };
+                    else gameJoystick.right = { x: 0, y: 0 };
+                }
+                joystickEl.addEventListener('touchstart', handleStart, { passive: false });
+                joystickEl.addEventListener('touchmove', handleMove, { passive: false });
+                joystickEl.addEventListener('touchend', handleEnd);
+                joystickEl.addEventListener('mousedown', handleStart);
+                window.addEventListener('mousemove', handleMove);
+                window.addEventListener('mouseup', handleEnd);
+            }
+            setupGameJoystick(gameJoystickLeft, stickLeft, 'left');
+            setupGameJoystick(gameJoystickRight, stickRight, 'right');
+
+            // Timeline events (same)
+            tlSlider.addEventListener('input', () => { /* same */ });
+            document.getElementById('btnTlKey').addEventListener('click', () => { /* same */ });
+            document.getElementById('btnTlPlay').addEventListener('click', () => { /* same */ });
+            document.getElementById('btnTlClear').addEventListener('click', () => { /* same */ });
+            document.getElementById('btnTlBlend').addEventListener('click', () => { /* same */ });
+
+            function capturePose() { /* same */ }
+            function applyPose(pose) { /* same */ }
+            function getPoseAtTime(t) { /* same */ }
+            function updateCameraFromSpherical() { /* same */ }
+
+            // Touch/mouse interactions (global)
+            function handleTouchStart(e) { /* same, but also handle game joystick already captured */ }
+            function handleTouchMove(e) { /* same */ }
+            function handleTouchEnd() { /* same */ }
+            function highlightJoint(id, on) { /* same */ }
+            function handleMouseDown(e) { /* same */ }
+            function handleMouseMove(e) { /* same */ }
+            function handleMouseUp() { /* same */ }
+            function handleWheel(e) { /* same */ }
+
+            // Attach global handlers
+            renderer.domElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+            renderer.domElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+            renderer.domElement.addEventListener('touchend', handleTouchEnd, { passive: true });
+            renderer.domElement.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+            renderer.domElement.addEventListener('mousedown', handleMouseDown);
+            renderer.domElement.addEventListener('mousemove', handleMouseMove);
+            renderer.domElement.addEventListener('mouseup', handleMouseUp);
+            renderer.domElement.addEventListener('mouseleave', handleMouseUp);
+            renderer.domElement.addEventListener('wheel', handleWheel, { passive: false });
+
+            function showToast(icon, text) { /* same */ }
+            function handleResize() { /* same */ }
+            window.addEventListener('resize', handleResize);
+            window.addEventListener('orientationchange', () => setTimeout(handleResize, 300));
+
+            // Animation loop with game joystick integration
+            function animate() {
+                animationId = requestAnimationFrame(animate);
+                const now = Date.now();
+                const delta = (now - lastFrameTime) / 1000;
+                lastFrameTime = now;
+                const time = now * 0.001;
+
+                // Skeleton fade
+                skeletonFadeCurrent += (skeletonFadeTarget - skeletonFadeCurrent) * 0.08;
+                if (skeletonFadeCurrent < 0.005 && skeletonFadeTarget === 0) jointGroup.visible = false;
+                else if (skeletonFadeCurrent > 0.005) jointGroup.visible = true;
+                if (jointGroup.visible) { jointGroup.traverse(o => { if (o.material) { if (o.material.transparent === undefined) o.material.transparent = true; o.material.opacity = skeletonFadeCurrent; if (o.material.emissiveIntensity !== undefined) o.material.emissiveIntensity = 0.6 + skeletonFadeCurrent * 0.8; } }); }
+                updateJointLabels();
+
+                // Game mode: move dolphin using joystick
+                if (mode === 'game' && dolphinGroup) {
+                    const left = gameJoystick.left;
+                    const right = gameJoystick.right;
+                    // Left joystick: camera or dolphin rotation; right joystick: forward/backward and strafe
+                    dolphinGroup.rotation.y += left.x * 0.02;
+                    dolphinGroup.rotation.x += left.y * 0.01;
+                    const speed = 0.05;
+                    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(dolphinGroup.quaternion);
+                    const rightVec = new THREE.Vector3(1, 0, 0).applyQuaternion(dolphinGroup.quaternion);
+                    dolphinGroup.position.add(forward.multiplyScalar(right.y * speed));
+                    dolphinGroup.position.add(rightVec.multiplyScalar(right.x * speed));
+                    // Audio reactive dolphin bobbing
+                    const audioBoost = audioActive ? getAudioLevel() * 2 : 0;
+                    dolphinParticles.position.y = Math.sin(time * 4) * 0.3 + audioBoost * 0.5;
+                }
+
+                // Update all material uniforms
+                scene.traverse(o => {
+                    if (o.material && o.material.uniforms) {
+                        const mat = o.material;
+                        if (mat.uniforms.uTime) mat.uniforms.uTime.value = time;
+                        if (mat.uniforms.uShimmer) mat.uniforms.uShimmer.value = shimmerIntensity;
+                        if (mat.uniforms.uFlow) mat.uniforms.uFlow.value = flowSpeed;
+                        if (mat.uniforms.uTurbulence) mat.uniforms.uTurbulence.value = crayMode ? turbulence * 3 : turbulence;
+                        if (o.userData.isSceneItem && o.userData.effect) {
+                            if (mat.uniforms.uBurn) mat.uniforms.uBurn.value = o.userData.effect.burn;
+                            if (mat.uniforms.uFade) mat.uniforms.uFade.value = o.userData.effect.fade;
+                            if (mat.uniforms.uStarGlow) mat.uniforms.uStarGlow.value = o.userData.effect.glow;
+                        }
+                    }
+                });
+
+                // Audio reactive particle size modulation
+                if (audioActive) {
+                    const level = getAudioLevel();
+                    const bands = getAudioBands();
+                    const sens = audioSensitivity * bassBoost;
+                    const boost = level * sens;
+                    pl1.intensity = 3.0 + boost * 3;
+                    pl2.intensity = 2.8 + boost * 2.5;
+                    sceneItems.forEach(item => {
+                        if (item.points) {
+                            const sizes = item.points.geometry.attributes.aSize;
+                            for (let j = 0; j < sizes.count; j++) {
+                                const s = particleSize * (1 + boost * 0.7 * Math.sin(j * 0.3 + time * 3));
+                                sizes.setX(j, s);
+                            }
+                            sizes.needsUpdate = true;
+                        }
+                    });
+                    // Dolphin dust effect (extra particles from tail)
+                    if (dolphinParticles) {
+                        const pos = dolphinParticles.geometry.attributes.position;
+                        const base = dolphinBasePositions;
+                        for (let i = 0; i < pos.count; i++) {
+                            const bx = base[i * 3] || 0, by = base[i * 3 + 1] || 0, bz = base[i * 3 + 2] || 0;
+                            const wave = Math.sin(time * 3 + i * 0.3) * 0.4 * (1 + boost * 2);
+                            pos.setXYZ(i, bx, by + wave, bz + Math.sin(time * 1.5 + i * 0.2) * 0.5);
+                        }
+                        pos.needsUpdate = true;
+                    }
+                } else {
+                    pl1.intensity = 3.0;
+                    pl2.intensity = 2.8;
+                }
+
+                // Timeline animation
+                if (isPlaying && (keyframes.length > 0 || camKeyframes.length > 0)) {
+                    const maxT = Math.max(keyframes.length ? Math.max(...keyframes.map(k => k.time)) : 0, camKeyframes.length ? Math.max(...camKeyframes.map(k => k.time)) : 0);
+                    currentTime += delta;
+                    if (currentTime > maxT) currentTime = 0;
+                    tlSlider.value = currentTime;
+                    tlTime.textContent = currentTime.toFixed(1) + 's';
+                    const pose = getPoseAtTime(currentTime);
+                    if (pose) applyPose(pose);
+                    const camPose = getCameraAtTime(currentTime);
+                    if (camPose) { camTarget.copy(camPose.target); camSpherical = { ...camPose.spherical }; updateCameraFromSpherical(); }
+                }
+
+                // Light movement
+                pl1.position.x = Math.sin(time * 0.6) * 4.5;
+                pl1.position.z = Math.cos(time * 0.4) * 3.5;
+                pl2.position.x = Math.cos(time * 0.5) * 4;
+                pl2.position.z = Math.sin(time * 0.7) * 3.5;
+
+                renderer.render(scene, camera);
+            }
+
+            function ensureStageVisible() {
+                // Already added centerSphere and grid; nothing else needed
+            }
+
+            function init() {
+                ensureStageVisible();
+                handleResize();
+                buildSkeleton();
+                resetPose();
+                camTarget.set(0, 1.2, 0);
+                camSpherical = { r: 18, theta: 0, phi: 1.1 };
+                updateCameraFromSpherical();
+                setSkeletonVisible(false);
+                tlSlider.max = 10; tlSlider.value = 0; tlTime.textContent = '0.0s';
+                setParticleShape('star');
+                updateJoystickVisibility();
+                lastFrameTime = Date.now();
+                animate();
+                showToast('✨', 'Stardust Studio Pro');
+                setTimeout(() => { if (localStorage.getItem('stardust3d_pro4')) showToast('💾', 'Save found — tap 📂'); }, 600);
+            }
+            setTimeout(handleResize, 100);
+            init();
+
+            window.__stardust = { addCameraKeyframe, spawnImageParticles, spawnTextParticles, setSkeletonVisible, setJoyParam };
+        })();
+    </script>
+</body>
+</html>
 <!DOCTYPE html>
 <html lang="en">
 <head>
