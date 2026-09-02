@@ -1,112 +1,137 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Three.js Grid Engine — 2D / 3D</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Voxel Grid Editor — 2D/3D</title>
+    <style>
+        :root{
+            --safe-top:env(safe-area-inset-top,0px);
+            --safe-right:env(safe-area-inset-right,0px);
+            --safe-bottom:env(safe-area-inset-bottom,0px);
+            --safe-left:env(safe-area-inset-left,0px);
+            --panel:rgba(15,16,22,.85);
+            --text:#f4f5f7;
+            --muted:#aeb4c0;
+            --accent:#4a9eff;
+            --radius:14px;
+        }
 
-<style>
-  :root{
-    --safe-top:env(safe-area-inset-top,0px);
-    --safe-right:env(safe-area-inset-right,0px);
-    --safe-bottom:env(safe-area-inset-bottom,0px);
-    --safe-left:env(safe-area-inset-left,0px);
-    --panel:rgba(15,16,22,.82);
-    --text:#f4f5f7;
-    --muted:#aeb4c0;
-    --accent:#4a9eff;
-  }
+        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+        html,body{
+            width:100%;height:100%;margin:0;overflow:hidden;
+            position:fixed;inset:0;background:#0b0c10;
+            color:var(--text);
+            font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;
+            touch-action:none;
+            -webkit-user-select:none;user-select:none;
+            -webkit-touch-callout:none;
+        }
 
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{
-    width:100%;height:100%;margin:0;overflow:hidden;
-    position:fixed;inset:0;background:#0b0c10;
-    color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;
-    touch-action:none;
-    -webkit-user-select:none;user-select:none;
-    -webkit-touch-callout:none;
-  }
+        #game{display:block;width:100%;height:100%;touch-action:none}
 
-  #game{display:block;width:100%;height:100%;touch-action:none}
+        .ui{
+            position:fixed;z-index:5;pointer-events:none;
+            left:calc(var(--safe-left) + 12px);
+            right:calc(var(--safe-right) + 12px);
+        }
+        .top{
+            top:calc(var(--safe-top) + 12px);
+            display:flex;align-items:center;justify-content:space-between;gap:8px;
+            flex-wrap:wrap;
+        }
+        .panel{
+            background:var(--panel);
+            border:1px solid rgba(255,255,255,.12);
+            border-radius:var(--radius);
+            box-shadow:0 4px 24px rgba(0,0,0,.32);
+            backdrop-filter:blur(18px);
+            -webkit-backdrop-filter:blur(18px);
+            padding:8px 12px;
+        }
+        .toolbar{
+            display:flex;gap:6px;flex-wrap:wrap;pointer-events:auto;
+        }
+        button{
+            pointer-events:auto;
+            min-width:44px;min-height:44px;
+            padding:8px 12px;border-radius:var(--radius);
+            border:1px solid rgba(255,255,255,.12);
+            background:var(--panel);color:var(--text);
+            font:600 14px/1 -apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif;
+            box-shadow:0 4px 24px rgba(0,0,0,.32);
+            touch-action:manipulation;
+            transition:transform .1s, background .2s;
+            cursor:pointer;
+        }
+        button:active{transform:scale(.94)}
+        button.active{background:var(--accent);color:#000}
+        .legend{
+            display:flex;gap:8px;align-items:center;
+            font-size:11px;color:var(--muted);white-space:nowrap
+        }
+        .dot{width:11px;height:11px;display:inline-block;background:#5b9bd5;border-radius:3px}
+        .dot.s{background:#e8913a;border-radius:50%}
 
-  .ui{
-    position:fixed;z-index:5;pointer-events:none;
-    left:calc(var(--safe-left) + 12px);
-    right:calc(var(--safe-right) + 12px);
-  }
-  .top{
-    top:calc(var(--safe-top) + 12px);
-    display:flex;align-items:center;justify-content:space-between;gap:8px;
-  }
-  .panel{
-    background:var(--panel);
-    border:1px solid rgba(255,255,255,.12);
-    border-radius:14px;
-    box-shadow:0 4px 24px rgba(0,0,0,.32);
-    backdrop-filter:blur(18px);
-    -webkit-backdrop-filter:blur(18px);
-  }
-  button{
-    pointer-events:auto;
-    min-width:48px;min-height:48px;
-    padding:10px 16px;border-radius:14px;
-    border:1px solid rgba(255,255,255,.12);
-    background:var(--panel);color:var(--text);
-    font:600 14px/1 -apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif;
-    box-shadow:0 4px 24px rgba(0,0,0,.32);
-    touch-action:manipulation;
-  }
-  button:active{transform:scale(.95)}
-  .legend{
-    padding:10px 13px;display:flex;gap:10px;align-items:center;
-    font-size:12px;color:var(--muted);white-space:nowrap
-  }
-  .dot{width:11px;height:11px;display:inline-block;background:#5b9bd5;border-radius:3px}
-  .dot.s{background:#e8913a;border-radius:50%}
-
-  .bottom{
-    bottom:calc(var(--safe-bottom) + 12px);
-    display:flex;justify-content:center;
-  }
-  #info{
-    min-width:220px;max-width:calc(100vw - 24px);
-    padding:10px 15px;text-align:center;
-    font-size:12px;line-height:1.45;white-space:pre-line;
-    opacity:0;transform:translateY(8px);
-    transition:opacity .2s,transform .2s;
-  }
-  #info.show{opacity:1;transform:none}
-  .hint{
-    position:fixed;z-index:4;left:50%;transform:translateX(-50%);
-    bottom:calc(var(--safe-bottom) + 78px);
-    color:rgba(255,255,255,.45);font-size:11px;pointer-events:none;
-    white-space:nowrap
-  }
-  @media(max-width:420px){
-    button{font-size:13px;padding:9px 13px}
-    .legend{font-size:11px;padding:9px 10px;gap:7px}
-  }
-</style>
+        .bottom{
+            bottom:calc(var(--safe-bottom) + 12px);
+            display:flex;justify-content:center;gap:8px;flex-wrap:wrap;
+        }
+        #info{
+            min-width:220px;max-width:calc(100vw - 24px);
+            padding:10px 15px;text-align:center;
+            font-size:12px;line-height:1.45;white-space:pre-line;
+            opacity:0;transform:translateY(8px);
+            transition:opacity .2s,transform .2s;
+        }
+        #info.show{opacity:1;transform:none}
+        .hint{
+            position:fixed;z-index:4;left:50%;transform:translateX(-50%);
+            bottom:calc(var(--safe-bottom) + 78px);
+            color:rgba(255,255,255,.45);font-size:11px;pointer-events:none;
+            white-space:nowrap
+        }
+        @media(max-width:600px){
+            button{font-size:12px;padding:7px 10px;min-width:40px;min-height:40px}
+            .legend{font-size:10px}
+        }
+    </style>
 </head>
-
 <body>
 <canvas id="game"></canvas>
 
+<!-- Top bar: tools and view toggle -->
 <div class="ui top">
-  <button id="viewBtn" type="button">↗ 3D View</button>
-  <div class="panel legend">
-    <span class="dot"></span>Cubic
-    <span class="dot s"></span>Spheric
-  </div>
+    <div class="toolbar">
+        <button id="brushBtn" class="active" type="button">🖌️ Brush</button>
+        <button id="eraserBtn" type="button">🧹 Eraser</button>
+        <button id="viewBtn" type="button">↗ 3D View</button>
+    </div>
+    <div class="panel legend">
+        <span class="dot"></span>Cubic
+        <span class="dot s"></span>Spheric
+    </div>
 </div>
 
-<div class="ui bottom">
-  <div id="info" class="panel">Tap a block to toggle its visual style.</div>
+<!-- Element palette (click to select) -->
+<div class="ui" style="top:calc(var(--safe-top) + 70px); left:12px; right:12px; display:flex; gap:6px; flex-wrap:wrap; pointer-events:auto;">
+    <button data-element="earth" class="elem-btn active" type="button" style="background:#5b9bd5;">🌍 Earth</button>
+    <button data-element="cloud" class="elem-btn" type="button" style="background:#e0e0e0;">☁️ Cloud</button>
+    <button data-element="sun" class="elem-btn" type="button" style="background:#ffaa00;">☀️ Sun</button>
+    <button data-element="moon" class="elem-btn" type="button" style="background:#cccccc;">🌙 Moon</button>
+    <label class="panel" style="pointer-events:auto; cursor:pointer; display:flex; align-items:center; gap:4px;">
+        📂 Load JSON
+        <input type="file" id="fileInput" accept=".json,application/json" style="display:none;">
+    </label>
 </div>
-<div class="hint">3D: drag to orbit · Tap: toggle block</div>
+
+<!-- Bottom info panel -->
+<div class="ui bottom">
+    <div id="info" class="panel">Tap / drag to paint blocks</div>
+</div>
+<div class="hint">2D: tap to paint · 3D: drag to orbit + tap to paint</div>
 
 <script type="importmap">
 {
@@ -120,435 +145,516 @@
 import * as THREE from "three";
 
 /* ============================================================================
-   CONFIG
+   CONFIGURATION & CONSTANTS
    ============================================================================ */
 
 const CFG = Object.freeze({
-  gridSize: 8,             // 8 x 8 = 64 logical blocks
-  cell: 1,
-  maxPixelRatio: 2,        // iPhone DPR can be 3; 2 is a useful mobile ceiling
-  cameraTransition: 7,
-  dragThreshold: 9,
-  orbitSensitivity: 0.32,
-  minPhi: 20,
-  maxPhi: 84,
-  topHeight: 18,
-  orbitRadius: 16.5
+    gridX: 8,               // columns
+    gridY: 4,               // layers (height)
+    gridZ: 8,               // depth
+    cellSize: 1,
+    maxPixelRatio: 2,
+    cameraTransition: 7,
+    dragThreshold: 9,
+    orbitSensitivity: 0.32,
+    minPhi: 20,
+    maxPhi: 84,
+    topHeight: 20,          // 2D camera height
+    orbitRadius: 18,
+    brushRadius: 1          // default brush size (radius in cells)
 });
 
-const View = Object.freeze({
-  TWO_D: "2D",
-  THREE_D: "3D"
-});
+const View = Object.freeze({ TWO_D: "2D", THREE_D: "3D" });
+const Tool = Object.freeze({ BRUSH: "brush", ERASER: "eraser" });
 
 /* ============================================================================
-   LIGHTWEIGHT VIEW STATE MACHINE
+   ELEMENT DEFINITIONS
+   Each element has a name, shape preference, color, and material.
+   Air is special: it means empty cell (no mesh).
+   ============================================================================ */
+
+const ELEMENTS = {
+    air:      { name: "Air",   shape: null,    color: 0x000000, emissive: 0x000000, roughness: 1.0 },
+    earth:    { name: "Earth", shape: "cubic", color: 0x5b9bd5, emissive: 0x0a1a2a, roughness: 0.7 },
+    cloud:    { name: "Cloud", shape: "spheric", color: 0xf0f0f0, emissive: 0x101018, roughness: 0.9 },
+    sun:      { name: "Sun",   shape: "spheric", color: 0xffaa00, emissive: 0x441100, roughness: 0.3 },
+    moon:     { name: "Moon",  shape: "spheric", color: 0xcccccc, emissive: 0x101020, roughness: 0.6 },
+};
+
+// Pre-create materials for non‑air elements (shared across all blocks)
+const MATERIALS = {};
+for (const [key, def] of Object.entries(ELEMENTS)) {
+    if (def.shape) {
+        MATERIALS[key] = new THREE.MeshLambertMaterial({
+            color: def.color,
+            emissive: def.emissive,
+            roughness: def.roughness,
+            flatShading: true
+        });
+    }
+}
+
+// Shared geometries (cubic and spheric)
+const CUBE_GEO = new THREE.BoxGeometry(CFG.cellSize * 0.92, CFG.cellSize * 0.92, CFG.cellSize * 0.92);
+const SPHERE_GEO = new THREE.SphereGeometry(CFG.cellSize * 0.46, 10, 8);
+
+/* ============================================================================
+   VIEW STATE MACHINE
    ============================================================================ */
 
 class ViewStateMachine {
-  constructor() {
-    this.current = View.TWO_D;
-    this.target = View.TWO_D;
-  }
-
-  toggle() {
-    this.target = this.target === View.TWO_D ? View.THREE_D : View.TWO_D;
-  }
+    constructor() {
+        this.current = View.TWO_D;
+        this.target = View.TWO_D;
+    }
+    toggle() {
+        this.target = this.target === View.TWO_D ? View.THREE_D : View.TWO_D;
+    }
 }
 
 /* ============================================================================
-   SHARED RENDER RESOURCES
-   One geometry + one material per visual style. No per-block GPU resources.
-   ============================================================================ */
-
-const BOX_GEO = new THREE.BoxGeometry(.92, .92, .92);
-const SPHERE_GEO = new THREE.SphereGeometry(.46, 10, 8);
-
-const CUBIC_MAT = new THREE.MeshLambertMaterial({
-  color: 0x5b9bd5,
-  flatShading: true
-});
-
-const SPHERIC_MAT = new THREE.MeshLambertMaterial({
-  color: 0xe8913a,
-  flatShading: true
-});
-
-/* ============================================================================
-   BLOCK
-   Logical state is deliberately separate from rendering state.
+   BLOCK CLASS (voxel)
    ============================================================================ */
 
 class Block {
-  constructor(x, z, style = "cubic") {
-    this.x = x;
-    this.z = z;
-    this.style = style;
+    constructor(x, y, z, element = "earth") {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.element = element;
+        this.mesh = null;
+        if (element !== "air") {
+            this.mesh = this._createMesh(element);
+            this.mesh.userData.block = this;
+        }
+    }
 
-    // Arbitrary gameplay payload. Add/remove fields as your game requires.
-    this.payload = {
-      id: `blk_${x}_${z}`,
-      type: ["basic", "heavy", "fast", "shield"][(x * 7 + z) % 4],
-      speed: Math.round(Math.random() * 15 - 5),
-      weight: Math.round(Math.random() * 10 - 5),
-      energy: Math.round(Math.random() * 100)
-    };
+    _createMesh(element) {
+        const def = ELEMENTS[element];
+        const geo = def.shape === "cubic" ? CUBE_GEO : SPHERE_GEO;
+        const mat = MATERIALS[element];
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(
+            this.x * CFG.cellSize - CFG.gridX * CFG.cellSize / 2 + CFG.cellSize / 2,
+            this.y * CFG.cellSize + CFG.cellSize / 2,
+            this.z * CFG.cellSize - CFG.gridZ * CFG.cellSize / 2 + CFG.cellSize / 2
+        );
+        mesh.castShadow = false;
+        mesh.receiveShadow = false;
+        return mesh;
+    }
 
-    this.mesh = new THREE.Mesh(
-      style === "cubic" ? BOX_GEO : SPHERE_GEO,
-      style === "cubic" ? CUBIC_MAT : SPHERIC_MAT
-    );
+    setElement(newElement) {
+        // Remove old mesh if exists
+        if (this.mesh) {
+            this.mesh.parent?.remove(this.mesh);
+            this.mesh = null;
+        }
+        this.element = newElement;
+        if (newElement !== "air") {
+            this.mesh = this._createMesh(newElement);
+            this.mesh.userData.block = this;
+        }
+    }
 
-    this.mesh.userData.block = this;
-    this.mesh.position.set(
-      x * CFG.cell - CFG.gridSize * CFG.cell / 2 + CFG.cell / 2,
-      .5,
-      z * CFG.cell - CFG.gridSize * CFG.cell / 2 + CFG.cell / 2
-    );
-  }
-
-  toggleStyle() {
-    this.style = this.style === "cubic" ? "spheric" : "cubic";
-    this.mesh.geometry = this.style === "cubic" ? BOX_GEO : SPHERE_GEO;
-    this.mesh.material = this.style === "cubic" ? CUBIC_MAT : SPHERIC_MAT;
-  }
-
-  summary() {
-    const p = this.payload;
-    return `${p.id} · ${this.style}\n` +
-      `Type: ${p.type}   Speed: ${p.speed >= 0 ? "+" : ""}${p.speed}   ` +
-      `Weight: ${p.weight >= 0 ? "+" : ""}${p.weight}   Energy: ${p.energy}%`;
-  }
+    getSummary() {
+        const p = ELEMENTS[this.element];
+        return `🧱 ${this.x},${this.y},${this.z}\n` +
+               `Element: ${p.name}\n` +
+               `Shape: ${p.shape ?? "none"}`;
+    }
 }
 
 /* ============================================================================
-   GRID
+   GRID (3D voxel container)
    ============================================================================ */
 
 class Grid {
-  constructor() {
-    this.blocks = new Map();
-    this.group = new THREE.Group();
-    this.group.name = "Grid";
+    constructor() {
+        this.blocks = new Map();  // key: "x,y,z" → Block
+        this.group = new THREE.Group();
+        this.group.name = "VoxelGrid";
 
-    for (let z = 0; z < CFG.gridSize; z++) {
-      for (let x = 0; x < CFG.gridSize; x++) {
-        // Deterministic initial pattern avoids unnecessary random state.
-        const style = ((x + z) % 3 === 0) ? "spheric" : "cubic";
-        const block = new Block(x, z, style);
-        this.blocks.set(x + "," + z, block);
-        this.group.add(block.mesh);
-      }
+        // Pre‑populate with air (empty grid)
+        for (let x = 0; x < CFG.gridX; x++) {
+            for (let y = 0; y < CFG.gridY; y++) {
+                for (let z = 0; z < CFG.gridZ; z++) {
+                    const key = this._key(x, y, z);
+                    this.blocks.set(key, new Block(x, y, z, "air"));
+                }
+            }
+        }
     }
-  }
+
+    _key(x, y, z) { return `${x},${y},${z}`; }
+
+    getBlock(x, y, z) {
+        return this.blocks.get(this._key(x, y, z));
+    }
+
+    setBlock(x, y, z, element) {
+        if (x < 0 || x >= CFG.gridX || y < 0 || y >= CFG.gridY || z < 0 || z >= CFG.gridZ) return;
+        const key = this._key(x, y, z);
+        const block = this.blocks.get(key);
+        if (!block) return;
+
+        // Remove old mesh from scene
+        if (block.mesh) this.group.remove(block.mesh);
+        block.setElement(element);
+        // Add new mesh to scene
+        if (block.mesh) this.group.add(block.mesh);
+    }
+
+    // Fill entire grid with a given element (used for "clear all" or blueprint)
+    fillAll(element) {
+        for (let x = 0; x < CFG.gridX; x++) {
+            for (let y = 0; y < CFG.gridY; y++) {
+                for (let z = 0; z < CFG.gridZ; z++) {
+                    this.setBlock(x, y, z, element);
+                }
+            }
+        }
+    }
+
+    // Load from JSON blueprint (like the example asset)
+    loadBlueprint(blueprint) {
+        if (!blueprint?.voxel_blueprint_3d) return;
+        this.fillAll("air");
+        for (const entry of blueprint.voxel_blueprint_3d) {
+            const { x, y, z, shape } = entry;
+            // Determine element from shape: spheric → cloud, cubic → earth (or as given)
+            const element = shape === "spheric" ? "cloud" : "earth";
+            this.setBlock(x, y, z, element);
+        }
+    }
 }
 
 /* ============================================================================
-   CAMERA
-   Smoothly blends between a flat top-down layer and an orbiting 3D world.
+   CAMERA CONTROLLER (2D/3D blend + orbit)
    ============================================================================ */
 
 class CameraController {
-  constructor(camera, state) {
-    this.camera = camera;
-    this.state = state;
+    constructor(camera, state) {
+        this.camera = camera;
+        this.state = state;
 
-    this.theta = 40;
-    this.phi = 58;
-    this.radius = CFG.orbitRadius;
+        this.theta = 40;
+        this.phi = 58;
+        this.radius = CFG.orbitRadius;
 
-    this.targetPosition = new THREE.Vector3();
-    this.lookTarget = new THREE.Vector3(0, 0, 0);
+        this.targetPosition = new THREE.Vector3();
+        this.lookTarget = new THREE.Vector3(0, 0, 0);
 
-    this.camera.position.set(0, CFG.topHeight, .001);
-    this.camera.lookAt(this.lookTarget);
-    this.camera.fov = 28;
-    this.camera.updateProjectionMatrix();
-  }
-
-  orbit(dx, dy) {
-    if (this.state.target !== View.THREE_D) return;
-
-    this.theta -= dx * CFG.orbitSensitivity;
-    this.phi = THREE.MathUtils.clamp(
-      this.phi - dy * CFG.orbitSensitivity * .8,
-      CFG.minPhi,
-      CFG.maxPhi
-    );
-  }
-
-  update(dt) {
-    const a = 1 - Math.exp(-CFG.cameraTransition * dt);
-
-    if (this.state.target === View.TWO_D) {
-      this.targetPosition.set(0, CFG.topHeight, .001);
-    } else {
-      const t = THREE.MathUtils.degToRad(this.theta);
-      const p = THREE.MathUtils.degToRad(this.phi);
-      this.targetPosition.set(
-        this.radius * Math.sin(p) * Math.cos(t),
-        this.radius * Math.cos(p),
-        this.radius * Math.sin(p) * Math.sin(t)
-      );
+        this.camera.position.set(0, CFG.topHeight, 0.001);
+        this.camera.lookAt(this.lookTarget);
+        this.camera.fov = 28;
+        this.camera.updateProjectionMatrix();
     }
 
-    this.camera.position.lerp(this.targetPosition, a);
-    this.camera.lookAt(this.lookTarget);
-
-    const wantedFov = this.state.target === View.TWO_D ? 28 : 45;
-    this.camera.fov += (wantedFov - this.camera.fov) * a;
-    this.camera.updateProjectionMatrix();
-
-    // Once visually close enough, mark the target as the current state.
-    if (this.camera.position.distanceToSquared(this.targetPosition) < .0025) {
-      this.state.current = this.state.target;
+    orbit(dx, dy) {
+        if (this.state.target !== View.THREE_D) return;
+        this.theta -= dx * CFG.orbitSensitivity;
+        this.phi = THREE.MathUtils.clamp(
+            this.phi - dy * CFG.orbitSensitivity * 0.8,
+            CFG.minPhi,
+            CFG.maxPhi
+        );
     }
-  }
+
+    update(dt) {
+        const a = 1 - Math.exp(-CFG.cameraTransition * dt);
+
+        if (this.state.target === View.TWO_D) {
+            this.targetPosition.set(0, CFG.topHeight, 0.001);
+        } else {
+            const t = THREE.MathUtils.degToRad(this.theta);
+            const p = THREE.MathUtils.degToRad(this.phi);
+            this.targetPosition.set(
+                this.radius * Math.sin(p) * Math.cos(t),
+                this.radius * Math.cos(p),
+                this.radius * Math.sin(p) * Math.sin(t)
+            );
+        }
+
+        this.camera.position.lerp(this.targetPosition, a);
+        this.camera.lookAt(this.lookTarget);
+
+        const wantedFov = this.state.target === View.TWO_D ? 28 : 45;
+        this.camera.fov += (wantedFov - this.camera.fov) * a;
+        this.camera.updateProjectionMatrix();
+
+        if (this.camera.position.distanceToSquared(this.targetPosition) < 0.0025) {
+            this.state.current = this.state.target;
+        }
+    }
 }
 
 /* ============================================================================
-   TOUCH INPUT
-   Pointer Events give one input path for iPhone/iPad/Android/desktop.
-   A tap toggles a block. A drag orbits only in 3D.
+   TOUCH / POINTER CONTROLLER (paint / orbit)
    ============================================================================ */
 
 class TouchController {
-  constructor(canvas, camera, grid, cameraController, onTap) {
-    this.canvas = canvas;
-    this.camera = camera;
-    this.grid = grid;
-    this.cameraController = cameraController;
-    this.onTap = onTap;
+    constructor(canvas, camera, grid, cameraController, onPaint) {
+        this.canvas = canvas;
+        this.camera = camera;
+        this.grid = grid;
+        this.cameraController = cameraController;
+        this.onPaint = onPaint;
 
-    this.raycaster = new THREE.Raycaster();
-    this.ndc = new THREE.Vector2();
+        this.raycaster = new THREE.Raycaster();
+        this.ndc = new THREE.Vector2();
 
-    this.pointerId = -1;
-    this.startX = 0;
-    this.startY = 0;
-    this.lastX = 0;
-    this.lastY = 0;
-    this.dragging = false;
+        this.pointerId = -1;
+        this.startX = 0;
+        this.startY = 0;
+        this.lastX = 0;
+        this.lastY = 0;
+        this.dragging = false;
+        this.active = false;
 
-    canvas.addEventListener("pointerdown", e => this.down(e));
-    canvas.addEventListener("pointermove", e => this.move(e));
-    canvas.addEventListener("pointerup", e => this.up(e));
-    canvas.addEventListener("pointercancel", e => this.cancel(e));
-    canvas.addEventListener("contextmenu", e => e.preventDefault());
-  }
-
-  down(e) {
-    if (this.pointerId !== -1) return;
-
-    this.pointerId = e.pointerId;
-    this.startX = this.lastX = e.clientX;
-    this.startY = this.lastY = e.clientY;
-    this.dragging = false;
-
-    this.canvas.setPointerCapture?.(e.pointerId);
-  }
-
-  move(e) {
-    if (e.pointerId !== this.pointerId) return;
-
-    const dx = e.clientX - this.lastX;
-    const dy = e.clientY - this.lastY;
-    this.lastX = e.clientX;
-    this.lastY = e.clientY;
-
-    if (!this.dragging) {
-      const totalX = e.clientX - this.startX;
-      const totalY = e.clientY - this.startY;
-      if (totalX * totalX + totalY * totalY > CFG.dragThreshold ** 2) {
-        this.dragging = true;
-      }
+        canvas.addEventListener("pointerdown", e => this.down(e));
+        canvas.addEventListener("pointermove", e => this.move(e));
+        canvas.addEventListener("pointerup", e => this.up(e));
+        canvas.addEventListener("pointercancel", e => this.cancel(e));
+        canvas.addEventListener("contextmenu", e => e.preventDefault());
     }
 
-    if (this.dragging) {
-      this.cameraController.orbit(dx, dy);
-    }
-  }
-
-  up(e) {
-    if (e.pointerId !== this.pointerId) return;
-
-    if (!this.dragging) {
-      this.tap(e.clientX, e.clientY);
+    down(e) {
+        if (this.pointerId !== -1) return;
+        this.pointerId = e.pointerId;
+        this.startX = this.lastX = e.clientX;
+        this.startY = this.lastY = e.clientY;
+        this.dragging = false;
+        this.active = true;
+        this.canvas.setPointerCapture?.(e.pointerId);
     }
 
-    this.reset(e.pointerId);
-  }
+    move(e) {
+        if (e.pointerId !== this.pointerId) return;
+        const dx = e.clientX - this.lastX;
+        const dy = e.clientY - this.lastY;
+        this.lastX = e.clientX;
+        this.lastY = e.clientY;
 
-  cancel(e) {
-    if (e.pointerId === this.pointerId) this.reset(e.pointerId);
-  }
+        if (!this.dragging) {
+            const totalX = e.clientX - this.startX;
+            const totalY = e.clientY - this.startY;
+            if (totalX * totalX + totalY * totalY > CFG.dragThreshold ** 2) {
+                this.dragging = true;
+            }
+        }
 
-  reset(id) {
-    this.canvas.releasePointerCapture?.(id);
-    this.pointerId = -1;
-    this.dragging = false;
-  }
-
-  tap(clientX, clientY) {
-    const r = this.canvas.getBoundingClientRect();
-
-    this.ndc.x = ((clientX - r.left) / r.width) * 2 - 1;
-    this.ndc.y = -((clientY - r.top) / r.height) * 2 + 1;
-
-    this.raycaster.setFromCamera(this.ndc, this.camera);
-
-    // 64 meshes max: direct raycast is cheaper and simpler than a spatial index.
-    const hit = this.raycaster.intersectObjects(this.grid.group.children, false)[0];
-
-    if (hit?.object?.userData?.block) {
-      this.onTap(hit.object.userData.block);
+        if (this.dragging) {
+            this.cameraController.orbit(dx, dy);
+        } else {
+            // While not dragging, paint continuously
+            if (this.active) this.paintAt(e.clientX, e.clientY);
+        }
     }
-  }
+
+    up(e) {
+        if (e.pointerId !== this.pointerId) return;
+        if (!this.dragging) {
+            this.paintAt(e.clientX, e.clientY);
+        }
+        this.reset(e.pointerId);
+    }
+
+    cancel(e) {
+        if (e.pointerId === this.pointerId) this.reset(e.pointerId);
+    }
+
+    reset(id) {
+        this.canvas.releasePointerCapture?.(id);
+        this.pointerId = -1;
+        this.dragging = false;
+        this.active = false;
+    }
+
+    // Convert screen coords to grid voxel and apply paint
+    paintAt(clientX, clientY) {
+        const rect = this.canvas.getBoundingClientRect();
+        this.ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        this.ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+        this.raycaster.setFromCamera(this.ndc, this.camera);
+
+        // Raycast against all block meshes
+        const meshes = Array.from(this.grid.group.children);
+        const hit = this.raycaster.intersectObjects(meshes, false)[0];
+        if (hit?.object?.userData?.block) {
+            const block = hit.object.userData.block;
+            // Determine paint target: block under cursor (its y level) and brush radius
+            const { x, y, z } = block;
+            const radius = CFG.brushRadius;
+            for (let dx = -radius; dx <= radius; dx++) {
+                for (let dy = -radius; dy <= radius; dy++) {
+                    for (let dz = -radius; dz <= radius; dz++) {
+                        if (dx*dx + dy*dy + dz*dz <= radius*radius) {
+                            const nx = x + dx;
+                            const ny = y + dy;
+                            const nz = z + dz;
+                            this.onPaint(nx, ny, nz);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /* ============================================================================
-   ENGINE SETUP
+   UI & APPLICATION LOGIC
    ============================================================================ */
 
-function createRenderer(canvas) {
-  const renderer = new THREE.WebGLRenderer({
+// DOM elements
+const canvas = document.getElementById("game");
+const viewBtn = document.getElementById("viewBtn");
+const brushBtn = document.getElementById("brushBtn");
+const eraserBtn = document.getElementById("eraserBtn");
+const fileInput = document.getElementById("fileInput");
+const info = document.getElementById("info");
+
+// Application state
+const state = new ViewStateMachine();
+const grid = new Grid();
+const tool = { current: Tool.BRUSH, element: "earth" };
+
+// Renderer & Scene
+const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
     powerPreference: "high-performance"
-  });
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, CFG.maxPixelRatio));
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = false;  // disabled for performance
 
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, CFG.maxPixelRatio));
-  renderer.setSize(innerWidth, innerHeight, false);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0c10);
+scene.fog = new THREE.Fog(0x0b0c10, 25, 45);
 
-  // Intentionally no shadow map: 64 blocks do not need it, and this saves
-  // fill-rate + GPU memory on mobile.
-  renderer.shadowMap.enabled = false;
+const camera = new THREE.PerspectiveCamera(28, innerWidth / innerHeight, 0.1, 100);
 
-  return renderer;
-}
+// Lights
+scene.add(new THREE.AmbientLight(0x667080, 1.25));
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+keyLight.position.set(8, 14, 6);
+scene.add(keyLight);
 
-function createScene() {
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0b0c10);
-  scene.fog = new THREE.Fog(0x0b0c10, 22, 42);
+// Ground plane
+const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(CFG.gridX * 1.15, CFG.gridZ * 1.15),
+    new THREE.MeshLambertMaterial({ color: 0x181a21 })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -0.01;
+scene.add(floor);
 
-  const camera = new THREE.PerspectiveCamera(
-    28, innerWidth / innerHeight, .1, 100
-  );
+// Grid helper (adjust to full 3D? show bottom layer)
+const gridHelper = new THREE.GridHelper(CFG.gridX * CFG.cellSize, CFG.gridX, 0x414553, 0x282b34);
+gridHelper.position.y = 0.01;
+scene.add(gridHelper);
 
-  scene.add(new THREE.AmbientLight(0x667080, 1.25));
-
-  const key = new THREE.DirectionalLight(0xffffff, 1.8);
-  key.position.set(8, 14, 6);
-  scene.add(key);
-
-  // Single plane + GridHelper: no per-cell floor meshes.
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(CFG.gridSize * 1.15, CFG.gridSize * 1.15),
-    new THREE.MeshLambertMaterial({color: 0x181a21})
-  );
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = -.01;
-  scene.add(floor);
-
-  const gridHelper = new THREE.GridHelper(
-    CFG.gridSize * CFG.cell,
-    CFG.gridSize,
-    0x414553,
-    0x282b34
-  );
-  gridHelper.position.y = .01;
-  scene.add(gridHelper);
-
-  return {scene, camera};
-}
-
-/* ============================================================================
-   UI
-   ============================================================================ */
-
-const viewButton = document.getElementById("viewBtn");
-const info = document.getElementById("info");
-
-function updateViewLabel(state) {
-  viewButton.textContent =
-    state.target === View.THREE_D ? "↙ 2D View" : "↗ 3D View";
-}
-
-let infoTimer = 0;
-function showInfo(block) {
-  info.textContent = block.summary();
-  info.classList.add("show");
-  clearTimeout(infoTimer);
-  infoTimer = setTimeout(() => info.classList.remove("show"), 2600);
-}
-
-/* ============================================================================
-   BOOT
-   ============================================================================ */
-
-const canvas = document.getElementById("game");
-const renderer = createRenderer(canvas);
-const {scene, camera} = createScene();
-
-const state = new ViewStateMachine();
-const grid = new Grid();
 scene.add(grid.group);
 
+// Camera controller
 const cameraController = new CameraController(camera, state);
 
-const touch = new TouchController(
-  canvas,
-  camera,
-  grid,
-  cameraController,
-  block => {
-    block.toggleStyle();
-    showInfo(block);
-
-    // Tiny feedback pulse; no permanent allocation.
-    const mesh = block.mesh;
-    mesh.scale.setScalar(1.12);
-    setTimeout(() => mesh.scale.setScalar(1), 110);
-  }
-);
-
-// Use click only for the UI button. Pointer events on the canvas are independent.
-viewButton.addEventListener("click", () => {
-  state.toggle();
-  updateViewLabel(state);
+// Touch controller with paint callback
+const touch = new TouchController(canvas, camera, grid, cameraController, (x, y, z) => {
+    if (tool.current === Tool.ERASER) {
+        grid.setBlock(x, y, z, "air");
+    } else {
+        grid.setBlock(x, y, z, tool.element);
+    }
 });
 
-function resize() {
-  const w = innerWidth;
-  const h = innerHeight;
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
+// UI updates
+function updateInfo(message) {
+    info.textContent = message;
+    info.classList.add("show");
+    clearTimeout(info._timer);
+    info._timer = setTimeout(() => info.classList.remove("show"), 2500);
 }
 
+// Element button selection
+const elemButtons = document.querySelectorAll(".elem-btn");
+elemButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+        elemButtons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        tool.element = btn.dataset.element;
+        updateInfo(`Selected element: ${tool.element}`);
+    });
+});
+
+// Tool buttons
+brushBtn.addEventListener("click", () => {
+    brushBtn.classList.add("active");
+    eraserBtn.classList.remove("active");
+    tool.current = Tool.BRUSH;
+    updateInfo("Brush mode");
+});
+eraserBtn.addEventListener("click", () => {
+    eraserBtn.classList.add("active");
+    brushBtn.classList.remove("active");
+    tool.current = Tool.ERASER;
+    updateInfo("Eraser mode");
+});
+
+// View toggle
+viewBtn.addEventListener("click", () => {
+    state.toggle();
+    viewBtn.textContent = state.target === View.THREE_D ? "↙ 2D View" : "↗ 3D View";
+});
+
+// File input for JSON blueprint
+fileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        try {
+            const blueprint = JSON.parse(ev.target.result);
+            grid.loadBlueprint(blueprint);
+            updateInfo(`Loaded blueprint with ${blueprint.voxel_blueprint_3d?.length ?? 0} voxels`);
+        } catch (err) {
+            alert("Invalid JSON file");
+        }
+    };
+    reader.readAsText(file);
+    fileInput.value = ""; // reset
+});
+
+// Resize handler
+function resize() {
+    renderer.setSize(innerWidth, innerHeight, false);
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+}
 addEventListener("resize", resize);
 addEventListener("orientationchange", () => setTimeout(resize, 150));
 
-updateViewLabel(state);
-
+// Animation loop
 const clock = new THREE.Clock();
-
 function frame() {
-  requestAnimationFrame(frame);
-
-  // Clamp large jumps after tab/background suspension.
-  const dt = Math.min(clock.getDelta(), .05);
-
-  cameraController.update(dt);
-  renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    cameraController.update(dt);
+    renderer.render(scene, camera);
 }
-
 frame();
 
-// Optional developer hook.
-window.GridEngine = {scene, camera, grid, state, renderer};
+// Initial demo: place a small cloud at center top layer
+grid.setBlock(3, 3, 3, "cloud");
+grid.setBlock(3, 3, 4, "cloud");
+grid.setBlock(4, 3, 3, "cloud");
+grid.setBlock(4, 3, 4, "cloud");
+
+// Developer hook
+window.GridEditor = { scene, camera, grid, state, setTool: (t) => tool.current = t, setElement: (e) => tool.element = e };
 </script>
 </body>
 </html>
