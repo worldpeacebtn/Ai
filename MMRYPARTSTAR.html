@@ -52,7 +52,7 @@
             inset: 0;
             width: 100%;
             height: 100%;
-            z-index: 1;
+            z-index: 0;
             background: radial-gradient(ellipse at center, #141428 0%, #080810 100%);
         }
         #scene-container canvas {
@@ -207,9 +207,9 @@
             max-width: 300px;
             width: 92vw;
             transition: all var(--transition);
-            right: 4px;
-            top: 42px;
-            left: auto;
+            left: 194px;
+            top: 44px;
+            right: auto;
         }
         .joy-panel.hidden {
             opacity: 0;
@@ -458,6 +458,17 @@
             opacity: 1;
         }
 
+        .object-editor { position:absolute; left:6px; top:44px; z-index:45; width:180px; max-height:calc(100vh - 100px); overflow:auto; padding:9px; background:rgba(12,12,24,.94); border:1px solid rgba(255,255,255,.14); border-radius:14px; backdrop-filter:blur(18px); box-shadow:0 8px 30px rgba(0,0,0,.45); }
+        .editor-head{display:flex;align-items:center;justify-content:space-between;font-size:.68rem;font-weight:800;color:var(--text)}
+        .editor-mini{border:1px solid var(--border);background:var(--panel2);color:var(--text);border-radius:7px;padding:3px 6px;cursor:pointer}
+        .editor-sub{font-size:.48rem;color:var(--text2);margin:4px 0 7px;line-height:1.3}
+        .editor-section{border-top:1px solid var(--border2);padding-top:7px;margin-top:7px}
+        .editor-label{font-size:.43rem;color:var(--accent2);font-weight:800;letter-spacing:.5px;margin-bottom:5px}
+        .editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+        .editor-btn{padding:5px 4px;border:1px solid var(--border2);border-radius:7px;background:var(--panel2);color:var(--text2);font-size:.48rem;cursor:pointer}
+        .editor-btn.active{border-color:var(--accent);background:rgba(139,92,246,.24);color:var(--text);box-shadow:0 0 10px rgba(139,92,246,.2)}
+        .object-editor~.timeline-bar{left:194px}
+        @media(max-width:480px){.object-editor{width:150px;left:4px;top:40px}.object-editor~.timeline-bar{left:160px}.joy-panel{left:160px;right:auto;top:42px;width:calc(100vw - 164px)}}
         @media(max-width:480px) {
             .hud-btn {
                 padding: 4px 5px;
@@ -483,11 +494,28 @@
                 padding: 3px 4px;
             }
         }
+
+        /* v2: compact, direct-action UI */
+        #scene-container { min-width:0; min-height:0; }
+        .hud-top { padding:6px; }
+        .hud-btn { min-width:38px; min-height:38px; padding:7px 9px; }
+        .object-editor { width:164px; padding:8px; top:48px; }
+        .joy-panel { left:176px; top:48px; width:min(260px,calc(100vw - 184px)); }
+        @media(max-width:600px){
+          .hud-top .hide-mobile,.hud-top .tip { display:none; }
+          .hud-btn { min-width:42px; min-height:42px; font-size:1.05rem; }
+          .object-editor { left:5px; top:52px; width:154px; max-height:52vh; }
+          .joy-panel { left:164px; top:52px; width:calc(100vw - 169px); max-width:none; }
+          .joy-sphere-wrap { width:100px; height:100px; }
+          .hud-bottom { padding-bottom:max(6px,var(--safe-bottom)); }
+        }
+        @media(min-width:900px){ .object-editor{width:190px;} .joy-panel{left:202px;} }
     </style>
 </head>
 <body>
 
     <div id="scene-container"></div>
+    <input type="file" id="directFileInput" accept="image/*,video/*,audio/*,.heic,.heif,.avif,.svg,.gif,.webp,.bmp,.tif,.tiff,.mp4,.webm,.mov,.m4v,.avi,.mkv,.mp3,.m4a,.wav,.ogg,.aac,.flac" aria-label="Upload media" style="position:fixed;left:-10000px;width:1px;height:1px;opacity:0;">
     <div id="joint-labels" style="position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden;"></div>
     <div class="joint-highlight" id="jointHighlight"></div>
     <div class="fade-hint" id="fadeHint"></div>
@@ -495,7 +523,7 @@
     <!-- Top HUD -->
     <div class="hud-top" id="hudTop">
         <div class="hud-btn-group">
-            <button class="hud-btn" id="btnUpload" title="Upload Media">📥<span class="tip">Media</span></button>
+            <button class="hud-btn" id="btnUpload" title="Upload photo" aria-label="Upload photo">📸<span class="tip">Upload</span></button>
             <button class="hud-btn" id="btnSave" title="Save">💾<span class="tip">Save</span></button>
             <button class="hud-btn" id="btnLoad" title="Load">📂<span class="tip">Load</span></button>
             <button class="hud-btn" id="btnExport" title="Export HTML">🌐<span class="tip">Export</span></button>
@@ -535,6 +563,19 @@
         </div>
     </div>
 
+    <!-- Always-available focused-object editor -->
+    <aside class="object-editor" id="objectEditor">
+        <div class="editor-head"><span id="editorTitle">✨ Particle Editor</span><button class="editor-mini" id="btnSkeletonToggle" title="Toggle skeleton">🦴</button></div>
+        <div class="editor-sub" id="editorSub">Tap a 3D object to focus it</div>
+        <div class="editor-section"><div class="editor-label">FILTER / FIRE</div><div class="editor-grid">
+          <button class="editor-btn active" data-filter="burn">🔥 Burn</button><button class="editor-btn" data-filter="fade">🌫 Fade</button><button class="editor-btn" data-filter="glow">✨ Glow</button><button class="editor-btn" data-filter="pulse">💫 Pulse</button>
+        </div></div>
+        <div class="editor-section"><div class="editor-label">PARTICLE SHAPE</div><div class="editor-grid">
+          <button class="editor-btn" data-shape="circle">●</button><button class="editor-btn active" data-shape="star">★</button><button class="editor-btn" data-shape="diamond">◆</button><button class="editor-btn" data-shape="heart">♥</button>
+        </div></div>
+        <div class="editor-section"><div class="editor-label">JOYSTICK CONTROLS</div></div>
+    </aside>
+
     <!-- Timeline Bar -->
     <div class="timeline-bar" id="timelineBar" style="display:none;">
         <span style="font-size:0.5rem;color:var(--text2);">⏱️</span>
@@ -546,8 +587,8 @@
         <button class="hud-btn" id="btnTlBlend" title="Blend Mode">🔄</button>
     </div>
 
-    <!-- Upload Overlay -->
-    <div class="upload-overlay hidden" id="uploadOverlay">
+    <!-- Legacy upload overlay kept in DOM for compatibility, but never shown in the one-tap workflow -->
+    <div class="upload-overlay hidden" id="uploadOverlay" aria-hidden="true">
         <div class="upload-card">
             <span class="ico">📥✨</span>
             <div style="font-weight:700;font-size:0.8rem;margin-bottom:3px;">Upload Media</div>
@@ -598,6 +639,9 @@
             const toast = document.getElementById('toast');
             const toastText = document.getElementById('toastText');
             const toastIcon = document.getElementById('toastIcon');
+            const objectEditor = document.getElementById('objectEditor');
+            const editorTitle = document.getElementById('editorTitle');
+            const editorSub = document.getElementById('editorSub');
 
             // ─── State ───
             let mode = 'view';
@@ -626,11 +670,14 @@
             let pendingFile = null;
             let rainbowMode = false;
             let shapeIndex = 0;
+            let particleShape = 'circle';
+            let selectedItem = null;
+            let skeletonToggle = false;
             let currentJoyParam = 'size';
             let dragState = { mode: 'none', touches: [], startDist: 0, spherical: null, jointId: null, plane: null,
                 joyActive: false, joyAngle: 0, joyRadius: 0 };
             let camTarget = new THREE.Vector3(0, 1.2, 0);
-            let camSpherical = { r: 16, theta: 0.4, phi: 1.15 };
+            let camSpherical = { r: 18, theta: 0.4, phi: 1.15 };
             let animationId = null;
             let lastFrameTime = 0;
             let toastTimeout = null;
@@ -638,13 +685,22 @@
             // ─── THREE ───
             const scene = new THREE.Scene();
             scene.fog = new THREE.FogExp2(0x0a0a14, 0.005); // Reduced fog density for better visibility
-            const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 200);
+            const camera = new THREE.PerspectiveCamera(55, Math.max(1, container.clientWidth || window.innerWidth) / Math.max(1, container.clientHeight || window.innerHeight), 0.1, 200);
             const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setSize(Math.max(1, container.clientWidth), Math.max(1, container.clientHeight));
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.setClearColor(0x0a0a14, 1);
+            renderer.domElement.style.visibility = 'visible';
+            renderer.domElement.style.opacity = '1';
             renderer.outputEncoding = THREE.sRGBEncoding;
             container.appendChild(renderer.domElement);
+        renderer.domElement.style.position = 'absolute';
+        renderer.domElement.style.inset = '0';
+        renderer.domElement.style.display = 'block';
+        renderer.domElement.style.width = '100%';
+        renderer.domElement.style.height = '100%';
+        renderer.domElement.style.zIndex = '0';
+        renderer.domElement.style.pointerEvents = 'auto';
 
             // Brighter lighting
             const ambientLight = new THREE.AmbientLight(0x445566, 2.5);
@@ -660,10 +716,9 @@
             scene.add(pl2);
 
             // More visible grid
-            const gridGeo = new THREE.GridHelper(20, 20, 0x8888cc, 0x333344);
-            gridGeo.material.transparent = true;
-            gridGeo.material.opacity = 0.45;
-            const grid = new THREE.LineSegments(gridGeo);
+            const grid = new THREE.GridHelper(20, 20, 0x8888cc, 0x333344);
+            grid.material.transparent = true;
+            grid.material.opacity = 0.45;
             grid.position.y = -0.5;
             scene.add(grid);
 
@@ -735,29 +790,36 @@
 
             const particleVS = `
             attribute float aSize; attribute vec3 aColor; attribute float aTwinkle;
-            varying vec3 vColor; varying float vTwinkle;
-            uniform float uTime; uniform float uShimmer; uniform float uFlow;
+            varying vec3 vColor; varying float vTwinkle; varying float vBurn;
+            uniform float uTime; uniform float uShimmer; uniform float uFlow; uniform float uTurbulence;
             void main(){
               vColor=aColor; vTwinkle=aTwinkle;
               vec3 pos=position;
-              float wave=sin(pos.x*0.7+uTime*uFlow)*0.25+cos(pos.y*0.6+uTime*uFlow*1.1)*0.2;
-              pos.y+=wave*0.12;
-              pos.x+=sin(pos.z*0.5+uTime*uFlow*0.7)*0.1;
+              float seed=aTwinkle*6.2831;
+              float drift=sin(uTime*uFlow+seed+pos.z*0.35);
+              float swirl=cos(uTime*(0.55+uTurbulence*0.35)+seed*1.7+pos.x*0.22);
+              pos.y += drift*(0.12+uTurbulence*0.12);
+              pos.x += swirl*(0.08+uTurbulence*0.08);
+              pos.z += sin(uTime*uFlow*0.7+seed+pos.y*0.3)*uTurbulence*0.035;
               vec4 mv=modelViewMatrix*vec4(pos,1.0);
-              gl_PointSize=aSize*(160.0/length(mv.xyz));
+              gl_PointSize=max(2.0,aSize*(220.0/length(mv.xyz)));
               gl_Position=projectionMatrix*mv;
             }`;
             const particleFS = `
-            varying vec3 vColor; varying float vTwinkle;
-            uniform float uTime; uniform float uShimmer; uniform sampler2D uTexture;
+            varying vec3 vColor; varying float vTwinkle; varying float vBurn;
+            uniform float uTime; uniform float uShimmer; uniform float uBurn; uniform float uFade; uniform float uStarGlow; uniform sampler2D uTexture;
             void main(){
               vec4 tc=texture2D(uTexture,gl_PointCoord);
               float d=length(gl_PointCoord-vec2(0.5));
               if(d>0.5)discard;
-              float tw=0.6+0.4*sin(uTime*2.3+vTwinkle*43.0);
-              float sh=0.5+0.5*sin(uTime*1.8+vTwinkle*29.0+d*15.0);
-              vec3 col=vColor*(1.0+(sh-0.5)*uShimmer*2.2);
-              gl_FragColor=vec4(col,tc.a*tw);
+              float tw=0.55+0.45*sin(uTime*3.0+vTwinkle*43.0);
+              float sh=0.5+0.5*sin(uTime*2.0+vTwinkle*29.0+d*15.0);
+              float edge=smoothstep(0.05,0.48,d);
+              float ember=smoothstep(0.15,0.5,fract(vTwinkle*0.159+uTime*(0.35+uBurn*0.9)));
+              vec3 hot=mix(vColor,vec3(1.0,0.35,0.06),uBurn*0.8);
+              vec3 col=hot*(1.0+(sh-0.5)*uShimmer*2.0)*(0.85+uStarGlow*0.65);
+              float alpha=tc.a*tw*(1.0-uFade*edge)*(0.7+0.3*ember);
+              gl_FragColor=vec4(col,alpha);
             }`;
 
             function makeParticleMat() {
@@ -768,8 +830,7 @@
                     blending: THREE.AdditiveBlending,
                     depthWrite: false,
                     depthTest: true,
-                    uniforms: { uTime: { value: 0 }, uShimmer: { value: shimmerIntensity }, uFlow: { value: flowSpeed },
-                        uTexture: { value: glowTexture } }
+                    uniforms: { uTime: { value: 0 }, uShimmer: { value: shimmerIntensity }, uFlow: { value: flowSpeed }, uTurbulence: { value: turbulence }, uBurn: { value: 0.75 }, uFade: { value: 0.35 }, uStarGlow: { value: 1.0 }, uTexture: { value: glowTexture } }
                 });
             }
 
@@ -1408,14 +1469,51 @@
                 return bands;
             }
 
+
+            function selectSceneItemAt(x, y) {
+                const rect = renderer.domElement.getBoundingClientRect();
+                const ndc = new THREE.Vector2(((x-rect.left)/rect.width)*2-1, -(((y-rect.top)/rect.height)*2-1));
+                const rc = new THREE.Raycaster(); rc.params.Points.threshold = 0.28; rc.setFromCamera(ndc,camera);
+                const hits = rc.intersectObjects(sceneItems.map(i=>i.points).filter(Boolean), false);
+                if (!hits.length) return null;
+                const pts=hits[0].object;
+                selectedItem=sceneItems.find(i=>i.points===pts)||null;
+                if(selectedItem){
+                    selectedItem.effect=selectedItem.effect||{burn:.75,fade:.35,glow:1,pulse:1};
+                    editorTitle.textContent='✨ '+(selectedItem.type||'Particle')+' Focus';
+                    editorSub.textContent='Focused • '+(pts.geometry.attributes.position.count)+' particles';
+                    pts.userData.focused=true;
+                    updateJoystickVisibility(); setJoyParam(currentJoyParam);
+                    showToast('🎯','Object focused');
+                }
+                return selectedItem;
+            }
+
+            function setSelectedFilter(filter){
+                if(!selectedItem) return;
+                selectedItem.effect=selectedItem.effect||{burn:.75,fade:.35,glow:1,pulse:1};
+                const e=selectedItem.effect;
+                if(filter==='burn') e.burn=e.burn>.8?0.15:0.95;
+                if(filter==='fade') e.fade=e.fade>.5?0.05:0.85;
+                if(filter==='glow') e.glow=e.glow>1.2?0.35:1.8;
+                if(filter==='pulse') e.pulse=e.pulse>1.2?0.5:1.8;
+                document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('active',b.dataset.filter===filter));
+            }
+
+            function setParticleShape(shape){
+                const shapes=['circle','star','diamond','heart']; shapeIndex=Math.max(0,shapes.indexOf(shape)); particleShape=shape;
+                glowTexture=createGlowTexture(shape);
+                scene.traverse(o=>{if(o.material?.uniforms?.uTexture)o.material.uniforms.uTexture.value=glowTexture;});
+                document.querySelectorAll('[data-shape]').forEach(b=>b.classList.toggle('active',b.dataset.shape===shape));
+                showToast('✨',shape+' particles');
+            }
+
             // ─── UI Events ───
             function updateJoystickVisibility() {
-                if (mode !== 'view' && mode !== 'audio') {
-                    joyPanel.classList.remove('hidden');
-                    if (!joyCanvas.getContext('2d')) initJoystickCanvas(); // Ensure canvas initialized
-                } else {
-                    joyPanel.classList.add('hidden');
-                }
+                // The joystick stays available whenever an object is focused, regardless of mode.
+                const show = true;
+                joyPanel.classList.toggle('hidden', !show);
+                if (show && !joyCanvas.__ready) { initJoystickCanvas(); joyCanvas.__ready = true; }
             }
 
             document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -1424,64 +1522,92 @@
                     btn.classList.add('active');
                     mode = btn.dataset.mode;
                     timelineBar.style.display = (mode === 'animate' || mode === 'cam') ? 'flex' : 'none';
-                    if (mode === 'pose') setSkeletonVisible(true);
-                    else if (mode === 'view' || mode === 'audio') setSkeletonVisible(false);
+                    if (mode === 'pose') { skeletonToggle = true; setSkeletonVisible(true); }
+                    else if (!skeletonToggle) setSkeletonVisible(false);
                     updateJoystickVisibility();
                     showToast(mode === 'view' ? '🔄' : mode === 'pose' ? '🦴' : mode === 'animate' ? '🎬' : mode ===
                         'audio' ? '🔊' : '📷', mode + ' mode');
                 });
             });
 
-            document.getElementById('btnUpload').addEventListener('click', () => {
-                uploadOverlay.classList.toggle('hidden');
-                if (!uploadOverlay.classList.contains('hidden')) {
-                    uploadPreview.textContent = '';
-                    btnSpawnImage.style.display = 'none';
-                    btnSpawnAudio.style.display = 'none';
-                    pendingFile = null;
-                }
-            });
-            document.getElementById('btnCloseUpload').addEventListener('click', () => uploadOverlay.classList.add(
-            'hidden'));
+            const directFileInput = document.getElementById('directFileInput');
+            function openDirectUpload(){ directFileInput.click(); }
+            document.getElementById('btnUpload').addEventListener('click', openDirectUpload);
 
-            unifiedFileInput.addEventListener('change', e => {
-                const file = e.target.files[0];
+            // One-tap universal media importer. Images become particle objects;
+            // video becomes a particle object from its first frame; audio drives the
+            // reactive particle system. Browser-native formats are accepted without popups.
+            async function importMediaFile(file) {
                 if (!file) return;
-                pendingFile = file;
-                uploadPreview.textContent = '📎 ' + file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + 'MB)';
-                const isAudio = file.type.startsWith('audio') || file.name.match(/\.(m4a|mp3|wav|ogg|aac)$/i);
-                const isImage = file.type.startsWith('image') || file.name.match(/\.(png|jpg|jpeg|gif|webp|bmp)$/i);
-                if (isAudio) {
-                    btnSpawnAudio.style.display = 'inline-block';
-                    btnSpawnImage.style.display = 'none';
-                } else if (isImage) {
-                    btnSpawnImage.style.display = 'inline-block';
-                    btnSpawnAudio.style.display = 'none';
-                } else {
-                    btnSpawnImage.style.display = 'none';
-                    btnSpawnAudio.style.display = 'none';
-                    uploadPreview.textContent = '⚠️ Unsupported file type';
+                const name = (file.name || '').toLowerCase();
+                const type = (file.type || '').toLowerCase();
+                const imageExt = /\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|heif|tif?f)$/i;
+                const videoExt = /\.(mp4|webm|mov|m4v|avi|mkv|ogv)$/i;
+                const audioExt = /\.(mp3|m4a|wav|ogg|oga|aac|flac|opus)$/i;
+
+                if (type.startsWith('audio/') || audioExt.test(name)) {
+                    try { loadAudioFile(file); }
+                    catch (err) { showToast('⚠️', 'Audio format not supported by this browser'); }
+                    return;
                 }
-                unifiedFileInput.value = '';
-            });
 
-            btnSpawnImage.addEventListener('click', () => {
-                if (!pendingFile) return;
-                const img = new Image();
-                img.onload = () => { spawnImageParticles(img);
-                    uploadOverlay.classList.add('hidden'); };
-                img.src = URL.createObjectURL(pendingFile);
-            });
+                if (type.startsWith('video/') || videoExt.test(name)) {
+                    const url = URL.createObjectURL(file);
+                    const video = document.createElement('video');
+                    video.muted = true;
+                    video.playsInline = true;
+                    video.preload = 'auto';
+                    video.onloadeddata = () => {
+                        try {
+                            const w = video.videoWidth || 640, h = video.videoHeight || 360;
+                            const canvas = document.createElement('canvas');
+                            const scale = Math.min(1, 320 / Math.max(w, h));
+                            canvas.width = Math.max(2, Math.floor(w * scale));
+                            canvas.height = Math.max(2, Math.floor(h * scale));
+                            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            const img = new Image();
+                            img.onload = () => { spawnImageParticles(img); URL.revokeObjectURL(url); };
+                            img.onerror = () => { URL.revokeObjectURL(url); showToast('⚠️', 'Video frame could not be converted'); };
+                            img.src = canvas.toDataURL('image/png');
+                        } catch (err) {
+                            URL.revokeObjectURL(url);
+                            showToast('⚠️', 'Video cannot be converted in this browser');
+                        }
+                    };
+                    video.onerror = () => { URL.revokeObjectURL(url); showToast('⚠️', 'Video format not supported by this browser'); };
+                    video.src = url;
+                    return;
+                }
 
-            btnSpawnAudio.addEventListener('click', () => {
-                if (!pendingFile) return;
-                loadAudioFile(pendingFile);
-                uploadOverlay.classList.add('hidden');
+                if (type.startsWith('image/') || imageExt.test(name)) {
+                    const url = URL.createObjectURL(file);
+                    try {
+                        const img = new Image();
+                        img.onload = () => { spawnImageParticles(img); URL.revokeObjectURL(url); };
+                        img.onerror = () => { URL.revokeObjectURL(url); showToast('⚠️', 'This image format is not supported by this browser'); };
+                        img.src = url;
+                    } catch (err) {
+                        URL.revokeObjectURL(url);
+                        showToast('⚠️', 'Image could not be opened');
+                    }
+                    return;
+                }
+                showToast('⚠️', 'Media format not supported by this browser');
+            }
+
+            directFileInput.addEventListener('change', e => {
+                const file = e.target.files && e.target.files[0];
+                e.target.value = '';
+                if (file) importMediaFile(file);
             });
+            // Keep the legacy upload controls inert/hidden: upload is now one tap + file.
+            document.getElementById('btnCloseUpload').addEventListener('click', () => {});
+            btnSpawnImage.addEventListener('click', () => {});
+            btnSpawnAudio.addEventListener('click', () => {});
 
             document.getElementById('btnText').addEventListener('click', () => {
-                const text = prompt('Enter text:', 'STARDUST');
-                if (text) spawnTextParticles(text, 32);
+                spawnTextParticles('STARDUST', 32);
             });
 
             document.getElementById('btnAudio').addEventListener('click', () => {
@@ -1505,6 +1631,8 @@
                     camSpherical,
                     camTarget: camTarget.toArray(),
                     itemCount: sceneItems.length,
+                    selectedEffects: sceneItems.map(i=>i.effect||null),
+                    particleShape,
                 };
                 try { localStorage.setItem('stardust3d_pro3', JSON.stringify(data));
                     showToast('💾', 'Saved!'); } catch (e) { showToast('⚠️', 'Save failed'); }
@@ -1525,6 +1653,10 @@
                     flowSpeed = d.flowSpeed || 1.2;
                     turbulence = d.turbulence || 0.5;
                     audioSensitivity = d.audioSensitivity || 1.5;
+                    particleShape = d.particleShape || 'star';
+                    shapeIndex = ['circle','star','diamond','heart'].indexOf(particleShape);
+                    (d.selectedEffects||[]).forEach((fx,i)=>{if(sceneItems[i])sceneItems[i].effect=fx;});
+                    setParticleShape(particleShape);
                     camSpherical = d.camSpherical || { r: 16, theta: 0.4, phi: 1.15 };
                     camTarget.fromArray(d.camTarget || [0, 1.2, 0]);
                     updateCameraFromSpherical();
@@ -1578,6 +1710,11 @@
                 if (btn) setJoyParam(btn.dataset.param);
             });
 
+
+            document.querySelectorAll('[data-filter]').forEach(btn=>btn.addEventListener('click',()=>setSelectedFilter(btn.dataset.filter)));
+            document.querySelectorAll('[data-shape]').forEach(btn=>btn.addEventListener('click',()=>setParticleShape(btn.dataset.shape)));
+            document.getElementById('btnSkeletonToggle').addEventListener('click',()=>{ skeletonToggle=!skeletonToggle; setSkeletonVisible(skeletonToggle); showToast(skeletonToggle?'🦴':'✨',skeletonToggle?'Skeleton shown':'Skeleton hidden'); });
+
             // Timeline events
             tlSlider.addEventListener('input', () => {
                 currentTime = parseFloat(tlSlider.value);
@@ -1613,11 +1750,7 @@
             });
 
             document.getElementById('btnTlBlend').addEventListener('click', () => {
-                const blend = prompt('Blend time (seconds):', '1.5');
-                if (blend && camKeyframes.length > 0) {
-                    camKeyframes[camKeyframes.length - 1].blendTime = parseFloat(blend) || 1.5;
-                    showToast('🔄', 'Blend set to ' + blend + 's');
-                }
+                if (camKeyframes.length > 0) { camKeyframes[camKeyframes.length - 1].blendTime = 1.5; showToast('🔄','Blend 1.5s'); }
             });
 
             // ─── Pose system ───
@@ -1745,6 +1878,7 @@
 
             function handleMouseDown(e) {
                 if (e.button !== 0) return;
+                if (mode !== 'pose') { const focused = selectSceneItemAt(e.clientX,e.clientY); if (focused) { dragState.mode='none'; return; } }
                 if (mode === 'pose') {
                     const jid = getJointAtScreen(e.clientX, e.clientY);
                     if (jid) {
@@ -1808,11 +1942,16 @@
 
             // ─── Resize ───
             function handleResize() {
-                camera.aspect = container.clientWidth / container.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(container.clientWidth, container.clientHeight);
-                updateJointLabels();
-            }
+        const w = Math.max(1, container.clientWidth || window.innerWidth);
+        const h = Math.max(1, container.clientHeight || window.innerHeight);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.setSize(w, h, false);
+        renderer.domElement.style.width = '100%';
+        renderer.domElement.style.height = '100%';
+        if (typeof updateJointLabels === 'function') updateJointLabels();
+    }
             window.addEventListener('resize', handleResize);
             window.addEventListener('orientationchange', () => setTimeout(handleResize, 300));
 
@@ -1844,8 +1983,12 @@
                 scene.traverse(o => {
                     if (o.material && o.material.uniforms && o.material.uniforms.uTime) {
                         o.material.uniforms.uTime.value = time;
-                        o.material.uniforms.uShimmer.value = shimmerIntensity;
-                        o.material.uniforms.uFlow.value = flowSpeed;
+                        if (o.material.uniforms.uShimmer) o.material.uniforms.uShimmer.value = shimmerIntensity;
+                        if (o.material.uniforms.uFlow) o.material.uniforms.uFlow.value = flowSpeed;
+                        if (o.material.uniforms.uTurbulence) o.material.uniforms.uTurbulence.value = turbulence;
+                        if (o.material.uniforms.uBurn) o.material.uniforms.uBurn.value = selectedItem && selectedItem.effect ? selectedItem.effect.burn : 0.75;
+                        if (o.material.uniforms.uFade) o.material.uniforms.uFade.value = selectedItem && selectedItem.effect ? selectedItem.effect.fade : 0.35;
+                        if (o.material.uniforms.uStarGlow) o.material.uniforms.uStarGlow.value = selectedItem && selectedItem.effect ? selectedItem.effect.glow : 1.0;
                     }
                 });
 
@@ -1917,16 +2060,41 @@
             }
 
             // ─── Init ───
-            function init() {
+            function ensureStageVisible() {
+        // A small luminous stage makes the renderer/camera state immediately testable
+        // even before a photo is imported.
+        if (scene.getObjectByName('testStage')) return;
+        const g = new THREE.Group();
+        g.name = 'testStage';
+        const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(3.8, 0.025, 8, 96),
+            new THREE.MeshBasicMaterial({color:0x7c5cff, transparent:true, opacity:0.65})
+        );
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = -2.4;
+        g.add(ring);
+        const core = new THREE.Mesh(
+            new THREE.SphereGeometry(0.045, 10, 10),
+            new THREE.MeshBasicMaterial({color:0xffffff})
+        );
+        core.position.set(0, 1.2, 0);
+        g.add(core);
+        scene.add(g);
+    }
+
+    function init() {
+                ensureStageVisible();
+                handleResize();
                 buildSkeleton();
                 resetPose();
                 camTarget.set(0, 1.2, 0);
-                camSpherical = { r: 16, theta: 0.4, phi: 1.15 };
+                camSpherical = { r: 18, theta: 0, phi: 1.1 };
                 updateCameraFromSpherical();
                 setSkeletonVisible(false);
                 tlSlider.max = 10;
                 tlSlider.value = 0;
                 tlTime.textContent = '0.0s';
+                setParticleShape('star');
                 updateJoystickVisibility();
                 lastFrameTime = Date.now();
                 animate();
