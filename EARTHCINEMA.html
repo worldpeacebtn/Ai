@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>✨ Stardust 3D Studio Pro ✨</title>
+    <style>
+        :root {
+            --bg: #0a0a18;
+            --panel: rgba(18, 18, 34, 0.93);
+            --panel2: rgba(28, 28, 52, 0.85);
+            --border: rgba(255, 255, 255, 0.15);
+            --border2: rgba(255, 255, 255, 0.08);
+            --accent: #8b5cf6;
+            --accent2: #06b6d4;
+            --accent3: #ec4899;
+            --gold: #fbbf24;
+            --green: #34d399;
+            --red: #f87171;
+            --text: #f1f1f8;
+            --text2: #a0a0c0;
+            --radius: 14px;
+            --radius-sm: 8px;
+            --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+            --transition: 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            font-family: var(--font);
+            color: var(--text);
+            touch-action: none;
+            position: fixed;
+            inset: 0;
+        }
+        #scene-container {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: radial-gradient(ellipse at center, #141430 0%, #080818 100%);
+        }
+        #scene-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .hud-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 6px;
+            gap: 2px;
+            background: linear-gradient(180deg, rgba(8, 8, 18, 0.95) 50%, transparent);
+            pointer-events: none;
+        }
+        .hud-top>* { pointer-events: auto; }
+        .hud-btn {
+            background: rgba(25, 25, 48, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text);
+            padding: 5px 7px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            line-height: 1;
+            transition: all var(--transition);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            min-height: 30px;
+            min-width: 30px;
+            touch-action: manipulation;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .hud-btn:hover { background: rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.3); transform: scale(1.05); }
+        .hud-btn:active { transform: scale(0.88); }
+        .hud-btn.active { border-color: var(--accent); box-shadow: 0 0 14px rgba(139, 92, 246, 0.5); background: rgba(139, 92, 246, 0.25); }
+        .hud-btn-group { display: flex; gap: 2px; align-items: center; }
+        .hud-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 4px 4px max(4px, var(--safe-bottom));
+            gap: 2px;
+            background: linear-gradient(0deg, rgba(8, 8, 18, 0.95) 55%, transparent);
+            pointer-events: none;
+        }
+        .hud-bottom>* { pointer-events: auto; }
+        .mode-btn {
+            flex: 1;
+            min-width: 40px;
+            max-width: 70px;
+            text-align: center;
+            padding: 4px 2px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: transparent;
+            border: 1.5px solid transparent;
+            transition: all var(--transition);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+            touch-action: manipulation;
+        }
+        .mode-btn .ico { font-size: 1.15rem; line-height: 1.1; }
+        .mode-btn .lbl { font-size: 0.45rem; font-weight: 600; color: var(--text2); letter-spacing: 0.2px; }
+        .mode-btn.active { border-color: var(--accent); background: rgba(139, 92, 246, 0.2); box-shadow: 0 0 12px rgba(139, 92, 246, 0.35); }
+        .mode-btn.active .lbl { color: var(--text); }
+        .joy-panel {
+            position: absolute;
+            z-index: 40;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: var(--shadow);
+            padding: 10px;
+            pointer-events: auto;
+            max-width: 300px;
+            width: 92vw;
+            transition: all var(--transition);
+            left: 194px;
+            top: 44px;
+            right: auto;
+        }
+        .joy-panel.hidden { opacity: 0; pointer-events: none; transform: translateY(25px) scale(0.9); }
+        .joy-panel .title { font-size: 0.7rem; font-weight: 700; text-align: center; margin-bottom: 8px; color: var(--accent2); letter-spacing: 0.4px; }
+        .joy-sphere-wrap {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 8px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, rgba(139, 92, 246, 0.3), rgba(6, 182, 212, 0.15));
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            touch-action: none;
+            box-shadow: inset 0 0 30px rgba(139, 92, 246, 0.2), 0 0 20px rgba(139, 92, 246, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .joy-sphere-wrap canvas { width: 100%; height: 100%; border-radius: 50%; }
+        .joy-value-label { text-align: center; font-size: 0.65rem; font-weight: 700; color: var(--text); letter-spacing: 0.3px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+        .joy-value-label .val { color: var(--accent2); font-size: 0.75rem; }
+        .joy-presets { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; margin-top: 5px; }
+        .joy-preset { padding: 3px 7px; border-radius: 5px; border: 1px solid var(--border2); background: var(--panel2); color: var(--text2); font-size: 0.5rem; cursor: pointer; touch-action: manipulation; }
+        .joy-preset:active { background: var(--accent); color: #fff; }
+        .numeric-input { width: 90%; margin: 6px auto; display: flex; align-items: center; gap: 4px; font-size: 0.55rem; color: var(--text2); }
+        .numeric-input input { flex: 1; background: var(--panel2); border: 1px solid var(--border2); border-radius: 4px; padding: 3px 5px; color: var(--text); font-size: 0.6rem; outline: none; min-width: 0; }
+        .timeline-bar {
+            position: absolute;
+            bottom: 48px;
+            left: 6px;
+            right: 6px;
+            z-index: 25;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 4px 6px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            flex-wrap: wrap;
+            pointer-events: auto;
+        }
+        .timeline-bar .tl-slider {
+            flex: 1;
+            min-width: 60px;
+            height: 16px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            outline: none;
+            cursor: pointer;
+        }
+        .timeline-bar .tl-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.6);
+        }
+        .timeline-bar .tl-time { font-size: 0.55rem; color: var(--accent2); font-weight: 700; font-variant-numeric: tabular-nums; min-width: 32px; text-align: center; }
+        .timeline-bar .hud-btn { font-size: 0.65rem; padding: 3px 5px; min-height: 22px; min-width: 22px; }
+        .upload-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .upload-overlay.hidden { display: none; }
+        .upload-card {
+            background: var(--panel);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+            text-align: center;
+            max-width: 340px;
+            width: 92%;
+            box-shadow: var(--shadow);
+        }
+        .upload-card .ico { font-size: 2.2rem; display: block; margin-bottom: 6px; }
+        .upload-card .msg { font-size: 0.6rem; color: var(--text2); margin-bottom: 10px; }
+        .upload-card input[type="file"] { display: none; }
+        .upload-actions { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 8px 0; }
+        .upload-card .hud-btn { font-size: 0.7rem; padding: 6px 10px; }
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.7);
+            background: rgba(20, 20, 35, 0.95);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 18px;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.7rem;
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            max-width: 85vw;
+        }
+        .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        .toast .ico { font-size: 1.5rem; display: block; margin-bottom: 4px; }
+        .joint-highlight {
+            position: absolute;
+            pointer-events: none;
+            border: 2px solid var(--accent3);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.8);
+            z-index: 5;
+            display: none;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 12px rgba(236, 72, 153, 0.5); }
+            50% { box-shadow: 0 0 28px rgba(236, 72, 153, 1); }
+        }
+        .object-editor {
+            position: absolute;
+            left: 6px;
+            top: 44px;
+            z-index: 45;
+            width: 180px;
+            max-height: calc(100vh - 100px);
+            overflow: auto;
+            padding: 9px;
+            background: rgba(12, 12, 24, .94);
+            border: 1px solid rgba(255, 255, 255, .14);
+            border-radius: 14px;
+            backdrop-filter: blur(18px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, .45);
+        }
+        .editor-head { display: flex; align-items: center; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--text); }
+        .editor-mini { border: 1px solid var(--border); background: var(--panel2); color: var(--text); border-radius: 7px; padding: 3px 6px; cursor: pointer; }
+        .editor-sub { font-size: .48rem; color: var(--text2); margin: 4px 0 7px; line-height: 1.3; }
+        .editor-section { border-top: 1px solid var(--border2); padding-top: 7px; margin-top: 7px; }
+        .editor-label { font-size: .43rem; color: var(--accent2); font-weight: 800; letter-spacing: .5px; margin-bottom: 5px; }
+        .editor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+        .editor-btn { padding: 5px 4px; border: 1px solid var(--border2); border-radius: 7px; background: var(--panel2); color: var(--text2); font-size: .48rem; cursor: pointer; }
+        .editor-btn.active { border-color: var(--accent); background: rgba(139, 92, 246, .24); color: var(--text); box-shadow: 0 0 10px rgba(139, 92, 246, .2); }
+        .object-editor~.timeline-bar { left: 194px; }
+        @media(max-width:480px) {
+            .object-editor { width: 150px; left: 4px; top: 40px; }
+            .object-editor~.timeline-bar { left: 160px; }
+            .joy-panel { left: 160px; right: auto; top: 42px; width: calc(100vw - 164px); }
+            .hud-btn { padding: 4px 5px; font-size: 0.9rem; min-height: 26px; min-width: 26px; }
+            .mode-btn .ico { font-size: 1rem; }
+            .joy-sphere-wrap { width: 100px; height: 100px; }
+            .joy-panel { padding: 6px; border-radius: 10px; width: 95vw; max-width: 280px; }
+            .timeline-bar { bottom: 40px; padding: 3px 4px; }
+            .object-editor { width: 154px; left: 5px; top: 52px; max-height: 52vh; }
+            .joy-panel { left: 164px; top: 52px; width: calc(100vw - 169px); max-width: none; }
+            .joy-sphere-wrap { width: 100px; height: 100px; }
+        }
+        @media(min-width:900px) {
+            .object-editor { width: 190px; }
+            .joy-panel { left: 202px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="scene-container"></div>
+    <input type="file" id="directFileInput" accept="image/*,video/*,audio/*,.heic,.heif,.avif,.svg,.gif,.webp,.bmp,.tif,.tiff,.mp4,.webm,.mov,.m4v,.avi,.mkv,.mp3,.m4a,.wav,.ogg,.aac,.flac" style="position:fixed;left:-10000px;width:1px;height:1px;opacity:0;">
+    <div id="joint-labels" style="position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden;"></div>
+    <div class="joint-highlight" id="jointHighlight"></div>
+
+    <!-- Top HUD -->
+    <div class="hud-top" id="hudTop">
+        <div class="hud-btn-group">
+            <button class="hud-btn" id="btnUpload" title="Upload media">📸</button>
+            <button class="hud-btn" id="btnSave" title="Save">💾</button>
+            <button class="hud-btn" id="btnLoad" title="Load">📂</button>
+            <button class="hud-btn" id="btnExport" title="Export HTML">🌐</button>
+            <button class="hud-btn" id="btnCrayMode" title="Cray Mode">🌈</button>
+        </div>
+        <div class="hud-btn-group">
+            <button class="hud-btn" id="btnJoySettings" title="Joystick">🎛️</button>
+            <button class="hud-btn" id="btnText" title="3D Text">🔤</button>
+            <button class="hud-btn" id="btnAudio" title="Audio">🎤</button>
+            <button class="hud-btn" id="btnCamKey" title="Camera Key">🎥</button>
+            <button class="hud-btn" id="btnSwapView" title="Swap Particle/Normal">🔄</button>
+        </div>
+    </div>
+
+    <!-- Bottom Mode Bar -->
+    <div class="hud-bottom" id="hudBottom">
+        <button class="mode-btn active" data-mode="view"><span class="ico">🔄</span><span class="lbl">View</span></button>
+        <button class="mode-btn" data-mode="pose"><span class="ico">🦴</span><span class="lbl">Pose</span></button>
+        <button class="mode-btn" data-mode="animate"><span class="ico">🎬</span><span class="lbl">Timeline</span></button>
+        <button class="mode-btn" data-mode="audio"><span class="ico">🔊</span><span class="lbl">React</span></button>
+        <button class="mode-btn" data-mode="cam"><span class="ico">📷</span><span class="lbl">Cam</span></button>
+        <button class="mode-btn" data-mode="game"><span class="ico">🎮</span><span class="lbl">Game</span></button>
+    </div>
+
+    <!-- Joystick Panel -->
+    <div class="joy-panel hidden" id="joyPanel">
+        <div class="title" id="joyTitle">🎛️ Settings Joystick</div>
+        <div class="joy-sphere-wrap" id="joySphereWrap"><canvas id="joyCanvas"></canvas></div>
+        <div class="joy-value-label"><span id="joyParamName">Size</span>: <span class="val" id="joyParamVal">2.5</span></div>
+        <div class="numeric-input"><span>🔢</span><input type="number" id="directNumInput" step="0.01" min="0" max="100" value="2.5"><span id="directNumSuffix">px</span></div>
+        <div class="joy-presets" id="joyPresets">
+            <button class="joy-preset" data-param="size">Size</button>
+            <button class="joy-preset" data-param="density">Density</button>
+            <button class="joy-preset" data-param="depth">Depth</button>
+            <button class="joy-preset" data-param="shimmer">Shimmer</button>
+            <button class="joy-preset" data-param="flow">Flow</button>
+            <button class="joy-preset" data-param="turbulence">Turb</button>
+            <button class="joy-preset" data-param="audio">Audio</button>
+        </div>
+    </div>
+
+    <!-- Object Editor -->
+    <aside class="object-editor" id="objectEditor">
+        <div class="editor-head"><span id="editorTitle">✨ Particle Editor</span><button class="editor-mini" id="btnSkeletonToggle">🦴</button></div>
+        <div class="editor-sub" id="editorSub">Tap a 3D object to focus it</div>
+        <div class="editor-section"><div class="editor-label">FILTER / FIRE</div><div class="editor-grid">
+            <button class="editor-btn active" data-filter="burn">🔥 Burn</button>
+            <button class="editor-btn" data-filter="fade">🌫 Fade</button>
+            <button class="editor-btn" data-filter="glow">✨ Glow</button>
+            <button class="editor-btn" data-filter="pulse">💫 Pulse</button>
+        </div></div>
+        <div class="editor-section"><div class="editor-label">PARTICLE SHAPE</div><div class="editor-grid">
+            <button class="editor-btn" data-shape="circle">●</button>
+            <button class="editor-btn active" data-shape="star">★</button>
+            <button class="editor-btn" data-shape="diamond">◆</button>
+            <button class="editor-btn" data-shape="heart">♥</button>
+            <button class="editor-btn" data-shape="triangle">▲</button>
+            <button class="editor-btn" data-shape="hexagon">⬡</button>
+        </div></div>
+        <div class="editor-section"><div class="editor-label">SELECT MODE</div><div class="editor-grid">
+            <button class="editor-btn" id="btnSelectMode">🎯 Select</button>
+            <button class="editor-btn" id="btnMoveSelected">↕️ Move</button>
+        </div></div>
+    </aside>
+
+    <!-- Timeline Bar -->
+    <div class="timeline-bar" id="timelineBar" style="display:none;">
+        <span style="font-size:0.5rem;color:var(--text2);">⏱️</span>
+        <input type="range" class="tl-slider" id="tlSlider" min="0" max="10" value="0" step="0.05">
+        <span class="tl-time" id="tlTime">0.0s</span>
+        <button class="hud-btn" id="btnTlKey">🔑</button>
+        <button class="hud-btn" id="btnTlPlay">▶️</button>
+        <button class="hud-btn" id="btnTlClear">🗑️</button>
+        <button class="hud-btn" id="btnTlBlend">🔄</button>
+    </div>
+
+    <!-- Upload Overlay (unused; direct input is used) -->
+    <div class="upload-overlay hidden" id="uploadOverlay"></div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"><span class="ico" id="toastIcon">✨</span><span id="toastText"></span></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        (function() {
+            'use strict';
+
+            // DOM
+            const container = document.getElementById('scene-container');
+            const jointHighlight = document.getElementById('jointHighlight');
+            const joyPanel = document.getElementById('joyPanel');
+            const joyCanvas = document.getElementById('joyCanvas');
+            const joySphereWrap = document.getElementById('joySphereWrap');
+            const joyParamName = document.getElementById('joyParamName');
+            const joyParamVal = document.getElementById('joyParamVal');
+            const directNumInput = document.getElementById('directNumInput');
+            const joyPresets = document.getElementById('joyPresets');
+            const timelineBar = document.getElementById('timelineBar');
+            const tlSlider = document.getElementById('tlSlider');
+            const tlTime = document.getElementById('tlTime');
+            const toast = document.getElementById('toast');
+            const toastText = document.getElementById('toastText');
+            const toastIcon = document.getElementById('toastIcon');
+            const objectEditor = document.getElementById('objectEditor');
+            const editorTitle = document.getElementById('editorTitle');
+            const editorSub = document.getElementById('editorSub');
+
+            // State
+            let mode = 'view';
+            let particleSize = 2.5;
+            let particleDensity = 6;
+            let depthSpread = 8;
+            let shimmerIntensity = 0.6;
+            let flowSpeed = 1.2;
+            let turbulence = 0.5;
+            let audioSensitivity = 1.5;
+            let bassBoost = 1.0;
+            let currentTime = 0;
+            let isPlaying = false;
+            let keyframes = [];
+            let camKeyframes = [];
+            let sceneItems = [];
+            let skeletonVisible = false;
+            let skeletonFadeTarget = 0;
+            let skeletonFadeCurrent = 0;
+            let selectedJoint = null;
+            let audioContext = null;
+            let audioAnalyser = null;
+            let audioDataArray = null;
+            let audioSource = null;
+            let audioActive = false;
+            let pendingFile = null;
+            let rainbowMode = false;
+            let crayMode = false;
+            let particleShape = 'circle';
+            let selectedItem = null;
+            let skeletonToggle = false;
+            let currentJoyParam = 'size';
+            let selectModeActive = false;
+            let moveSelectedActive = false;
+            let swapToNormal = false;
+            let dolphinGroup = null;
+            let dolphinParticles = null;
+            let dolphinBasePositions = [];
+            let dragState = { mode: 'none', touches: [], startDist: 0, spherical: null, jointId: null, plane: null, joyActive: false, joyAngle: 0, joyRadius: 0, dragItem: null, dragOffset: null, dragPlane: null };
+            let camTarget = new THREE.Vector3(0, 1.2, 0);
+            let camSpherical = { r: 18, theta: 0.4, phi: 1.15 };
+            let animationId = null;
+            let lastFrameTime = 0;
+            let toastTimeout = null;
+
+            // Three.js setup
+            const scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x0a0a18, 0.003);
+            const camera = new THREE.PerspectiveCamera(55, Math.max(1, container.clientWidth) / Math.max(1, container.clientHeight), 0.1, 200);
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(Math.max(1, container.clientWidth), Math.max(1, container.clientHeight));
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setClearColor(0x0a0a18, 1);
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            container.appendChild(renderer.domElement);
+            renderer.domElement.style.position = 'absolute';
+            renderer.domElement.style.inset = '0';
+            renderer.domElement.style.display = 'block';
+            renderer.domElement.style.width = '100%';
+            renderer.domElement.style.height = '100%';
+            renderer.domElement.style.zIndex = '0';
+            renderer.domElement.style.pointerEvents = 'auto';
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x445566, 3.0);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(5, 12, 5);
+            scene.add(dirLight);
+            const pl1 = new THREE.PointLight(0x8b5cf6, 2.8, 50);
+            pl1.position.set(-3, 4, 4);
+            scene.add(pl1);
+            const pl2 = new THREE.PointLight(0x06b6d4, 2.5, 45);
+            pl2.position.set(3, -1, 3);
+            scene.add(pl2);
+
+            // Grid
+            const grid = new THREE.GridHelper(20, 20, 0x8888cc, 0x333344);
+            grid.material.transparent = true;
+            grid.material.opacity = 0.45;
+            grid.position.y = -0.5;
+            scene.add(grid);
+
+            // Glow texture
+            function createGlowTexture(shape = 'circle') {
+                const c = document.createElement('canvas');
+                c.width = 64;
+                c.height = 64;
+                const ctx = c.getContext('2d');
+                const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+                g.addColorStop(0, 'rgba(255,255,255,1)');
+                g.addColorStop(0.2, 'rgba(255,255,255,0.85)');
+                g.addColorStop(0.5, 'rgba(255,255,255,0.4)');
+                g.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = g;
+                if (shape === 'star') {
+                    ctx.clearRect(0, 0, 64, 64);
+                    ctx.translate(32, 32);
+                    ctx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                        const a = (i * 72 - 90) * Math.PI / 180;
+                        const ia = (i * 72 + 36 - 90) * Math.PI / 180;
+                        const ox = Math.cos(a) * 30, oy = Math.sin(a) * 30;
+                        const ix = Math.cos(ia) * 12, iy = Math.sin(ia) * 12;
+                        i === 0 ? ctx.moveTo(ox, oy) : ctx.lineTo(ox, oy);
+                        ctx.lineTo(ix, iy);
+                    }
+                    ctx.closePath();
+                    ctx.fillStyle = g;
+                    ctx.fill();
+                } else if (shape === 'diamond') {
+                    ctx.clearRect(0, 0, 64, 64);
+                    ctx.translate(32, 32);
+                    ctx.beginPath();
+                    ctx.moveTo(0, -30); ctx.lineTo(25, 0); ctx.lineTo(0, 30); ctx.lineTo(-25, 0);
+                    ctx.closePath();
+                    ctx.fillStyle = g;
+                    ctx.fill();
+                } else if (shape === 'heart') {
+                    ctx.clearRect(0, 0, 64, 64);
+                    ctx.translate(32, 28);
+                    ctx.beginPath();
+                    ctx.moveTo(0, 15);
+                    ctx.bezierCurveTo(-20, -5, -15, -25, 0, -12);
+                    ctx.bezierCurveTo(15, -25, 20, -5, 0, 15);
+                    ctx.closePath();
+                    ctx.fillStyle = g;
+                    ctx.fill();
+                } else if (shape === 'triangle') {
+                    ctx.clearRect(0, 0, 64, 64);
+                    ctx.translate(32, 32);
+                    ctx.beginPath();
+                    ctx.moveTo(0, -30); ctx.lineTo(28, 22); ctx.lineTo(-28, 22);
+                    ctx.closePath();
+                    ctx.fillStyle = g;
+                    ctx.fill();
+                } else if (shape === 'hexagon') {
+                    ctx.clearRect(0, 0, 64, 64);
+                    ctx.translate(32, 32);
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const a = (i * 60 - 30) * Math.PI / 180;
+                        const x = Math.cos(a) * 30, y = Math.sin(a) * 30;
+                        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.fillStyle = g;
+                    ctx.fill();
+                } else {
+                    ctx.fillRect(0, 0, 64, 64);
+                }
+                const tex = new THREE.CanvasTexture(c);
+                tex.needsUpdate = true;
+                return tex;
+            }
+            let glowTexture = createGlowTexture('circle');
+
+            function regenerateGlowTexture() {
+                const shapes = ['circle', 'star', 'diamond', 'heart', 'triangle', 'hexagon'];
+                particleShape = shapes[shapeIndex % shapes.length];
+                glowTexture = createGlowTexture(particleShape);
+                scene.traverse(o => { if (o.material && o.material.uniforms && o.material.uniforms.uTexture) o.material.uniforms.uTexture.value = glowTexture; });
+            }
+
+            // Particle shader
+            const particleVS = `
+                attribute float aSize;
+                attribute vec3 aColor;
+                attribute float aTwinkle;
+                varying vec3 vColor;
+                varying float vTwinkle;
+                uniform float uTime;
+                uniform float uShimmer;
+                uniform float uFlow;
+                uniform float uTurbulence;
+                void main() {
+                    vColor = aColor;
+                    vTwinkle = aTwinkle;
+                    vec3 pos = position;
+                    float seed = aTwinkle * 6.2831;
+                    float drift = sin(uTime * uFlow + seed + pos.z * 0.35);
+                    float swirl = cos(uTime * (0.55 + uTurbulence * 0.35) + seed * 1.7 + pos.x * 0.22);
+                    pos.y += drift * (0.12 + uTurbulence * 0.12);
+                    pos.x += swirl * (0.08 + uTurbulence * 0.08);
+                    pos.z += sin(uTime * uFlow * 0.7 + seed + pos.y * 0.3) * uTurbulence * 0.035;
+                    vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+                    gl_PointSize = max(2.0, aSize * (220.0 / length(mv.xyz)));
+                    gl_Position = projectionMatrix * mv;
+                }
+            `;
+            const particleFS = `
+                varying vec3 vColor;
+                varying float vTwinkle;
+                uniform float uTime;
+                uniform float uShimmer;
+                uniform float uBurn;
+                uniform float uFade;
+                uniform float uStarGlow;
+                uniform sampler2D uTexture;
+                void main() {
+                    vec4 tc = texture2D(uTexture, gl_PointCoord);
+                    float d = length(gl_PointCoord - vec2(0.5));
+                    if (d > 0.5) discard;
+                    float tw = 0.55 + 0.45 * sin(uTime * 3.0 + vTwinkle * 43.0);
+                    float sh = 0.5 + 0.5 * sin(uTime * 2.0 + vTwinkle * 29.0 + d * 15.0);
+                    float edge = smoothstep(0.05, 0.48, d);
+                    float ember = smoothstep(0.15, 0.5, fract(vTwinkle * 0.159 + uTime * (0.35 + uBurn * 0.9)));
+                    vec3 hot = mix(vColor, vec3(1.0, 0.35, 0.06), uBurn * 0.8);
+                    vec3 col = hot * (1.0 + (sh - 0.5) * uShimmer * 2.0) * (0.85 + uStarGlow * 0.65);
+                    float alpha = tc.a * tw * (1.0 - uFade * edge) * (0.7 + 0.3 * ember);
+                    gl_FragColor = vec4(col, alpha);
+                }
+            `;
+
+            function makeParticleMat() {
+                return new THREE.ShaderMaterial({
+                    vertexShader: particleVS,
+                    fragmentShader: particleFS,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false,
+                    depthTest: true,
+                    uniforms: {
+                        uTime: { value: 0 },
+                        uShimmer: { value: shimmerIntensity },
+                        uFlow: { value: flowSpeed },
+                        uTurbulence: { value: turbulence },
+                        uBurn: { value: 0.75 },
+                        uFade: { value: 0.35 },
+                        uStarGlow: { value: 1.0 },
+                        uTexture: { value: glowTexture }
+                    }
+                });
+            }
+
+            // Background stars
+            function createBgStars() {
+                const g = new THREE.BufferGeometry();
+                const n = 600; // even more stars
+                const p = new Float32Array(n * 3);
+                const c = new Float32Array(n * 3);
+                const s = new Float32Array(n);
+                const t = new Float32Array(n);
+                for (let i = 0; i < n; i++) {
+                    p[i * 3] = (Math.random() - 0.5) * 60;
+                    p[i * 3 + 1] = (Math.random() - 0.5) * 40;
+                    p[i * 3 + 2] = (Math.random() - 0.5) * 40 - 10;
+                    const col = new THREE.Color().setHSL(Math.random() * 0.2 + 0.55, 0.5, 0.5 + Math.random() * 0.5);
+                    c[i * 3] = col.r; c[i * 3 + 1] = col.g; c[i * 3 + 2] = col.b;
+                    s[i] = Math.random() * 3.0 + 1.2;
+                    t[i] = Math.random() * Math.PI * 2;
+                }
+                g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+                g.setAttribute('aColor', new THREE.BufferAttribute(c, 3));
+                g.setAttribute('aSize', new THREE.BufferAttribute(s, 1));
+                g.setAttribute('aTwinkle', new THREE.BufferAttribute(t, 1));
+                return new THREE.Points(g, makeParticleMat());
+            }
+            const bgStars = createBgStars();
+            bgStars.name = 'bgStars';
+            scene.add(bgStars);
+
+            // Skeleton
+            const skelDef = {
+                root: { name: 'Root', parent: null, pos: [0, 0.5, 0], color: 0xfbbf24 },
+                spine: { name: 'Spine', parent: 'root', pos: [0, 0.5, 0], color: 0xf59e0b },
+                chest: { name: 'Chest', parent: 'spine', pos: [0, 0.5, 0], color: 0xf97316 },
+                neck: { name: 'Neck', parent: 'chest', pos: [0, 0.35, 0], color: 0xef4444 },
+                head: { name: 'Head', parent: 'neck', pos: [0, 0.3, 0], color: 0xec4899 },
+                lShoulder: { name: 'LShldr', parent: 'chest', pos: [-0.4, 0.1, 0], color: 0x8b5cf6 },
+                lElbow: { name: 'LElbow', parent: 'lShoulder', pos: [-0.35, -0.15, 0], color: 0x7c3aed },
+                lWrist: { name: 'LWrist', parent: 'lElbow', pos: [-0.3, -0.15, 0], color: 0x6d28d9 },
+                rShoulder: { name: 'RShldr', parent: 'chest', pos: [0.4, 0.1, 0], color: 0x06b6d4 },
+                rElbow: { name: 'RElbow', parent: 'rShoulder', pos: [0.35, -0.15, 0], color: 0x0891b2 },
+                rWrist: { name: 'RWrist', parent: 'rElbow', pos: [0.3, -0.15, 0], color: 0x0e7490 },
+                lHip: { name: 'LHip', parent: 'root', pos: [-0.22, -0.1, 0], color: 0x34d399 },
+                lKnee: { name: 'LKnee', parent: 'lHip', pos: [0, -0.4, 0], color: 0x10b981 },
+                lAnkle: { name: 'LAnkle', parent: 'lKnee', pos: [0, -0.35, 0], color: 0x059669 },
+                rHip: { name: 'RHip', parent: 'root', pos: [0.22, -0.1, 0], color: 0xfbbf24 },
+                rKnee: { name: 'RKnee', parent: 'rHip', pos: [0, -0.4, 0], color: 0xf59e0b },
+                rAnkle: { name: 'RAnkle', parent: 'rKnee', pos: [0, -0.35, 0], color: 0xd97706 },
+            };
+            let joints = {};
+            let jointMeshes = {};
+            let boneLines = {};
+            let jointGroup = new THREE.Group();
+            jointGroup.name = 'skeleton';
+            jointGroup.visible = false;
+            scene.add(jointGroup);
+            let labelDivs = {};
+
+            function buildSkeleton() {
+                while (jointGroup.children.length > 0) {
+                    const c = jointGroup.children[0];
+                    if (c.geometry) c.geometry.dispose();
+                    if (c.material) c.material.dispose();
+                    jointGroup.remove(c);
+                }
+                joints = {}; jointMeshes = {}; boneLines = {}; labelDivs = {};
+                document.getElementById('joint-labels').innerHTML = '';
+                for (const [id, d] of Object.entries(skelDef)) {
+                    const g = new THREE.SphereGeometry(0.07, 10, 10);
+                    const m = new THREE.MeshStandardMaterial({ color: d.color, emissive: d.color, emissiveIntensity: 0.6, roughness: 0.2, metalness: 0.5 });
+                    const mesh = new THREE.Mesh(g, m);
+                    mesh.userData.jointId = id;
+                    mesh.position.set(d.pos[0], d.pos[1], d.pos[2]);
+                    mesh.name = 'j_' + id;
+                    jointGroup.add(mesh);
+                    joints[id] = { ...d, localPos: new THREE.Vector3(d.pos[0], d.pos[1], d.pos[2]) };
+                    jointMeshes[id] = mesh;
+                    const div = document.createElement('div');
+                    div.className = 'joint-label';
+                    div.textContent = d.name;
+                    div.style.cssText = 'position:absolute;color:#fff;font-size:0.45rem;font-weight:700;text-shadow:0 0 8px rgba(139,92,246,0.9);pointer-events:none;transform:translate(-50%,-50%);letter-spacing:0.2px;display:none;';
+                    document.getElementById('joint-labels').appendChild(div);
+                    labelDivs[id] = div;
+                }
+                for (const [id, d] of Object.entries(skelDef)) {
+                    if (!d.parent) continue;
+                    const lg = new THREE.BufferGeometry();
+                    const lm = new THREE.LineBasicMaterial({ color: d.color, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
+                    const lp = new Float32Array(6);
+                    lg.setAttribute('position', new THREE.BufferAttribute(lp, 3));
+                    const line = new THREE.Line(lg, lm);
+                    line.userData.boneId = id;
+                    line.userData.parentId = d.parent;
+                    jointGroup.add(line);
+                    boneLines[id] = line;
+                }
+                computeWorldPositions();
+                updateBoneLines();
+                updateJointLabels();
+            }
+            function computeWorldPositions() {
+                for (const id of Object.keys(skelDef)) {
+                    const d = skelDef[id];
+                    if (!d.parent) joints[id].worldPos = joints[id].localPos.clone();
+                    else joints[id].worldPos = joints[d.parent].worldPos.clone().add(joints[id].localPos);
+                    jointMeshes[id].position.copy(joints[id].worldPos);
+                }
+            }
+            function updateBoneLines() {
+                for (const id of Object.keys(boneLines)) {
+                    const line = boneLines[id];
+                    const pp = joints[line.userData.parentId].worldPos;
+                    const cp = joints[id].worldPos;
+                    const arr = line.geometry.attributes.position.array;
+                    arr[0] = pp.x; arr[1] = pp.y; arr[2] = pp.z;
+                    arr[3] = cp.x; arr[4] = cp.y; arr[5] = cp.z;
+                    line.geometry.attributes.position.needsUpdate = true;
+                }
+            }
+            function updateJointLabels() {
+                const show = skeletonFadeCurrent > 0.1 && jointGroup.visible;
+                for (const id of Object.keys(joints)) {
+                    const wp = joints[id].worldPos;
+                    const sp = wp.clone().project(camera);
+                    const div = labelDivs[id];
+                    if (sp.z > 1 || sp.z < -1 || !show) div.style.display = 'none';
+                    else {
+                        div.style.display = 'block';
+                        div.style.left = ((sp.x * 0.5 + 0.5) * container.clientWidth) + 'px';
+                        div.style.top = ((-sp.y * 0.5 + 0.5) * container.clientHeight) + 'px';
+                        div.style.opacity = skeletonFadeCurrent;
+                    }
+                }
+            }
+            function getJointAtScreen(x, y) {
+                if (!jointGroup.visible || skeletonFadeCurrent < 0.3) return null;
+                const rc = new THREE.Raycaster();
+                const m = new THREE.Vector2((x / container.clientWidth) * 2 - 1, -(y / container.clientHeight) * 2 + 1);
+                rc.setFromCamera(m, camera);
+                const ints = rc.intersectObjects(Object.values(jointMeshes), false);
+                if (ints.length > 0) return ints[0].object.userData.jointId;
+                return null;
+            }
+            function getDragPlane(wp) {
+                const cd = camera.getWorldDirection(new THREE.Vector3());
+                const n = cd.clone().negate();
+                return new THREE.Plane().setFromNormalAndCoplanarPoint(n, wp);
+            }
+            function getPointOnPlane(cx, cy, plane) {
+                const rc = new THREE.Raycaster();
+                const m = new THREE.Vector2((cx / container.clientWidth) * 2 - 1, -(cy / container.clientHeight) * 2 + 1);
+                rc.setFromCamera(m, camera);
+                const p = new THREE.Vector3();
+                rc.ray.intersectPlane(plane, p);
+                return p;
+            }
+            function moveJointToWorld(id, wp) {
+                const d = skelDef[id];
+                if (!d.parent) joints[id].localPos.copy(wp);
+                else joints[id].localPos.copy(wp.clone().sub(joints[d.parent].worldPos));
+                computeWorldPositions(); updateBoneLines();
+            }
+            function resetPose() {
+                for (const id of Object.keys(skelDef)) {
+                    const d = skelDef[id];
+                    joints[id].localPos.set(d.pos[0], d.pos[1], d.pos[2]);
+                }
+                computeWorldPositions(); updateBoneLines();
+            }
+            function setSkeletonVisible(vis) {
+                skeletonVisible = vis;
+                skeletonFadeTarget = vis ? 1 : 0;
+                if (vis) jointGroup.visible = true;
+            }
+
+            // Scene items (particle images and text)
+            function spawnImageParticles(img) {
+                const canvas = document.createElement('canvas');
+                const maxDim = 240; // higher resolution
+                const s = Math.min(1, maxDim / Math.max(img.width, img.height));
+                canvas.width = Math.floor(img.width * s);
+                canvas.height = Math.floor(img.height * s);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const idata = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = idata.data;
+                const step = Math.max(1, Math.floor(particleDensity * 0.5));
+                const pos = [], cols = [], szs = [], twk = [];
+                const dw = 7, dh = dw * canvas.height / canvas.width;
+                const cx = (sceneItems.length * 1.3) % 9 - 4;
+                const cy = 1.0 + Math.random() * 1.8;
+                const cz = -1 + sceneItems.length * 0.6;
+                for (let y = 0; y < canvas.height; y += step) {
+                    for (let x = 0; x < canvas.width; x += step) {
+                        const idx = (y * canvas.width + x) * 4;
+                        const a = data[idx + 3];
+                        if (a < 30) continue;
+                        const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+                        const br = (r + g + b) / 3;
+                        if (br < 8) continue;
+                        const px = ((x / canvas.width) - 0.5) * dw + cx;
+                        const py = -((y / canvas.height) - 0.5) * dh + cy;
+                        const pz = cz + (Math.random() - 0.5) * depthSpread * 0.25;
+                        pos.push(px, py, pz);
+                        cols.push(r / 255, g / 255, b / 255);
+                        szs.push(particleSize * (0.6 + br / 255 * 0.7) * (0.7 + Math.random() * 0.6));
+                        twk.push(Math.random() * Math.PI * 2);
+                    }
+                }
+                if (pos.length < 20) { showToast('⚠️', 'Image too dark'); return; }
+                const g = new THREE.BufferGeometry();
+                g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+                g.setAttribute('aColor', new THREE.Float32BufferAttribute(cols, 3));
+                g.setAttribute('aSize', new THREE.Float32BufferAttribute(szs, 1));
+                g.setAttribute('aTwinkle', new THREE.Float32BufferAttribute(twk, 1));
+                const mat = makeParticleMat();
+                const pts = new THREE.Points(g, mat);
+                pts.name = 'item_' + sceneItems.length;
+                pts.userData.isSceneItem = true;
+                pts.userData.type = 'photo';
+                pts.userData.basePos = new THREE.Vector3(cx, cy, cz);
+                pts.userData.effect = { burn: 0.75, fade: 0.35, glow: 1.0, pulse: 1.0 };
+                scene.add(pts);
+                sceneItems.push({ type: 'photo', points: pts, data: { pos: new THREE.Vector3(cx, cy, cz) } });
+                showToast('✨', pos.length / 3 + ' particles (dense)');
+            }
+            function spawnTextParticles(text, fontSize) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 360; canvas.height = 110;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#fff'; ctx.font = 'bold ' + fontSize + 'px sans-serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+                const idata = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = idata.data;
+                const step = Math.max(1, Math.floor(particleDensity * 0.5));
+                const pos = [], cols = [], szs = [], twk = [];
+                const dw = 8, dh = dw * canvas.height / canvas.width;
+                const cx = (sceneItems.length * 1.5) % 6 - 2;
+                const cy = 1.5 + sceneItems.length * 0.5;
+                const cz = -0.5 + sceneItems.length * 0.3;
+                for (let y = 0; y < canvas.height; y += step) {
+                    for (let x = 0; x < canvas.width; x += step) {
+                        const idx = (y * canvas.width + x) * 4;
+                        const br = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+                        if (br < 50) continue;
+                        const px = ((x / canvas.width) - 0.5) * dw + cx + (Math.random() - 0.5) * 1.2;
+                        const py = -((y / canvas.height) - 0.5) * dh + cy + (Math.random() - 0.5) * 1.2;
+                        const pz = cz + (Math.random() - 0.5) * 0.8;
+                        pos.push(px, py, pz);
+                        const hue = (x / canvas.width) * 0.7 + 0.3;
+                        const col = new THREE.Color().setHSL(hue, 0.8, 0.6);
+                        cols.push(col.r, col.g, col.b);
+                        szs.push(particleSize * (0.7 + Math.random() * 0.5));
+                        twk.push(Math.random() * Math.PI * 2);
+                    }
+                }
+                if (pos.length < 8) { showToast('⚠️', 'Text too small'); return; }
+                const g = new THREE.BufferGeometry();
+                g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+                g.setAttribute('aColor', new THREE.Float32BufferAttribute(cols, 3));
+                g.setAttribute('aSize', new THREE.Float32BufferAttribute(szs, 1));
+                g.setAttribute('aTwinkle', new THREE.Float32BufferAttribute(twk, 1));
+                const mat = makeParticleMat();
+                const pts = new THREE.Points(g, mat);
+                pts.name = 'text_' + sceneItems.length;
+                pts.userData.isSceneItem = true;
+                pts.userData.type = 'text';
+                pts.userData.effect = { burn: 0.75, fade: 0.35, glow: 1.0, pulse: 1.0 };
+                scene.add(pts);
+                sceneItems.push({ type: 'text', points: pts, data: {} });
+                showToast('🔤', '"' + text + '" spawned');
+            }
+
+            // Dolphin
+            function createDolphin() {
+                if (dolphinGroup) { scene.remove(dolphinGroup); dolphinGroup.traverse(o=>{if(o.geometry)o.geometry.dispose(); if(o.material)o.material.dispose();}); }
+                dolphinGroup = new THREE.Group();
+                const positions = [], colors = [], sizes = [], twinkles = [];
+                const segments = 80;
+                for (let i = 0; i < segments; i++) {
+                    const t = i / segments;
+                    const angle = t * Math.PI * 2;
+                    const radius = 1.2 * Math.sin(t * Math.PI);
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius * 0.6 + 0.4;
+                    const z = t * 3 - 1.5;
+                    positions.push(x, y, z);
+                    const col = new THREE.Color().setHSL(0.55 + t * 0.3, 0.8, 0.6);
+                    colors.push(col.r, col.g, col.b);
+                    sizes.push(particleSize * (0.8 + Math.random() * 0.5));
+                    twinkles.push(Math.random() * Math.PI * 2);
+                }
+                for (let i = 0; i < 15; i++) {
+                    positions.push(-0.5 + Math.random() * 0.4, 0.5 + Math.random() * 0.4, -1.5 + Math.random() * 0.3);
+                    colors.push(0.2, 0.6, 0.9); sizes.push(particleSize * 0.6); twinkles.push(Math.random() * Math.PI * 2);
+                }
+                for (let i = 0; i < 10; i++) {
+                    positions.push(0.2, 1.2 + Math.random() * 0.4, Math.random() * 3 - 1.5);
+                    colors.push(0.1, 0.4, 0.7); sizes.push(particleSize * 0.5); twinkles.push(Math.random() * Math.PI * 2);
+                }
+                const geo = new THREE.BufferGeometry();
+                geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geo.setAttribute('aColor', new THREE.Float32BufferAttribute(colors, 3));
+                geo.setAttribute('aSize', new THREE.Float32BufferAttribute(sizes, 1));
+                geo.setAttribute('aTwinkle', new THREE.Float32BufferAttribute(twinkles, 1));
+                const mat = makeParticleMat();
+                dolphinParticles = new THREE.Points(geo, mat);
+                dolphinParticles.userData.isDolphin = true;
+                dolphinGroup.add(dolphinParticles);
+                dolphinGroup.position.set(0, 1.5, -2);
+                scene.add(dolphinGroup);
+                dolphinBasePositions = positions.slice();
+            }
+            function removeDolphin() { if (dolphinGroup) { scene.remove(dolphinGroup); dolphinGroup.traverse(o=>{if(o.geometry)o.geometry.dispose(); if(o.material)o.material.dispose();}); dolphinGroup = null; dolphinParticles = null; } }
+
+            // Camera keyframes
+            function addCameraKeyframe(time) {
+                const blendTime = 1.5;
+                camKeyframes.push({ time, camTarget: camTarget.toArray(), camSpherical: { ...camSpherical }, blendTime });
+                camKeyframes.sort((a, b) => a.time - b.time);
+                showToast('🎥', 'Cam key @' + time.toFixed(1) + 's');
+            }
+            function getCameraAtTime(t) {
+                if (camKeyframes.length === 0) return null;
+                if (t <= camKeyframes[0].time) return { target: new THREE.Vector3(...camKeyframes[0].camTarget), spherical: { ...camKeyframes[0].camSpherical }, blendTime: 0 };
+                if (t >= camKeyframes[camKeyframes.length - 1].time) { const k = camKeyframes[camKeyframes.length - 1]; return { target: new THREE.Vector3(...k.camTarget), spherical: { ...k.camSpherical }, blendTime: 0 }; }
+                for (let i = 0; i < camKeyframes.length - 1; i++) {
+                    const k1 = camKeyframes[i], k2 = camKeyframes[i + 1];
+                    if (t >= k1.time && t <= k2.time) {
+                        const blend = k1.blendTime, span = k2.time - k1.time;
+                        if (blend >= span * 0.8) {
+                            const f = (t - k1.time) / span, sf = f * f * (3 - 2 * f);
+                            const target = new THREE.Vector3(k1.camTarget[0] + (k2.camTarget[0] - k1.camTarget[0]) * sf, k1.camTarget[1] + (k2.camTarget[1] - k1.camTarget[1]) * sf, k1.camTarget[2] + (k2.camTarget[2] - k1.camTarget[2]) * sf);
+                            const spherical = { r: k1.camSpherical.r + (k2.camSpherical.r - k1.camSpherical.r) * sf, theta: k1.camSpherical.theta + (k2.camSpherical.theta - k1.camSpherical.theta) * sf, phi: k1.camSpherical.phi + (k2.camSpherical.phi - k1.camSpherical.phi) * sf };
+                            return { target, spherical, blendTime: blend };
+                        } else {
+                            const blendEnd = k1.time + blend;
+                            if (t <= blendEnd) {
+                                const f = (t - k1.time) / blend, sf = f * f * (3 - 2 * f);
+                                const target = new THREE.Vector3(k1.camTarget[0] + (k2.camTarget[0] - k1.camTarget[0]) * sf, k1.camTarget[1] + (k2.camTarget[1] - k1.camTarget[1]) * sf, k1.camTarget[2] + (k2.camTarget[2] - k1.camTarget[2]) * sf);
+                                const spherical = { r: k1.camSpherical.r + (k2.camSpherical.r - k1.camSpherical.r) * sf, theta: k1.camSpherical.theta + (k2.camSpherical.theta - k1.camSpherical.theta) * sf, phi: k1.camSpherical.phi + (k2.camSpherical.phi - k1.camSpherical.phi) * sf };
+                                return { target, spherical, blendTime: blend };
+                            } else {
+                                return { target: new THREE.Vector3(...k2.camTarget), spherical: { ...k2.camSpherical }, blendTime: 0 };
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+
+            // Joystick
+            function initJoystickCanvas() {
+                const c = joyCanvas;
+                const wrap = joySphereWrap;
+                c.width = wrap.clientWidth || 140; c.height = wrap.clientHeight || 140;
+                const ctx = c.getContext('2d');
+                const cx = c.width / 2, cy = c.height / 2, R = c.width / 2 - 6;
+                function draw(angle, radiusPct) {
+                    ctx.clearRect(0, 0, c.width, c.height);
+                    const grad = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.3, 0, cx, cy, R);
+                    grad.addColorStop(0, 'rgba(139,92,246,0.35)'); grad.addColorStop(0.6, 'rgba(6,182,212,0.15)'); grad.addColorStop(1, 'rgba(0,0,0,0.3)');
+                    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = grad; ctx.fill();
+                    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 2; ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(cx - R * 0.7, cy); ctx.lineTo(cx + R * 0.7, cy); ctx.moveTo(cx, cy - R * 0.7); ctx.lineTo(cx, cy + R * 0.7); ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1; ctx.stroke();
+                    const jx = cx + Math.cos(angle) * radiusPct * R * 0.85, jy = cy + Math.sin(angle) * radiusPct * R * 0.85;
+                    ctx.beginPath(); ctx.arc(jx, jy, 12, 0, Math.PI * 2);
+                    const jg = ctx.createRadialGradient(jx - 3, jy - 3, 0, jx, jy, 12); jg.addColorStop(0, '#fff'); jg.addColorStop(0.5, '#8b5cf6'); jg.addColorStop(1, '#06b6d4');
+                    ctx.fillStyle = jg; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+                    const tx = cx + Math.cos(angle) * R * 0.9, ty = cy + Math.sin(angle) * R * 0.9;
+                    ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fill();
+                }
+                let joyAngle = Math.PI / 2, joyRadius = 0.3, dragging = false;
+                function setParamFromJoystick() {
+                    const paramRanges = { size: [0.2, 8, 0.1], density: [1, 25, 1], depth: [0, 40, 0.5], shimmer: [0, 1, 0.01], flow: [0, 5, 0.1], turbulence: [0, 5, 0.1], audio: [0.1, 5, 0.1] };
+                    const pr = paramRanges[currentJoyParam]; if (!pr) return;
+                    const range = pr[1] - pr[0], norm = joyRadius * 2;
+                    let val = pr[0] + norm * range; val = Math.round(val / pr[2]) * pr[2]; val = Math.max(pr[0], Math.min(pr[1], val));
+                    const angleNorm = (joyAngle + Math.PI) / (Math.PI * 2);
+                    val = pr[0] + ((angleNorm * 0.5 + norm * 0.5) % 1) * range; val = Math.round(val / pr[2]) * pr[2]; val = Math.max(pr[0], Math.min(pr[1], val));
+                    switch (currentJoyParam) { case 'size': particleSize = val; break; case 'density': particleDensity = val; break; case 'depth': depthSpread = val; break; case 'shimmer': shimmerIntensity = val; break; case 'flow': flowSpeed = val; break; case 'turbulence': turbulence = val; break; case 'audio': audioSensitivity = val; break; }
+                    updateParamDisplay();
+                }
+                function updateParamDisplay() {
+                    const names = { size: 'Size', density: 'Density', depth: 'Depth', shimmer: 'Shimmer', flow: 'Flow', turbulence: 'Turbulence', audio: 'Audio Sens' };
+                    joyParamName.textContent = names[currentJoyParam] || currentJoyParam;
+                    const valMap = { size: particleSize, density: particleDensity, depth: depthSpread, shimmer: shimmerIntensity, flow: flowSpeed, turbulence: turbulence, audio: audioSensitivity };
+                    const v = valMap[currentJoyParam] ?? 0;
+                    joyParamVal.textContent = typeof v === 'number' ? v.toFixed(2) : v;
+                    directNumInput.value = v.toFixed(2);
+                }
+                function onPointerDown(e) {
+                    dragging = true;
+                    const rect = c.getBoundingClientRect();
+                    const px = (e.clientX ?? e.touches[0].clientX) - rect.left, py = (e.clientY ?? e.touches[0].clientY) - rect.top;
+                    const dx = px - cx, dy = py - cy;
+                    joyAngle = Math.atan2(dy, dx); joyRadius = Math.min(0.5, Math.sqrt(dx * dx + dy * dy) / R);
+                    setParamFromJoystick(); draw(joyAngle, joyRadius);
+                }
+                function onPointerMove(e) {
+                    if (!dragging) return;
+                    const rect = c.getBoundingClientRect();
+                    const px = (e.clientX ?? e.touches[0].clientX) - rect.left, py = (e.clientY ?? e.touches[0].clientY) - rect.top;
+                    const dx = px - cx, dy = py - cy;
+                    joyAngle = Math.atan2(dy, dx); joyRadius = Math.min(0.5, Math.sqrt(dx * dx + dy * dy) / R);
+                    setParamFromJoystick(); draw(joyAngle, joyRadius);
+                }
+                function onPointerUp() { dragging = false; draw(joyAngle, joyRadius); }
+                c.addEventListener('touchstart', e => { e.preventDefault(); onPointerDown(e); }, { passive: false });
+                c.addEventListener('touchmove', e => { e.preventDefault(); onPointerMove(e); }, { passive: false });
+                c.addEventListener('touchend', onPointerUp, { passive: true });
+                c.addEventListener('mousedown', onPointerDown);
+                window.addEventListener('mousemove', onPointerMove);
+                window.addEventListener('mouseup', onPointerUp);
+                c.addEventListener('wheel', e => { e.preventDefault(); const delta = e.deltaY > 0 ? -0.04 : 0.04; joyRadius = Math.max(0.05, Math.min(0.5, joyRadius + delta)); setParamFromJoystick(); draw(joyAngle, joyRadius); }, { passive: false });
+                draw(joyAngle, joyRadius); updateParamDisplay();
+                const ro = new ResizeObserver(() => { c.width = wrap.clientWidth || 140; c.height = wrap.clientHeight || 140; draw(joyAngle, joyRadius); });
+                ro.observe(wrap);
+            }
+            function setJoyParam(param) {
+                currentJoyParam = param;
+                document.querySelectorAll('.joy-preset').forEach(b => { b.style.borderColor = b.dataset.param === param ? 'var(--accent)' : 'var(--border2)'; b.style.background = b.dataset.param === param ? 'rgba(139,92,246,0.3)' : 'var(--panel2)'; });
+                const names = { size: 'Size', density: 'Density', depth: 'Depth', shimmer: 'Shimmer', flow: 'Flow', turbulence: 'Turbulence', audio: 'Audio Sens' };
+                joyParamName.textContent = names[param] || param;
+                const valMap = { size: particleSize, density: particleDensity, depth: depthSpread, shimmer: shimmerIntensity, flow: flowSpeed, turbulence: turbulence, audio: audioSensitivity };
+                const v = valMap[param] ?? 0;
+                joyParamVal.textContent = typeof v === 'number' ? v.toFixed(2) : v;
+                directNumInput.value = v.toFixed(2);
+            }
+
+            // Audio
+            function initAudio() { if (!audioContext) { audioContext = new (window.AudioContext || window.webkitAudioContext)(); audioAnalyser = audioContext.createAnalyser(); audioAnalyser.fftSize = 128; audioAnalyser.smoothingTimeConstant = 0.6; audioDataArray = new Uint8Array(audioAnalyser.frequencyBinCount); } }
+            function startMic() { initAudio(); navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => { if (audioSource) audioSource.disconnect(); audioSource = audioContext.createMediaStreamSource(stream); audioSource.connect(audioAnalyser); audioActive = true; showToast('🎤', 'Mic active'); }).catch(() => showToast('⚠️', 'Mic denied')); }
+            function loadAudioFile(file) { initAudio(); if (audioContext.state === 'suspended') audioContext.resume(); const url = URL.createObjectURL(file); const audio = new Audio(url); audio.loop = true; const src = audioContext.createMediaElementSource(audio); src.connect(audioAnalyser); audioAnalyser.connect(audioContext.destination); audio.play().catch(() => showToast('⚠️', 'Play failed')); audioSource = src; audioActive = true; showToast('🎵', file.name.slice(0, 20)); }
+            function getAudioLevel() { if (!audioActive || !audioAnalyser) return 0; audioAnalyser.getByteFrequencyData(audioDataArray); let sum = 0; for (let i = 0; i < audioDataArray.length; i++) sum += audioDataArray[i]; return (sum / audioDataArray.length) / 255; }
+            function getAudioBands() { if (!audioActive || !audioAnalyser) return []; audioAnalyser.getByteFrequencyData(audioDataArray); const bands = []; const n = 12; const per = Math.floor(audioDataArray.length / n); for (let i = 0; i < n; i++) { let s = 0; for (let j = i * per; j < (i + 1) * per; j++) s += audioDataArray[j]; bands.push(s / per / 255); } return bands; }
+
+            // Selection & Movement
+            function selectSceneItemAt(x, y) {
+                const rect = renderer.domElement.getBoundingClientRect();
+                const ndc = new THREE.Vector2(((x - rect.left) / rect.width) * 2 - 1, -(((y - rect.top) / rect.height) * 2 - 1));
+                const rc = new THREE.Raycaster(); rc.params.Points.threshold = 0.3; rc.setFromCamera(ndc, camera);
+                const hits = rc.intersectObjects(sceneItems.map(i => i.points).filter(Boolean), false);
+                if (!hits.length) return null;
+                const pts = hits[0].object;
+                selectedItem = sceneItems.find(i => i.points === pts) || null;
+                if (selectedItem) {
+                    selectedItem.effect = selectedItem.effect || { burn: 0.75, fade: 0.35, glow: 1.0, pulse: 1.0 };
+                    editorTitle.textContent = '✨ ' + (selectedItem.type || 'Particle') + ' Focus';
+                    editorSub.textContent = 'Focused • ' + (pts.geometry.attributes.position.count) + ' particles';
+                    pts.userData.focused = true;
+                    updateJoystickVisibility(); setJoyParam(currentJoyParam);
+                    showToast('🎯', 'Object focused');
+                }
+                return selectedItem;
+            }
+            function setSelectedFilter(filter) {
+                if (!selectedItem) { showToast('⚠️', 'Select an object first'); return; }
+                selectedItem.effect = selectedItem.effect || { burn: 0.75, fade: 0.35, glow: 1.0, pulse: 1.0 };
+                const e = selectedItem.effect;
+                if (filter === 'burn') e.burn = e.burn > 0.8 ? 0.15 : 0.95;
+                if (filter === 'fade') e.fade = e.fade > 0.5 ? 0.05 : 0.85;
+                if (filter === 'glow') e.glow = e.glow > 1.2 ? 0.35 : 1.8;
+                if (filter === 'pulse') e.pulse = e.pulse > 1.2 ? 0.5 : 1.8;
+                document.querySelectorAll('[data-filter]').forEach(b => b.classList.toggle('active', b.dataset.filter === filter));
+            }
+            function setParticleShape(shape) {
+                const shapes = ['circle', 'star', 'diamond', 'heart', 'triangle', 'hexagon'];
+                shapeIndex = Math.max(0, shapes.indexOf(shape));
+                particleShape = shape;
+                glowTexture = createGlowTexture(shape);
+                scene.traverse(o => { if (o.material && o.material.uniforms && o.material.uniforms.uTexture) o.material.uniforms.uTexture.value = glowTexture; });
+                document.querySelectorAll('[data-shape]').forEach(b => b.classList.toggle('active', b.dataset.shape === shape));
+                showToast('✨', shape + ' particles');
+            }
+
+            // UI events
+            function updateJoystickVisibility() {
+                const show = true;
+                joyPanel.classList.toggle('hidden', !show);
+                if (show && !joyCanvas.__ready) { initJoystickCanvas(); joyCanvas.__ready = true; }
+            }
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    mode = btn.dataset.mode;
+                    timelineBar.style.display = (mode === 'animate' || mode === 'cam') ? 'flex' : 'none';
+                    if (mode === 'pose') { skeletonToggle = true; setSkeletonVisible(true); }
+                    else if (!skeletonToggle) setSkeletonVisible(false);
+                    if (mode === 'game') createDolphin(); else removeDolphin();
+                    updateJoystickVisibility();
+                    showToast(mode === 'view' ? '🔄' : mode === 'pose' ? '🦴' : mode === 'animate' ? '🎬' : mode === 'audio' ? '🔊' : mode === 'cam' ? '📷' : '🎮', mode + ' mode');
+                });
+            });
+            const directFileInput = document.getElementById('directFileInput');
+            document.getElementById('btnUpload').addEventListener('click', () => directFileInput.click());
+            async function importMediaFile(file) {
+                if (!file) return;
+                const name = (file.name || '').toLowerCase();
+                const type = (file.type || '').toLowerCase();
+                const imageExt = /\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|heif|tif?f)$/i;
+                const videoExt = /\.(mp4|webm|mov|m4v|avi|mkv|ogv)$/i;
+                const audioExt = /\.(mp3|m4a|wav|ogg|oga|aac|flac|opus)$/i;
+                if (type.startsWith('audio/') || audioExt.test(name)) { try { loadAudioFile(file); } catch (err) { showToast('⚠️', 'Audio format not supported'); } return; }
+                if (type.startsWith('video/') || videoExt.test(name)) {
+                    const url = URL.createObjectURL(file); const video = document.createElement('video');
+                    video.muted = true; video.playsInline = true; video.preload = 'auto';
+                    video.onloadeddata = () => {
+                        try {
+                            const w = video.videoWidth || 640, h = video.videoHeight || 360;
+                            const canvas = document.createElement('canvas'); const scale = Math.min(1, 320 / Math.max(w, h));
+                            canvas.width = Math.max(2, Math.floor(w * scale)); canvas.height = Math.max(2, Math.floor(h * scale));
+                            const ctx = canvas.getContext('2d', { willReadFrequently: true }); ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            const img = new Image(); img.onload = () => { spawnImageParticles(img); URL.revokeObjectURL(url); };
+                            img.onerror = () => { URL.revokeObjectURL(url); showToast('⚠️', 'Video frame could not be converted'); };
+                            img.src = canvas.toDataURL('image/png');
+                        } catch (err) { URL.revokeObjectURL(url); showToast('⚠️', 'Video cannot be converted'); }
+                    };
+                    video.onerror = () => { URL.revokeObjectURL(url); showToast('⚠️', 'Video format not supported'); };
+                    video.src = url; return;
+                }
+                if (type.startsWith('image/') || imageExt.test(name)) {
+                    const url = URL.createObjectURL(file); try {
+                        const img = new Image(); img.onload = () => { spawnImageParticles(img); URL.revokeObjectURL(url); };
+                        img.onerror = () => { URL.revokeObjectURL(url); showToast('⚠️', 'Image format not supported'); };
+                        img.src = url;
+                    } catch (err) { URL.revokeObjectURL(url); showToast('⚠️', 'Image could not be opened'); }
+                    return;
+                }
+                showToast('⚠️', 'Media format not supported');
+            }
+            directFileInput.addEventListener('change', e => { const file = e.target.files && e.target.files[0]; e.target.value = ''; if (file) importMediaFile(file); });
+            document.getElementById('btnText').addEventListener('click', () => spawnTextParticles('STARDUST', 32));
+            document.getElementById('btnAudio').addEventListener('click', () => { startMic(); showToast('🎤', 'Mic mode'); });
+            document.getElementById('btnSave').addEventListener('click', () => { const data = { v: 4, keyframes, camKeyframes, currentTime, particleSize, particleDensity, depthSpread, shimmerIntensity, flowSpeed, turbulence, audioSensitivity, camSpherical, camTarget: camTarget.toArray(), itemCount: sceneItems.length, selectedEffects: sceneItems.map(i => i.effect || null), particleShape }; try { localStorage.setItem('stardust3d_pro4', JSON.stringify(data)); showToast('💾', 'Saved!'); } catch (e) { showToast('⚠️', 'Save failed'); } });
+            document.getElementById('btnLoad').addEventListener('click', () => { try { const s = localStorage.getItem('stardust3d_pro4'); if (!s) { showToast('⚠️', 'No save'); return; } const d = JSON.parse(s); keyframes = d.keyframes || []; camKeyframes = d.camKeyframes || []; currentTime = d.currentTime || 0; particleSize = d.particleSize || 2.5; particleDensity = d.particleDensity || 6; depthSpread = d.depthSpread || 8; shimmerIntensity = d.shimmerIntensity || 0.6; flowSpeed = d.flowSpeed || 1.2; turbulence = d.turbulence || 0.5; audioSensitivity = d.audioSensitivity || 1.5; particleShape = d.particleShape || 'star'; shapeIndex = ['circle','star','diamond','heart','triangle','hexagon'].indexOf(particleShape); (d.selectedEffects || []).forEach((fx, i) => { if (sceneItems[i]) sceneItems[i].effect = fx; }); setParticleShape(particleShape); camSpherical = d.camSpherical || { r: 16, theta: 0.4, phi: 1.15 }; camTarget.fromArray(d.camTarget || [0, 1.2, 0]); updateCameraFromSpherical(); tlSlider.max = keyframes.length > 0 ? Math.max(...keyframes.map(k => k.time), 10) : 10; tlSlider.value = currentTime; tlTime.textContent = currentTime.toFixed(1) + 's'; showToast('📂', 'Loaded!'); } catch (e) { showToast('⚠️', 'Load error'); } });
+            document.getElementById('btnExport').addEventListener('click', () => { const d = { items: sceneItems.map(si => ({ type: si.type, positions: si.points ? Array.from(si.points.geometry.attributes.position.array) : [], colors: si.points ? Array.from(si.points.geometry.attributes.aColor.array) : [], sizes: si.points ? Array.from(si.points.geometry.attributes.aSize.array) : [], twinkles: si.points ? Array.from(si.points.geometry.attributes.aTwinkle.array) : [] })), keyframes, camKeyframes, camTarget: camTarget.toArray(), camSpherical, shimmer: shimmerIntensity, flow: flowSpeed }; const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>✨ Stardust Scene</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0a18;overflow:hidden;width:100%;height:100%;position:fixed;touch-action:none;user-select:none}canvas{display:block;width:100%!important;height:100%!important}</style></head><body><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script><script>const D=${JSON.stringify(d)};(function(){const s=new THREE.Scene();s.fog=new THREE.FogExp2(0x0a0a18,0.003);const c=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,200);const r=new THREE.WebGLRenderer({antialias:true});r.setSize(innerWidth,innerHeight);r.setPixelRatio(Math.min(devicePixelRatio,2));r.setClearColor(0x0a0a18,1);document.body.appendChild(r.domElement);s.add(new THREE.AmbientLight(0x445566,3));const p1=new THREE.PointLight(0x8b5cf6,2.8,50);p1.position.set(-3,4,4);s.add(p1);const p2=new THREE.PointLight(0x06b6d4,2.5,45);p2.position.set(3,-1,3);s.add(p2);function gt(){const cv=document.createElement('canvas');cv.width=64;cv.height=64;const ctx=cv.getContext('2d');const g=ctx.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.2,'rgba(255,255,255,0.85)');g.addColorStop(0.5,'rgba(255,255,255,0.4)');g.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=g;ctx.fillRect(0,0,64,64);return new THREE.CanvasTexture(cv);}const tex=gt();function mm(){return new THREE.ShaderMaterial({vertexShader:\`attribute float aSize;attribute vec3 aColor;attribute float aTwinkle;varying vec3 vColor;varying float vTwinkle;uniform float uTime;uniform float uShimmer;uniform float uFlow;void main(){vColor=aColor;vTwinkle=aTwinkle;vec3 pos=position;float w=sin(pos.x*0.7+uTime*uFlow)*0.25+cos(pos.y*0.6+uTime*uFlow*1.1)*0.2;pos.y+=w*0.12;vec4 mv=modelViewMatrix*vec4(pos,1.0);gl_PointSize=aSize*(160.0/length(mv.xyz));gl_Position=projectionMatrix*mv;}\`,fragmentShader:\`varying vec3 vColor;varying float vTwinkle;uniform float uTime;uniform float uShimmer;uniform sampler2D uTexture;void main(){vec4 tc=texture2D(uTexture,gl_PointCoord);float d=length(gl_PointCoord-vec2(0.5));if(d>0.5)discard;float tw=0.6+0.4*sin(uTime*2.3+vTwinkle*43.0);float sh=0.5+0.5*sin(uTime*1.8+vTwinkle*29.0+d*15.0);vec3 col=vColor*(1.0+(sh-0.5)*uShimmer*2.2);gl_FragColor=vec4(col,tc.a*tw);}\`,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,uniforms:{uTime:{value:0},uShimmer:{value:D.shimmer},uFlow:{value:D.flow},uTexture:{value:tex}}});}for(const it of D.items){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(it.positions,3));g.setAttribute('aColor',new THREE.Float32BufferAttribute(it.colors,3));g.setAttribute('aSize',new THREE.Float32BufferAttribute(it.sizes,1));g.setAttribute('aTwinkle',new THREE.Float32BufferAttribute(it.twinkles,1));s.add(new THREE.Points(g,mm()));}const ct=new THREE.Vector3(...(D.camTarget||[0,1.2,0]));const cs=D.camSpherical||{r:16,theta:0.4,phi:1.15};function uc(){const sp=cs,si=Math.sin(sp.phi);c.position.set(ct.x+sp.r*si*Math.sin(sp.theta),ct.y+sp.r*Math.cos(sp.phi),ct.z+sp.r*si*Math.cos(sp.theta));c.lookAt(ct);}uc();const ck=D.camKeyframes||[];const kf=D.keyframes||[];let t=0,last=Date.now();function gct(tt){if(!ck.length)return null;if(tt<=ck[0].time)return{target:new THREE.Vector3(...ck[0].camTarget),spherical:{...ck[0].camSpherical}};if(tt>=ck[ck.length-1].time)return{target:new THREE.Vector3(...ck[ck.length-1].camTarget),spherical:{...ck[ck.length-1].camSpherical}};for(let i=0;i<ck.length-1;i++){const k1=ck[i],k2=ck[i+1];if(tt>=k1.time&&tt<=k2.time){const f=(tt-k1.time)/(k2.time-k1.time);const sf=f*f*(3-2*f);return{target:new THREE.Vector3(k1.camTarget[0]+(k2.camTarget[0]-k1.camTarget[0])*sf,k1.camTarget[1]+(k2.camTarget[1]-k1.camTarget[1])*sf,k1.camTarget[2]+(k2.camTarget[2]-k1.camTarget[2])*sf),spherical:{r:k1.camSpherical.r+(k2.camSpherical.r-k1.camSpherical.r)*sf,theta:k1.camSpherical.theta+(k2.camSpherical.theta-k1.camSpherical.theta)*sf,phi:k1.camSpherical.phi+(k2.camSpherical.phi-k1.camSpherical.phi)*sf}};}}return null;}function anim(){requestAnimationFrame(anim);const now=Date.now(),dt=(now-last)/1000;last=now;if(ck.length>0){t+=dt;const mx=Math.max(...ck.map(k=>k.time));if(t>mx)t=0;const cp=gct(t);if(cp){ct.copy(cp.target);cs.r=cp.spherical.r;cs.theta=cp.spherical.theta;cs.phi=cp.spherical.phi;uc();}}const u=now*0.001;s.traverse(o=>{if(o.material&&o.material.uniforms&&o.material.uniforms.uTime)o.material.uniforms.uTime.value=u;});r.render(s,c);}let dragging=false,lx=0,ly=0;addEventListener('touchstart',e=>{if(e.touches.length===1){dragging=true;lx=e.touches[0].clientX;ly=e.touches[0].clientY;}e.preventDefault();},{passive:false});addEventListener('touchmove',e=>{if(dragging&&e.touches.length===1){const dx=e.touches[0].clientX-lx,dy=e.touches[0].clientY-ly;lx=e.touches[0].clientX;ly=e.touches[0].clientY;cs.theta-=dx*0.008;cs.phi=Math.max(0.15,Math.min(Math.PI-0.15,cs.phi+dy*0.008));uc();}e.preventDefault();},{passive:false});addEventListener('touchend',()=>{dragging=false;},{passive:true});addEventListener('mousedown',e=>{dragging=true;lx=e.clientX;ly=e.clientY;});addEventListener('mousemove',e=>{if(dragging){const dx=e.clientX-lx,dy=e.clientY-ly;lx=e.clientX;ly=e.clientY;cs.theta-=dx*0.008;cs.phi=Math.max(0.15,Math.min(Math.PI-0.15,cs.phi+dy*0.008));uc();}});addEventListener('mouseup',()=>{dragging=false;});addEventListener('wheel',e=>{cs.r=Math.max(3,Math.min(50,cs.r*(e.deltaY>0?1.1:0.9)));uc();e.preventDefault();},{passive:false});anim();addEventListener('resize',()=>{c.aspect=innerWidth/innerHeight;c.updateProjectionMatrix();r.setSize(innerWidth,innerHeight);});})();<\/script></body></html>`; const blob = new Blob([html], { type: 'text/html' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'stardust_scene.html'; a.click(); URL.revokeObjectURL(url); showToast('🌐', 'Exported!'); });
+            document.getElementById('btnJoySettings').addEventListener('click', () => { joyPanel.classList.toggle('hidden'); if (!joyPanel.classList.contains('hidden')) initJoystickCanvas(); });
+            document.getElementById('btnCamKey').addEventListener('click', () => addCameraKeyframe(currentTime));
+            joyPresets.addEventListener('click', e => { const btn = e.target.closest('.joy-preset'); if (btn) setJoyParam(btn.dataset.param); });
+            document.querySelectorAll('[data-filter]').forEach(btn => btn.addEventListener('click', () => setSelectedFilter(btn.dataset.filter)));
+            document.querySelectorAll('[data-shape]').forEach(btn => btn.addEventListener('click', () => setParticleShape(btn.dataset.shape)));
+            document.getElementById('btnSkeletonToggle').addEventListener('click', () => { skeletonToggle = !skeletonToggle; setSkeletonVisible(skeletonToggle); showToast(skeletonToggle ? '🦴' : '✨', skeletonToggle ? 'Skeleton shown' : 'Skeleton hidden'); });
+            document.getElementById('btnSelectMode').addEventListener('click', () => { selectModeActive = !selectModeActive; moveSelectedActive = false; document.getElementById('btnSelectMode').classList.toggle('active', selectModeActive); document.getElementById('btnMoveSelected').classList.remove('active'); showToast(selectModeActive ? '🎯' : '🎯', selectModeActive ? 'Select mode ON' : 'Select mode OFF'); });
+            document.getElementById('btnMoveSelected').addEventListener('click', () => { moveSelectedActive = !moveSelectedActive; selectModeActive = false; document.getElementById('btnMoveSelected').classList.toggle('active', moveSelectedActive); document.getElementById('btnSelectMode').classList.remove('active'); showToast(moveSelectedActive ? '↕️' : '↕️', moveSelectedActive ? 'Move mode ON' : 'Move mode OFF'); });
+            document.getElementById('btnCrayMode').addEventListener('click', () => { crayMode = !crayMode; document.getElementById('btnCrayMode').classList.toggle('active', crayMode); showToast('🌈', crayMode ? 'Cray Mode ON' : 'Cray Mode OFF'); });
+            document.getElementById('btnSwapView').addEventListener('click', () => {
+                swapToNormal = !swapToNormal;
+                sceneItems.forEach(item => {
+                    if (item.points) {
+                        if (swapToNormal) {
+                            // Store original points geometry and hide points, show a textured plane
+                            if (!item.normalPlane) {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = 256; canvas.height = 256;
+                                const ctx = canvas.getContext('2d');
+                                ctx.fillStyle = '#333'; ctx.fillRect(0, 0, 256, 256);
+                                ctx.fillStyle = '#fff'; ctx.font = 'bold 30px sans-serif'; ctx.textAlign = 'center';
+                                ctx.fillText('IMAGE', 128, 128);
+                                const tex = new THREE.CanvasTexture(canvas);
+                                const planeGeo = new THREE.PlaneGeometry(5, 5);
+                                const planeMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.9 });
+                                const plane = new THREE.Mesh(planeGeo, planeMat);
+                                plane.position.copy(item.points.position);
+                                plane.userData.isNormalPlane = true;
+                                plane.userData.originalPoints = item.points;
+                                scene.add(plane);
+                                item.normalPlane = plane;
+                            }
+                            item.points.visible = false;
+                        } else {
+                            item.points.visible = true;
+                            if (item.normalPlane) { scene.remove(item.normalPlane); item.normalPlane.geometry.dispose(); item.normalPlane.material.dispose(); item.normalPlane = null; }
+                        }
+                    }
+                });
+                showToast('🔄', swapToNormal ? 'Normal view' : 'Particle view');
+            });
+            directNumInput.addEventListener('change', () => { const val = parseFloat(directNumInput.value); if (isNaN(val)) return; const p = currentJoyParam; switch (p) { case 'size': particleSize = val; break; case 'density': particleDensity = val; break; case 'depth': depthSpread = val; break; case 'shimmer': shimmerIntensity = val; break; case 'flow': flowSpeed = val; break; case 'turbulence': turbulence = val; break; case 'audio': audioSensitivity = val; break; } setJoyParam(p); });
+
+            // Timeline
+            tlSlider.addEventListener('input', () => { currentTime = parseFloat(tlSlider.value); tlTime.textContent = currentTime.toFixed(1) + 's'; const pose = getPoseAtTime(currentTime); if (pose && keyframes.length > 0) applyPose(pose); const camPose = getCameraAtTime(currentTime); if (camPose) { camTarget.copy(camPose.target); camSpherical = { ...camPose.spherical }; updateCameraFromSpherical(); } });
+            document.getElementById('btnTlKey').addEventListener('click', () => { const pose = capturePose(); keyframes.push({ time: currentTime, pose }); keyframes.sort((a, b) => a.time - b.time); tlSlider.max = Math.max(10, ...keyframes.map(k => k.time)); showToast('🔑', 'Pose key @' + currentTime.toFixed(1) + 's'); });
+            document.getElementById('btnTlPlay').addEventListener('click', () => { isPlaying = !isPlaying; document.getElementById('btnTlPlay').textContent = isPlaying ? '⏸️' : '▶️'; });
+            document.getElementById('btnTlClear').addEventListener('click', () => { keyframes = []; camKeyframes = []; tlSlider.max = 10; showToast('🗑️', 'Timeline cleared'); });
+            document.getElementById('btnTlBlend').addEventListener('click', () => { if (camKeyframes.length > 0) { camKeyframes[camKeyframes.length - 1].blendTime = 1.5; showToast('🔄', 'Blend 1.5s'); } });
+
+            function capturePose() { const pose = {}; for (const id of Object.keys(joints)) pose[id] = joints[id].localPos.toArray(); return pose; }
+            function applyPose(pose) { for (const id of Object.keys(pose)) { if (joints[id]) joints[id].localPos.fromArray(pose[id]); } computeWorldPositions(); updateBoneLines(); }
+            function getPoseAtTime(t) { if (keyframes.length === 0) return null; if (t <= keyframes[0].time) return keyframes[0].pose; if (t >= keyframes[keyframes.length - 1].time) return keyframes[keyframes.length - 1].pose; for (let i = 0; i < keyframes.length - 1; i++) { const k1 = keyframes[i], k2 = keyframes[i + 1]; if (t >= k1.time && t <= k2.time) { const f = (t - k1.time) / (k2.time - k1.time); const sf = f * f * (3 - 2 * f); const res = {}; for (const id of Object.keys(k1.pose)) { const p1 = k1.pose[id], p2 = k2.pose[id]; res[id] = [p1[0] + (p2[0] - p1[0]) * sf, p1[1] + (p2[1] - p1[1]) * sf, p1[2] + (p2[2] - p1[2]) * sf]; } return res; } } return keyframes[keyframes.length - 1].pose; }
+            function updateCameraFromSpherical() { const sp = camSpherical, si = Math.sin(sp.phi); camera.position.set(camTarget.x + sp.r * si * Math.sin(sp.theta), camTarget.y + sp.r * Math.cos(sp.phi), camTarget.z + sp.r * si * Math.cos(sp.theta)); camera.lookAt(camTarget); }
+
+            // Touch/mouse
+            function handleTouchStart(e) {
+                e.preventDefault();
+                const touches = e.touches;
+                dragState.touches = Array.from(touches).map(t => ({ x: t.clientX, y: t.clientY, id: t.identifier }));
+                if (touches.length === 1) {
+                    const t = touches[0];
+                    if (mode === 'pose') { const jid = getJointAtScreen(t.clientX, t.clientY); if (jid) { dragState.mode = 'dragJoint'; dragState.jointId = jid; selectedJoint = jid; dragState.plane = getDragPlane(joints[jid].worldPos); highlightJoint(jid, true); return; } }
+                    if (selectModeActive) { const item = selectSceneItemAt(t.clientX, t.clientY); if (item) { dragState.mode = 'none'; return; } }
+                    if (moveSelectedActive && selectedItem) { dragState.mode = 'dragItem'; dragState.dragItem = selectedItem; dragState.dragPlane = getDragPlane(selectedItem.points.position.clone()); dragState.dragOffset = getPointOnPlane(t.clientX, t.clientY, dragState.dragPlane).sub(selectedItem.points.position); return; }
+                    dragState.mode = 'rotate'; dragState.spherical = { ...camSpherical }; dragState.touches = [{ x: t.clientX, y: t.clientY }];
+                } else if (touches.length === 2) { dragState.mode = 'pinch'; const dx = touches[0].clientX - touches[1].clientX; const dy = touches[0].clientY - touches[1].clientY; dragState.startDist = Math.sqrt(dx * dx + dy * dy); dragState.spherical = { ...camSpherical }; }
+            }
+            function handleTouchMove(e) {
+                e.preventDefault();
+                const touches = e.touches;
+                if (dragState.mode === 'rotate' && touches.length === 1) { const dx = touches[0].clientX - dragState.touches[0].x; const dy = touches[0].clientY - dragState.touches[0].y; dragState.touches = [{ x: touches[0].clientX, y: touches[0].clientY }]; camSpherical.theta -= dx * 0.008; camSpherical.phi = Math.max(0.15, Math.min(Math.PI - 0.15, dragState.spherical.phi + dy * 0.008)); updateCameraFromSpherical(); }
+                else if (dragState.mode === 'pinch' && touches.length === 2) { const dx = touches[0].clientX - touches[1].clientX; const dy = touches[0].clientY - touches[1].clientY; const dist = Math.sqrt(dx * dx + dy * dy); const scale = dragState.startDist / dist; camSpherical.r = Math.max(3, Math.min(50, dragState.spherical.r * scale)); updateCameraFromSpherical(); }
+                else if (dragState.mode === 'dragJoint' && touches.length === 1) { const wp = getPointOnPlane(touches[0].clientX, touches[0].clientY, dragState.plane); if (wp) moveJointToWorld(dragState.jointId, wp); }
+                else if (dragState.mode === 'dragItem' && touches.length === 1 && dragState.dragItem) { const wp = getPointOnPlane(touches[0].clientX, touches[0].clientY, dragState.dragPlane); if (wp) { const newPos = wp.sub(dragState.dragOffset); dragState.dragItem.points.position.copy(newPos); dragState.dragItem.data.pos = newPos.clone(); if (dragState.dragItem.normalPlane) dragState.dragItem.normalPlane.position.copy(newPos); } }
+            }
+            function handleTouchEnd() { if (dragState.mode === 'dragJoint') { highlightJoint(dragState.jointId, false); dragState.jointId = null; dragState.plane = null; } if (dragState.mode === 'dragItem') { dragState.dragItem = null; dragState.dragPlane = null; } dragState.mode = 'none'; dragState.touches = []; }
+            function highlightJoint(id, on) { const mesh = jointMeshes[id]; if (!mesh) return; if (on) { mesh.scale.set(1.6, 1.6, 1.6); mesh.material.emissiveIntensity = 2.5; const sp = joints[id].worldPos.clone().project(camera); jointHighlight.style.display = 'block'; jointHighlight.style.left = ((sp.x * 0.5 + 0.5) * container.clientWidth) + 'px'; jointHighlight.style.top = ((-sp.y * 0.5 + 0.5) * container.clientHeight) + 'px'; } else { mesh.scale.set(1, 1, 1); mesh.material.emissiveIntensity = 0.6; jointHighlight.style.display = 'none'; } }
+            function handleMouseDown(e) { if (e.button !== 0) return; if (mode === 'pose') { const jid = getJointAtScreen(e.clientX, e.clientY); if (jid) { dragState.mode = 'dragJoint'; dragState.jointId = jid; selectedJoint = jid; dragState.plane = getDragPlane(joints[jid].worldPos); highlightJoint(jid, true); return; } } if (selectModeActive) { selectSceneItemAt(e.clientX, e.clientY); return; } if (moveSelectedActive && selectedItem) { dragState.mode = 'dragItem'; dragState.dragItem = selectedItem; dragState.dragPlane = getDragPlane(selectedItem.points.position.clone()); dragState.dragOffset = getPointOnPlane(e.clientX, e.clientY, dragState.dragPlane).sub(selectedItem.points.position); return; } dragState.mode = 'rotate'; dragState.spherical = { ...camSpherical }; dragState.touches = [{ x: e.clientX, y: e.clientY }]; }
+            function handleMouseMove(e) { if (dragState.mode === 'rotate') { const dx = e.clientX - dragState.touches[0].x; const dy = e.clientY - dragState.touches[0].y; dragState.touches = [{ x: e.clientX, y: e.clientY }]; camSpherical.theta -= dx * 0.008; camSpherical.phi = Math.max(0.15, Math.min(Math.PI - 0.15, dragState.spherical.phi + dy * 0.008)); updateCameraFromSpherical(); } else if (dragState.mode === 'dragJoint') { const wp = getPointOnPlane(e.clientX, e.clientY, dragState.plane); if (wp) moveJointToWorld(dragState.jointId, wp); } else if (dragState.mode === 'dragItem' && dragState.dragItem) { const wp = getPointOnPlane(e.clientX, e.clientY, dragState.dragPlane); if (wp) { const newPos = wp.sub(dragState.dragOffset); dragState.dragItem.points.position.copy(newPos); dragState.dragItem.data.pos = newPos.clone(); if (dragState.dragItem.normalPlane) dragState.dragItem.normalPlane.position.copy(newPos); } } }
+            function handleMouseUp() { if (dragState.mode === 'dragJoint') { highlightJoint(dragState.jointId, false); dragState.jointId = null; dragState.plane = null; } if (dragState.mode === 'dragItem') { dragState.dragItem = null; dragState.dragPlane = null; } dragState.mode = 'none'; }
+            function handleWheel(e) { e.preventDefault(); camSpherical.r = Math.max(3, Math.min(50, camSpherical.r * (e.deltaY > 0 ? 1.1 : 0.9))); updateCameraFromSpherical(); }
+            renderer.domElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+            renderer.domElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+            renderer.domElement.addEventListener('touchend', handleTouchEnd, { passive: true });
+            renderer.domElement.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+            renderer.domElement.addEventListener('mousedown', handleMouseDown);
+            renderer.domElement.addEventListener('mousemove', handleMouseMove);
+            renderer.domElement.addEventListener('mouseup', handleMouseUp);
+            renderer.domElement.addEventListener('mouseleave', handleMouseUp);
+            renderer.domElement.addEventListener('wheel', handleWheel, { passive: false });
+
+            function showToast(icon, text) { toastIcon.textContent = icon; toastText.textContent = text; toast.classList.add('show'); clearTimeout(toastTimeout); toastTimeout = setTimeout(() => toast.classList.remove('show'), 1800); }
+            function handleResize() { const w = Math.max(1, container.clientWidth || window.innerWidth); const h = Math.max(1, container.clientHeight || window.innerHeight); camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setSize(w, h, false); renderer.domElement.style.width = '100%'; renderer.domElement.style.height = '100%'; if (typeof updateJointLabels === 'function') updateJointLabels(); }
+            window.addEventListener('resize', handleResize);
+            window.addEventListener('orientationchange', () => setTimeout(handleResize, 300));
+
+            function animate() {
+                animationId = requestAnimationFrame(animate);
+                const now = Date.now();
+                const delta = (now - lastFrameTime) / 1000;
+                lastFrameTime = now;
+                const time = now * 0.001;
+                skeletonFadeCurrent += (skeletonFadeTarget - skeletonFadeCurrent) * 0.08;
+                if (skeletonFadeCurrent < 0.005 && skeletonFadeTarget === 0) jointGroup.visible = false;
+                else if (skeletonFadeCurrent > 0.005) jointGroup.visible = true;
+                if (jointGroup.visible) { jointGroup.traverse(o => { if (o.material) { if (o.material.transparent === undefined) o.material.transparent = true; o.material.opacity = skeletonFadeCurrent; if (o.material.emissiveIntensity !== undefined) o.material.emissiveIntensity = 0.6 + skeletonFadeCurrent * 0.8; } }); }
+                updateJointLabels();
+                scene.traverse(o => {
+                    if (o.material && o.material.uniforms) {
+                        const mat = o.material;
+                        if (mat.uniforms.uTime) mat.uniforms.uTime.value = time;
+                        if (mat.uniforms.uShimmer) mat.uniforms.uShimmer.value = shimmerIntensity;
+                        if (mat.uniforms.uFlow) mat.uniforms.uFlow.value = flowSpeed;
+                        if (mat.uniforms.uTurbulence) mat.uniforms.uTurbulence.value = crayMode ? turbulence * 3 : turbulence;
+                        if (o.userData.isSceneItem && o.userData.effect) {
+                            if (mat.uniforms.uBurn) mat.uniforms.uBurn.value = o.userData.effect.burn;
+                            if (mat.uniforms.uFade) mat.uniforms.uFade.value = o.userData.effect.fade;
+                            if (mat.uniforms.uStarGlow) mat.uniforms.uStarGlow.value = o.userData.effect.glow;
+                        }
+                    }
+                });
+                if (audioActive) {
+                    const level = getAudioLevel(); const bands = getAudioBands(); const sens = audioSensitivity * bassBoost; const boost = level * sens;
+                    pl1.intensity = 2.8 + boost * 3; pl2.intensity = 2.5 + boost * 2.5;
+                    sceneItems.forEach(item => { if (item.points) { const sizes = item.points.geometry.attributes.aSize; for (let j = 0; j < sizes.count; j++) { const s = particleSize * (1 + boost * 0.7 * Math.sin(j * 0.3 + time * 3)); sizes.setX(j, s); } sizes.needsUpdate = true; } });
+                    if (dolphinGroup && dolphinParticles) { const pos = dolphinParticles.geometry.attributes.position; const base = dolphinBasePositions; for (let i = 0; i < pos.count; i++) { const bx = base[i * 3] || 0, by = base[i * 3 + 1] || 0, bz = base[i * 3 + 2] || 0; const wave = Math.sin(time * 3 + i * 0.3) * 0.4 * (1 + boost * 2); pos.setXYZ(i, bx, by + wave, bz + Math.sin(time * 1.5 + i * 0.2) * 0.5); } pos.needsUpdate = true; dolphinGroup.position.x = Math.sin(time * 0.8) * 3; dolphinGroup.position.z = Math.cos(time * 0.6) * 2; dolphinGroup.rotation.y = time * 0.5; }
+                } else { pl1.intensity = 2.8; pl2.intensity = 2.5; }
+                if (isPlaying && (keyframes.length > 0 || camKeyframes.length > 0)) { const maxT = Math.max(keyframes.length ? Math.max(...keyframes.map(k => k.time)) : 0, camKeyframes.length ? Math.max(...camKeyframes.map(k => k.time)) : 0); currentTime += delta; if (currentTime > maxT) currentTime = 0; tlSlider.value = currentTime; tlTime.textContent = currentTime.toFixed(1) + 's'; const pose = getPoseAtTime(currentTime); if (pose) applyPose(pose); const camPose = getCameraAtTime(currentTime); if (camPose) { camTarget.copy(camPose.target); camSpherical = { ...camPose.spherical }; updateCameraFromSpherical(); } }
+                pl1.position.x = Math.sin(time * 0.6) * 4.5; pl1.position.z = Math.cos(time * 0.4) * 3.5; pl2.position.x = Math.cos(time * 0.5) * 4; pl2.position.z = Math.sin(time * 0.7) * 3.5;
+                renderer.render(scene, camera);
+            }
+
+            function ensureStageVisible() {
+                if (scene.getObjectByName('testStage')) return;
+                const g = new THREE.Group(); g.name = 'testStage';
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(3.8, 0.025, 8, 96), new THREE.MeshBasicMaterial({ color: 0x7c5cff, transparent: true, opacity: 0.65 }));
+                ring.rotation.x = Math.PI / 2; ring.position.y = -2.4; g.add(ring);
+                const core = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 10), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+                core.position.set(0, 1.2, 0); g.add(core);
+                scene.add(g);
+            }
+
+            function init() {
+                ensureStageVisible();
+                handleResize();
+                buildSkeleton();
+                resetPose();
+                camTarget.set(0, 1.2, 0);
+                camSpherical = { r: 18, theta: 0, phi: 1.1 };
+                updateCameraFromSpherical();
+                setSkeletonVisible(false);
+                tlSlider.max = 10; tlSlider.value = 0; tlTime.textContent = '0.0s';
+                setParticleShape('star');
+                updateJoystickVisibility();
+                lastFrameTime = Date.now();
+                animate();
+                showToast('✨', 'Stardust Studio Pro');
+                setTimeout(() => { if (localStorage.getItem('stardust3d_pro4')) showToast('💾', 'Save found — tap 📂'); }, 600);
+            }
+            setTimeout(handleResize, 100);
+            init();
+
+            window.__stardust = { addCameraKeyframe, spawnImageParticles, spawnTextParticles, setSkeletonVisible, setJoyParam };
+        })();
+    </script>
+</body>
+</html>
